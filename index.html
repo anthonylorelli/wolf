@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#090c10" />
+    <title>Vesper Manor — 1889 Gaslight &amp; Mansion Restoration</title>
+    <meta
+      name="description"
+      content="Reclaim and restore the haunted rooms of Vesper Manor, a sprawling 19th-century Victorian estate powered by brass steam conduits and limelight wards, rendered in 2D pixel art with Three.js."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IM+Fell+English:ital@0;1&family=Silkscreen:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <main id="game-shell" aria-label="Vesper Manor Game Viewport">
+      <div id="canvas-container"></div>
+
+      <!-- Subtle atmospheric vignette & storm flash layer -->
+      <div id="vignette-layer" aria-hidden="true"></div>
+      <div id="frost-overlay" aria-hidden="true"></div>
+
+      <!-- Title Screen Overlay (renders directly over live Three.js Foyer scene) -->
+      <section id="title-overlay" class="overlay-screen active" aria-labelledby="game-title">
+        <div class="title-plaque brass-plate">
+          <div class="rivet tl"></div>
+          <div class="rivet tr"></div>
+          <div class="rivet bl"></div>
+          <div class="rivet br"></div>
+          <p class="estate-date">AUTUMN 1889 &bull; HARROWMERE COUNTY</p>
+          <h1 id="game-title">Vesper Manor</h1>
+          <p class="estate-subtitle">An Estate of Tarnished Brass &amp; Restless Shadow</p>
+          <div class="brass-divider"></div>
+          <p class="estate-premise">
+            Since the cellar boiler lost pressure in the October gale, the limelight sconces have gone dark and
+            something sorrowful stirs behind the damask walls. Take up your late uncle&rsquo;s brass lantern,
+            mend the ruptured steam conduits, banish the creeping gloom, and restore all nine rooms of the manor.
+          </p>
+          <div class="title-controls-preview desktop-hints">
+            <span><kbd>WASD</kbd> / <kbd>Click</kbd> Move</span>
+            <span><kbd>SPACE</kbd> Limelight Beam</span>
+            <span><kbd>E</kbd> Restore &amp; Salvage</span>
+            <span><kbd>R</kbd> Stoke Coal</span>
+          </div>
+          <div class="title-controls-preview touch-hints">
+            <span><strong>Left Thumb</strong> Steer</span>
+            <span><strong>Hold Beam</strong> Banish Shades</span>
+            <span><strong>Act</strong> Salvage &amp; Restore</span>
+          </div>
+          <button id="btn-enter-manor" class="brass-btn primary-btn" type="button">
+            Unlatch the Front Doors
+          </button>
+        </div>
+      </section>
+
+      <!-- Active In-Game HUD -->
+      <header id="hud-root" class="hud-hidden" aria-label="Estate Instruments">
+        <!-- Top-Left: Pocket Manometer, Lantern, Composure & Salvage -->
+        <aside id="hud-gauges" class="brass-panel">
+          <div class="manometer-row">
+            <div class="dial-wrap" title="Estate Municipal Steam Pressure (PSI)">
+              <svg id="psi-dial-svg" viewBox="0 0 64 64" width="52" height="52" aria-hidden="true">
+                <circle cx="32" cy="32" r="29" fill="#181410" stroke="#9e7738" stroke-width="3" />
+                <circle cx="32" cy="32" r="24" fill="#ebe1c8" stroke="#59421f" stroke-width="1" />
+                <line x1="13" y1="45" x2="17" y2="42" stroke="#3b2b15" stroke-width="1.5" />
+                <line x1="11" y1="32" x2="16" y2="32" stroke="#3b2b15" stroke-width="1.5" />
+                <line x1="15" y1="19" x2="19" y2="22" stroke="#3b2b15" stroke-width="1.5" />
+                <line x1="32" y1="10" x2="32" y2="15" stroke="#3b2b15" stroke-width="2" />
+                <line x1="49" y1="19" x2="45" y2="22" stroke="#3b2b15" stroke-width="1.5" />
+                <line x1="53" y1="32" x2="48" y2="32" stroke="#8c2d19" stroke-width="1.5" />
+                <line x1="51" y1="45" x2="47" y2="42" stroke="#8c2d19" stroke-width="2" />
+                <text x="32" y="48" text-anchor="middle" font-size="7" font-family="serif" fill="#3b2b15">PSI</text>
+                <g id="psi-needle" transform="rotate(-125 32 32)">
+                  <line x1="32" y1="35" x2="32" y2="13" stroke="#8c2d19" stroke-width="2" stroke-linecap="round" />
+                </g>
+                <circle cx="32" cy="32" r="3.2" fill="#8f6629" stroke="#2a1e0e" stroke-width="1" />
+              </svg>
+              <span id="psi-readout" class="pixel-label">10 PSI</span>
+            </div>
+
+            <div class="meters-stack">
+              <div class="meter-group">
+                <div class="meter-header">
+                  <span>LAMP</span>
+                  <span id="lantern-val">100%</span>
+                </div>
+                <div class="meter-track">
+                  <div id="lantern-bar" class="meter-fill fill-amber" style="width: 100%"></div>
+                </div>
+              </div>
+
+              <div class="meter-group">
+                <div class="meter-header">
+                  <span>NERVE</span>
+                  <span id="composure-val">100%</span>
+                </div>
+                <div class="meter-track">
+                  <div id="composure-bar" class="meter-fill fill-verdigris" style="width: 100%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="hud-resources" class="resource-strip" aria-label="Salvaged Materials">
+            <div class="res-chip" title="Brass Fittings — used to mend ruptured pipes, doors, and fixtures">
+              <canvas id="icon-brass" width="16" height="16" class="pixel-icon"></canvas>
+              <span class="res-name">Brass</span>
+              <strong id="res-brass">4</strong>
+            </div>
+            <div class="res-chip" title="Anthracite Coal — stokes boilers, hearths, and lantern pressure">
+              <canvas id="icon-coal" width="16" height="16" class="pixel-icon"></canvas>
+              <span class="res-name">Coal</span>
+              <strong id="res-coal">3</strong>
+            </div>
+            <div class="res-chip" title="Aether Salt — crystallized spirit residue for Harmonic Wards">
+              <canvas id="icon-salt" width="16" height="16" class="pixel-icon"></canvas>
+              <span class="res-name">Salt</span>
+              <strong id="res-salt">1</strong>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Top-Center: Active Room Brass Plaque -->
+        <div id="hud-room-plaque" class="brass-panel">
+          <div class="room-plaque-top">
+            <span id="current-room-name">Grand Entrance Foyer</span>
+            <span id="current-room-status" class="status-tag haunted">Haunted Draft</span>
+          </div>
+          <div class="room-progress-track">
+            <div id="current-room-bar" class="room-progress-fill" style="width: 0%"></div>
+          </div>
+          <div class="room-plaque-sub">
+            <span id="current-room-tasks">0 / 5 Fixtures Restored</span>
+            <span id="estate-total-pct">Estate: 0%</span>
+          </div>
+        </div>
+
+        <!-- Top-Right: Blueprint Minimap & Utility Controls -->
+        <aside id="hud-blueprint-wrap" class="brass-panel">
+          <div class="blueprint-header">
+            <span class="plan-label-full">ARCHITECTURAL PLAN</span>
+            <span class="plan-label-short">MAP</span>
+            <span id="rooms-reclaimed-count">0/9</span>
+          </div>
+          <canvas id="minimap-canvas" width="138" height="114" title="Tap or press M to toggle Estate Overview"></canvas>
+          <div class="utility-bar">
+            <button id="btn-journal" class="icon-btn" type="button" title="Lord Alistair's Ledger [J]">
+              Ledger <span id="journal-badge" class="badge">1</span>
+            </button>
+            <button id="btn-overview" class="icon-btn" type="button" title="Toggle Estate Overview Camera [M]">
+              Plan
+            </button>
+            <button id="btn-audio" class="icon-btn" type="button" title="Toggle Soundscape [V]">
+              Audio
+            </button>
+            <button id="btn-help" class="icon-btn" type="button" title="Field Guide [?]">
+              ?
+            </button>
+          </div>
+        </aside>
+      </header>
+
+      <!-- Room Reclaimed Celebration Banner -->
+      <div id="room-reclaimed-banner" class="reclaimed-banner hidden" role="status" aria-live="polite">
+        <p class="reclaimed-kicker">HARMONIC WARD IGNITED</p>
+        <h2 id="reclaimed-room-title">Grand Entrance Foyer Reclaimed</h2>
+        <p id="reclaimed-room-bonus">Gaslight warmth steadies your nerves while in the Foyer.</p>
+      </div>
+
+      <!-- Dedicated Mobile / iPhone Multi-Touch Controls -->
+      <section id="mobile-touch-controls" class="hud-hidden" aria-label="Touch Controls">
+        <!-- Left Thumb Brass Gimbal Joystick -->
+        <div id="touch-joystick-zone">
+          <div id="joystick-base">
+            <div id="joystick-nub"></div>
+          </div>
+        </div>
+
+        <!-- Right Thumb Ergonomic Brass Action Cluster -->
+        <div id="touch-action-cluster">
+          <button id="touch-btn-coal" class="touch-round-btn secondary-touch-btn" type="button" aria-label="Stoke Coal">
+            <span class="touch-btn-main">COAL</span>
+            <span id="touch-coal-sub" class="touch-btn-sub">+LAMP</span>
+          </button>
+          <button
+            id="touch-btn-act"
+            class="touch-round-btn act-touch-btn disabled"
+            type="button"
+            aria-label="Restore or Salvage"
+          >
+            <span id="touch-act-verb" class="touch-btn-main">ACT</span>
+            <span id="touch-act-sub" class="touch-btn-sub">NEARBY</span>
+          </button>
+          <button id="touch-btn-beam" class="touch-round-btn beam-touch-btn" type="button" aria-label="Hold Limelight Beam">
+            <span class="touch-btn-main">BEAM</span>
+            <span class="touch-btn-sub">HOLD</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Bottom-Center Contextual Interaction Plaque & Desktop Quick Controls -->
+      <footer id="hud-bottom" class="hud-hidden">
+        <div id="chronicle-toast" class="chronicle-toast hidden" role="status" aria-live="polite"></div>
+
+        <div id="interaction-plaque" class="interaction-plaque hidden">
+          <div class="interact-info">
+            <strong id="interact-title">Ruptured Brass Conduit</strong>
+            <span id="interact-desc">Hissing cold vapour. Patch with 2 Brass Fittings.</span>
+          </div>
+          <button id="btn-interact-now" class="brass-btn compact-btn" type="button">
+            <kbd class="desktop-kbd">E</kbd> <span id="interact-verb">Restore</span>
+          </button>
+        </div>
+
+        <div id="quick-action-strip" aria-label="Lantern and Tool Actions">
+          <button id="btn-beam-hold" class="action-pill" type="button" title="Hold SPACE or Right-Click to focus Limelight Beam">
+            <kbd>SPACE</kbd> Focus Limelight
+          </button>
+          <button id="btn-stoke-lantern" class="action-pill" type="button" title="Press R to stoke Lantern with 1 Coal (+48% Limelight)">
+            <kbd>R</kbd> Stoke Coal
+          </button>
+          <span id="objective-hint" class="objective-hint">
+            Sweep debris &amp; mend the Foyer steam valve to restore gaslight.
+          </span>
+        </div>
+      </footer>
+
+      <!-- Lord Alistair's Ledger (Journal & Estate Bonuses Modal) -->
+      <section id="journal-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="journal-heading">
+        <div class="modal-card parchment-modal">
+          <div class="modal-header">
+            <h2 id="journal-heading">Lord Alistair Vesper&rsquo;s Ledger (1889)</h2>
+            <button id="btn-close-journal" class="close-btn" type="button" aria-label="Close Ledger">&times;</button>
+          </div>
+          <div class="modal-body split-ledger">
+            <div class="ledger-entries" id="journal-entries-list"></div>
+            <aside class="ledger-bonuses">
+              <h3>Estate Systems Online</h3>
+              <ul id="bonuses-list"></ul>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- Field Guide / Controls Modal -->
+      <section id="help-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="help-heading">
+        <div class="modal-card brass-plate">
+          <div class="modal-header">
+            <h2 id="help-heading">Inspector&rsquo;s Field Guide</h2>
+            <button id="btn-close-help" class="close-btn" type="button" aria-label="Close Guide">&times;</button>
+          </div>
+          <div class="modal-body guide-grid">
+            <div class="guide-item">
+              <h3>1. Banish the Gloom</h3>
+              <p>
+                Hold <strong>BEAM</strong> (or <kbd>SPACE</kbd> / <kbd>Right-Click</kbd>) to focus your
+                <strong>Limelight Brass Lantern</strong> onto <em>Whispering Shades</em>, <em>Soot Wraiths</em>, and
+                <em>Miasma Pools</em> to dissolve them into <strong>Aether Salt</strong>.
+              </p>
+            </div>
+            <div class="guide-item">
+              <h3>2. Salvage &amp; Pressurize</h3>
+              <p>
+                Walk near rubble piles, cobwebs, and coal crates and tap <strong>ACT / Salvage</strong> (or <kbd>E</kbd>)
+                to gather <strong>Brass Fittings</strong> and <strong>Coal</strong>. Repairing boilers and steam pipes
+                raises <strong>Estate PSI</strong>, unsealing heavy bulkhead doors.
+              </p>
+            </div>
+            <div class="guide-item">
+              <h3>3. Reclaim Every Wing</h3>
+              <p>
+                Restore broken Victorian furnishings, relight gas sconces, and ignite each room&rsquo;s
+                <strong>Harmonic Ward</strong>. Warm, gaslit rooms restore your <strong>Nerve</strong> and recharge
+                your lantern automatically.
+              </p>
+            </div>
+            <div class="guide-item">
+              <h3>Touch &amp; Keyboard Controls</h3>
+              <p>
+                <strong>iPhone / Touch:</strong> Left thumb joystick (or tap floor) to walk &bull; Hold
+                <strong>BEAM</strong> to banish spirits &bull; Tap <strong>ACT</strong> or prompt plaque to restore
+                &bull; Tap minimap for 9-room overview.<br />
+                <strong>Desktop:</strong> <kbd>WASD</kbd> Move &bull; <kbd>SPACE</kbd> Beam &bull; <kbd>E</kbd> Act
+                &bull; <kbd>R</kbd> Coal &bull; <kbd>M</kbd> Plan &bull; <kbd>J</kbd> Ledger
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Final Victory Modal -->
+      <section id="victory-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="victory-heading">
+        <div class="modal-card brass-plate victory-card">
+          <p class="estate-date">HARMONIC RESONANCE STABILIZED</p>
+          <h2 id="victory-heading">Vesper Manor Reclaimed</h2>
+          <div class="brass-divider"></div>
+          <p id="victory-summary">
+            Every copper conduit hums with steady pressure, amber gaslight spills across polished herringbone oak,
+            and the restless shades of Harrowmere have found quiet release. Lord Alistair&rsquo;s grand estate stands
+            warm and whole once more.
+          </p>
+          <div class="victory-stats" id="victory-stats"></div>
+          <button id="btn-continue-estate" class="brass-btn primary-btn" type="button">
+            Stroll the Restored Manor
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
