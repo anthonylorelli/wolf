@@ -1,6 +1,6 @@
 :root {
   /* Curated 1889 Victorian Brass, Walnut, Vellum & Verdigris Palette */
-  --bg-soot: hsl(215, 18%, 6%);
+  --bg-soot: hsl(212, 22%, 5%);
   --surface-walnut: hsla(26, 28%, 11%, 0.92);
   --surface-walnut-solid: hsl(26, 26%, 12%);
   --surface-parchment: hsl(38, 34%, 84%);
@@ -86,28 +86,19 @@ body {
 }
 
 .pixel-icon,
-#minimap-canvas {
+#minimap-canvas,
+#fullmap-canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
 
-/* Atmospheric Layers */
+/* Atmospheric Vignette */
 #vignette-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at 50% 52%, transparent 48%, rgba(5, 7, 10, 0.68) 100%);
+  background: radial-gradient(circle at 50% 52%, transparent 52%, rgba(4, 7, 11, 0.62) 100%);
   z-index: 2;
-}
-
-#frost-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(circle at 50% 50%, transparent 42%, hsla(176, 42%, 36%, 0.34) 100%);
-  z-index: 3;
-  transition: opacity 0.35s ease;
 }
 
 /* Tactile Brass & Walnut Panel Material */
@@ -137,10 +128,10 @@ body {
   justify-content: center;
   padding: calc(1rem + var(--safe-top)) calc(1rem + var(--safe-right)) calc(1rem + var(--safe-bottom))
     calc(1rem + var(--safe-left));
-  background: radial-gradient(circle at center, rgba(10, 12, 16, 0.38) 0%, rgba(6, 8, 11, 0.8) 100%);
+  background: radial-gradient(circle at center, rgba(9, 13, 18, 0.36) 0%, rgba(5, 8, 12, 0.82) 100%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.45s ease;
 }
 
 .overlay-screen.active {
@@ -155,7 +146,7 @@ body {
   max-height: 90dvh;
   overflow-y: auto;
   touch-action: pan-y;
-  padding: 1.9rem 2rem;
+  padding: 1.8rem 1.9rem;
   text-align: center;
   border: 2px solid var(--brass-mid);
 }
@@ -176,15 +167,15 @@ body {
 .estate-date {
   margin: 0 0 0.4rem;
   font-family: var(--font-pixel);
-  font-size: 0.68rem;
-  letter-spacing: 0.13em;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
   color: var(--brass-hi);
 }
 
 #game-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.75rem, 5vw, 2.9rem);
+  font-size: clamp(1.75rem, 5vw, 2.85rem);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--text-cream);
@@ -201,7 +192,7 @@ body {
 .brass-divider {
   width: 130px;
   height: 2px;
-  margin: 0.85rem auto;
+  margin: 0.8rem auto;
   background: linear-gradient(90deg, transparent, var(--brass-mid), var(--brass-hi), var(--brass-mid), transparent);
 }
 
@@ -212,14 +203,18 @@ body {
   color: var(--text-warm-muted);
 }
 
+.estate-premise strong {
+  color: var(--text-cream);
+}
+
 .title-controls-preview {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.5rem 0.85rem;
-  margin-bottom: 1.25rem;
+  gap: 0.45rem 0.8rem;
+  margin-bottom: 1.2rem;
   font-family: var(--font-pixel);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: var(--text-cream);
 }
 
@@ -233,9 +228,9 @@ body {
 
 kbd {
   display: inline-block;
-  padding: 0.12rem 0.36rem;
+  padding: 0.1rem 0.34rem;
   font-family: var(--font-pixel);
-  font-size: 0.63rem;
+  font-size: 0.6rem;
   color: var(--ink-dark);
   background: linear-gradient(180deg, #efe4c8 0%, #c8b284 100%);
   border: 1px solid #59411e;
@@ -247,7 +242,7 @@ kbd {
   cursor: pointer;
   font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: #1a1106;
   background: linear-gradient(180deg, hsl(41, 65%, 66%) 0%, hsl(36, 54%, 46%) 100%);
   border: 1px solid hsl(43, 72%, 76%);
@@ -264,19 +259,25 @@ kbd {
   transform: translateY(1px);
 }
 
+.brass-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
 .primary-btn {
-  padding: 0.82rem 1.65rem;
-  font-size: 0.96rem;
+  padding: 0.8rem 1.6rem;
+  font-size: 0.94rem;
   min-height: 46px;
 }
 
 .compact-btn {
-  padding: 0.5rem 0.9rem;
-  font-size: 0.78rem;
-  min-height: 40px;
+  padding: 0.46rem 0.85rem;
+  font-size: 0.76rem;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.32rem;
   white-space: nowrap;
 }
 
@@ -291,7 +292,7 @@ kbd {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.65rem;
-  padding: calc(0.65rem + var(--safe-top)) calc(0.75rem + var(--safe-right)) 0.4rem calc(0.75rem + var(--safe-left));
+  padding: calc(0.6rem + var(--safe-top)) calc(0.75rem + var(--safe-right)) 0.35rem calc(0.75rem + var(--safe-left));
   pointer-events: none;
   transition: opacity 0.35s ease;
 }
@@ -307,31 +308,31 @@ kbd {
 
 /* Top-Left Gauges */
 #hud-gauges {
-  padding: 0.5rem 0.65rem;
-  min-width: 236px;
+  padding: 0.48rem 0.62rem;
+  min-width: 224px;
 }
 
 .manometer-row {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.55rem;
 }
 
 .dial-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.12rem;
+  gap: 0.1rem;
   flex-shrink: 0;
 }
 
 #psi-needle {
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .pixel-label {
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   color: var(--brass-hi);
   white-space: nowrap;
 }
@@ -341,16 +342,16 @@ kbd {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.36rem;
 }
 
 .meter-header {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
+  font-size: 0.56rem;
   color: var(--text-warm-muted);
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.14rem;
 }
 
 .meter-track {
@@ -363,7 +364,7 @@ kbd {
 
 .meter-fill {
   height: 100%;
-  transition: width 0.2s ease;
+  transition: width 0.15s ease;
 }
 
 .fill-amber {
@@ -376,19 +377,19 @@ kbd {
 
 .resource-strip {
   display: flex;
-  justify-content: space-between;
-  gap: 0.35rem;
-  margin-top: 0.45rem;
-  padding-top: 0.4rem;
+  justify-content: space-around;
+  gap: 0.5rem;
+  margin-top: 0.42rem;
+  padding-top: 0.36rem;
   border-top: 1px solid hsla(38, 35%, 45%, 0.28);
 }
 
 .res-chip {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.28rem;
   font-family: var(--font-pixel);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   color: var(--text-warm-muted);
 }
 
@@ -399,9 +400,9 @@ kbd {
 
 /* Top-Center Room Plaque */
 #hud-room-plaque {
-  padding: 0.48rem 0.9rem;
-  min-width: 250px;
-  max-width: 350px;
+  padding: 0.46rem 0.85rem;
+  min-width: 248px;
+  max-width: 340px;
   text-align: center;
 }
 
@@ -410,12 +411,12 @@ kbd {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.28rem;
+  margin-bottom: 0.26rem;
 }
 
 #current-room-name {
   font-family: var(--font-display);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   color: var(--text-cream);
@@ -426,8 +427,8 @@ kbd {
 
 .status-tag {
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
-  padding: 0.12rem 0.34rem;
+  font-size: 0.54rem;
+  padding: 0.1rem 0.32rem;
   border-radius: 2px;
   border: 1px solid currentColor;
   white-space: nowrap;
@@ -455,25 +456,26 @@ kbd {
 .room-progress-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--brass-mid), var(--amber-glow));
-  transition: width 0.35s ease;
+  transition: width 0.3s ease;
 }
 
 .room-plaque-sub {
   display: flex;
   justify-content: space-between;
-  margin-top: 0.25rem;
+  gap: 0.65rem;
+  margin-top: 0.22rem;
   font-family: var(--font-pixel);
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   color: var(--text-warm-muted);
 }
 
 /* Top-Right Blueprint Minimap */
 #hud-blueprint-wrap {
-  padding: 0.45rem 0.55rem;
+  padding: 0.42rem 0.52rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.34rem;
+  gap: 0.3rem;
 }
 
 .blueprint-header {
@@ -481,7 +483,7 @@ kbd {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-pixel);
-  font-size: 0.56rem;
+  font-size: 0.55rem;
   color: var(--brass-hi);
 }
 
@@ -491,14 +493,14 @@ kbd {
 
 #minimap-canvas {
   border: 1px solid hsla(39, 44%, 48%, 0.55);
-  background: #101b24;
+  background: #0d1720;
   cursor: pointer;
   border-radius: 2px;
 }
 
 .utility-bar {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.24rem;
   width: 100%;
   justify-content: space-between;
 }
@@ -506,10 +508,10 @@ kbd {
 .icon-btn {
   cursor: pointer;
   flex: 1;
-  min-height: 28px;
-  padding: 0.24rem 0.3rem;
+  min-height: 27px;
+  padding: 0.22rem 0.28rem;
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
+  font-size: 0.54rem;
   color: var(--text-cream);
   background: hsla(30, 24%, 18%, 0.92);
   border: 1px solid hsla(38, 42%, 48%, 0.52);
@@ -530,25 +532,25 @@ kbd {
   background: var(--amber-deep);
   color: #fff;
   border-radius: 2px;
-  font-size: 0.52rem;
+  font-size: 0.5rem;
 }
 
-/* Room Reclaimed Celebration Banner */
+/* Room Reclaimed Banner */
 .reclaimed-banner {
   position: absolute;
-  top: calc(118px + var(--safe-top));
+  top: calc(114px + var(--safe-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 18;
-  width: min(92vw, 440px);
-  padding: 0.7rem 1.2rem;
+  width: min(92vw, 430px);
+  padding: 0.65rem 1.15rem;
   text-align: center;
   background: linear-gradient(180deg, hsla(32, 38%, 16%, 0.96), hsla(26, 36%, 10%, 0.96));
   border: 2px solid var(--brass-hi);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8);
   border-radius: 4px;
   pointer-events: none;
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
 .reclaimed-banner.hidden {
@@ -560,21 +562,21 @@ kbd {
 .reclaimed-kicker {
   margin: 0;
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
-  letter-spacing: 0.13em;
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
   color: var(--amber-glow);
 }
 
 #reclaimed-room-title {
-  margin: 0.18rem 0;
+  margin: 0.16rem 0;
   font-family: var(--font-display);
-  font-size: 1.12rem;
+  font-size: 1.08rem;
   color: var(--text-cream);
 }
 
 #reclaimed-room-bonus {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-style: italic;
   color: var(--brass-hi);
 }
@@ -589,7 +591,7 @@ kbd {
   right: 0;
   bottom: 0;
   z-index: 14;
-  padding: 0 calc(0.85rem + var(--safe-right)) calc(0.75rem + var(--safe-bottom)) calc(0.85rem + var(--safe-left));
+  padding: 0 calc(0.8rem + var(--safe-right)) calc(0.7rem + var(--safe-bottom)) calc(0.8rem + var(--safe-left));
   justify-content: space-between;
   align-items: flex-end;
   pointer-events: none;
@@ -600,8 +602,8 @@ body.touch-active #mobile-touch-controls {
 }
 
 #touch-joystick-zone {
-  width: 122px;
-  height: 122px;
+  width: 120px;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -611,8 +613,8 @@ body.touch-active #mobile-touch-controls {
 
 #joystick-base {
   position: relative;
-  width: 102px;
-  height: 102px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: radial-gradient(circle, hsla(30, 26%, 14%, 0.72) 0%, hsla(24, 30%, 8%, 0.86) 100%);
   border: 2px solid hsla(39, 55%, 56%, 0.65);
@@ -623,10 +625,10 @@ body.touch-active #mobile-touch-controls {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 44px;
-  height: 44px;
-  margin-left: -22px;
-  margin-top: -22px;
+  width: 42px;
+  height: 42px;
+  margin-left: -21px;
+  margin-top: -21px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 32%, hsl(42, 68%, 68%), hsl(35, 52%, 38%));
   border: 2px solid hsl(43, 74%, 78%);
@@ -638,7 +640,7 @@ body.touch-active #mobile-touch-controls {
   display: grid;
   grid-template-columns: auto auto;
   grid-template-rows: auto auto;
-  gap: 0.55rem;
+  gap: 0.52rem;
   align-items: end;
   justify-items: end;
   pointer-events: auto;
@@ -665,7 +667,7 @@ body.touch-active #mobile-touch-controls {
 
 .touch-round-btn:active,
 .touch-round-btn.active {
-  transform: scale(0.94);
+  transform: scale(0.93);
   border-color: #fff2bd;
   background: radial-gradient(circle at 35% 30%, hsl(36, 72%, 44%), hsl(28, 65%, 24%));
 }
@@ -673,23 +675,18 @@ body.touch-active #mobile-touch-controls {
 .secondary-touch-btn {
   grid-column: 1;
   grid-row: 2;
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
+  border-color: hsl(186, 42%, 58%);
 }
 
 .act-touch-btn {
   grid-column: 2;
   grid-row: 1;
-  width: 60px;
-  height: 60px;
+  width: 62px;
+  height: 62px;
   border-color: var(--brass-hi);
-  background: radial-gradient(circle at 35% 30%, hsl(39, 58%, 48%), hsl(31, 52%, 25%));
-}
-
-.act-touch-btn.disabled {
-  opacity: 0.45;
-  border-color: hsla(36, 25%, 42%, 0.55);
-  background: hsla(24, 22%, 12%, 0.8);
+  background: radial-gradient(circle at 35% 30%, hsl(39, 58%, 46%), hsl(31, 52%, 24%));
 }
 
 .beam-touch-btn {
@@ -702,14 +699,14 @@ body.touch-active #mobile-touch-controls {
 }
 
 .touch-btn-main {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   color: #fff6dc;
   line-height: 1.05;
 }
 
 .touch-btn-sub {
-  font-size: 0.46rem;
+  font-size: 0.44rem;
   color: hsl(40, 48%, 82%);
   line-height: 1;
 }
@@ -724,8 +721,8 @@ body.touch-active #mobile-touch-controls {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.42rem;
-  padding: 0.5rem calc(0.9rem + var(--safe-right)) calc(0.75rem + var(--safe-bottom)) calc(0.9rem + var(--safe-left));
+  gap: 0.4rem;
+  padding: 0.45rem calc(0.9rem + var(--safe-right)) calc(0.7rem + var(--safe-bottom)) calc(0.9rem + var(--safe-left));
   pointer-events: none;
   transition: opacity 0.35s ease;
 }
@@ -737,11 +734,11 @@ body.touch-active #mobile-touch-controls {
 .chronicle-toast {
   max-width: min(92vw, 480px);
   text-align: center;
-  padding: 0.36rem 0.8rem;
+  padding: 0.34rem 0.78rem;
   background: hsla(28, 30%, 12%, 0.94);
   border: 1px solid var(--brass-mid);
   border-radius: 3px;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   color: var(--surface-parchment);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.65);
 }
@@ -750,71 +747,32 @@ body.touch-active #mobile-touch-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
+  gap: 0.7rem;
+  padding: 0.45rem 0.7rem;
   background: linear-gradient(180deg, hsla(28, 30%, 15%, 0.96), hsla(24, 32%, 9%, 0.97));
   border: 1px solid var(--brass-hi);
   border-radius: 4px;
   box-shadow: var(--shadow-plate);
-  width: min(92vw, 500px);
+  width: min(92vw, 460px);
 }
 
 .interact-info {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.08rem;
   min-width: 0;
 }
 
 #interact-title {
   font-family: var(--font-display);
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   color: var(--brass-hi);
 }
 
 #interact-desc {
-  font-size: 0.82rem;
-  line-height: 1.3;
+  font-size: 0.8rem;
+  line-height: 1.28;
   color: var(--text-cream);
-}
-
-#quick-action-strip {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.45rem;
-  padding: 0.34rem 0.65rem;
-  background: hsla(24, 26%, 9%, 0.86);
-  border: 1px solid hsla(38, 38%, 44%, 0.45);
-  border-radius: 3px;
-}
-
-.action-pill {
-  cursor: pointer;
-  padding: 0.25rem 0.55rem;
-  font-family: var(--font-pixel);
-  font-size: 0.58rem;
-  color: var(--text-cream);
-  background: hsla(32, 28%, 18%, 0.95);
-  border: 1px solid hsla(39, 48%, 50%, 0.55);
-  border-radius: 3px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.action-pill:hover,
-.action-pill.active {
-  background: hsla(36, 56%, 28%, 0.95);
-  border-color: var(--amber-glow);
-}
-
-.objective-hint {
-  font-size: 0.85rem;
-  font-style: italic;
-  color: var(--text-warm-muted);
-  padding: 0 0.3rem;
 }
 
 /* Modals */
@@ -826,18 +784,18 @@ body.touch-active #mobile-touch-controls {
   position: absolute;
   inset: 0;
   z-index: 40;
-  background: rgba(6, 8, 11, 0.82);
+  background: rgba(5, 8, 12, 0.84);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(0.9rem + var(--safe-top)) calc(0.9rem + var(--safe-right)) calc(0.9rem + var(--safe-bottom))
-    calc(0.9rem + var(--safe-left));
+  padding: calc(0.85rem + var(--safe-top)) calc(0.85rem + var(--safe-right)) calc(0.85rem + var(--safe-bottom))
+    calc(0.85rem + var(--safe-left));
 }
 
 .modal-card {
-  max-width: 700px;
+  max-width: 680px;
   width: 100%;
-  max-height: 84dvh;
+  max-height: 86dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -863,110 +821,169 @@ body.touch-active #mobile-touch-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.8rem 1.1rem;
+  padding: 0.72rem 1rem;
   border-bottom: 1px solid hsla(34, 42%, 35%, 0.4);
 }
 
 .modal-header h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.02rem;
+  font-size: 0.96rem;
 }
 
 .close-btn {
   cursor: pointer;
   background: transparent;
   border: none;
-  font-size: 1.7rem;
+  font-size: 1.65rem;
   line-height: 1;
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 38px;
+  min-height: 38px;
   color: inherit;
 }
 
 .modal-body {
-  padding: 1rem 1.1rem;
+  padding: 0.9rem 1rem;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
 
-.split-ledger {
-  display: grid;
-  grid-template-columns: 1.55fr 1fr;
-  gap: 1rem;
+/* Interactive 19-Room Architectural Map Modal */
+.map-modal-card {
+  max-width: 640px;
 }
 
-.ledger-entry {
-  padding-bottom: 0.8rem;
-  margin-bottom: 0.8rem;
-  border-bottom: 1px dashed hsla(28, 35%, 30%, 0.35);
+.map-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
 }
 
-.ledger-entry h4 {
-  margin: 0 0 0.25rem;
-  font-family: var(--font-display);
-  font-size: 0.9rem;
-  color: hsl(24, 48%, 20%);
+#fullmap-canvas {
+  width: 100%;
+  max-width: 540px;
+  height: auto;
+  aspect-ratio: 540 / 440;
+  background: #0b141c;
+  border: 1px solid var(--brass-mid);
+  border-radius: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
-.ledger-entry p {
-  margin: 0;
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem 0.95rem;
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  color: var(--text-warm-muted);
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  vertical-align: middle;
+  margin-right: 4px;
+  border-radius: 2px;
+}
+.swatch-reclaimed { background: #d49635; border: 1px solid #ffe594; }
+.swatch-haunted { background: #1f444c; border: 1px solid #6bc4b8; }
+.swatch-unseen { background: #12202b; border: 1px solid #3c5568; }
+.swatch-secret { background: #74f5e0; }
+
+/* Upgrades Modal */
+.upgrade-intro {
+  margin: 0 0 0.8rem;
   font-size: 0.92rem;
-  line-height: 1.48;
   color: var(--ink-muted);
 }
 
-.ledger-bonuses {
-  background: hsla(36, 28%, 76%, 0.65);
-  border: 1px solid hsla(32, 34%, 42%, 0.35);
-  padding: 0.8rem;
-  border-radius: 3px;
+.upgrade-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
 }
 
-.ledger-bonuses h3 {
-  margin: 0 0 0.5rem;
-  font-family: var(--font-display);
-  font-size: 0.86rem;
+.upgrade-card {
+  background: hsla(37, 32%, 78%, 0.72);
+  border: 1px solid hsla(31, 38%, 38%, 0.45);
+  border-radius: 4px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.55rem;
 }
 
-.ledger-bonuses ul {
+.upgrade-card h3 {
   margin: 0;
-  padding-left: 1.1rem;
-  font-size: 0.86rem;
-  line-height: 1.5;
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  color: var(--ink-dark);
 }
 
+.upgrade-pips {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  color: hsl(33, 72%, 32%);
+}
+
+.upgrade-card p {
+  margin: 0.2rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+.upgrade-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.upgrade-cost {
+  font-family: var(--font-pixel);
+  font-size: 0.58rem;
+  color: var(--ink-dark);
+}
+
+/* Field Guide & Victory */
 .guide-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.9rem;
+  gap: 0.85rem;
 }
 
 .guide-item h3 {
-  margin: 0 0 0.3rem;
+  margin: 0 0 0.28rem;
   font-family: var(--font-display);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--brass-hi);
 }
 
 .guide-item p {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.48;
+  font-size: 0.88rem;
+  line-height: 1.45;
   color: var(--text-warm-muted);
 }
 
 .victory-card {
   max-width: 520px;
-  padding: 1.7rem;
+  padding: 1.6rem;
   text-align: center;
 }
 
 .victory-card h2 {
   margin: 0.25rem 0;
   font-family: var(--font-display);
-  font-size: 1.65rem;
+  font-size: 1.6rem;
   color: var(--brass-hi);
 }
 
@@ -979,10 +996,10 @@ body.touch-active #mobile-touch-controls {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.8rem 1.1rem;
-  margin: 1rem 0 1.3rem;
+  gap: 0.75rem 1.1rem;
+  margin: 1rem 0 1.25rem;
   font-family: var(--font-pixel);
-  font-size: 0.66rem;
+  font-size: 0.64rem;
   color: var(--text-cream);
 }
 
@@ -994,16 +1011,14 @@ body.touch-active #mobile-touch-controls {
     display: flex;
   }
   .desktop-hints,
-  .desktop-kbd,
-  #quick-action-strip {
+  .desktop-kbd {
     display: none !important;
   }
   .touch-hints {
     display: flex;
   }
-  /* Float contextual interaction plaque cleanly above thumb joystick & buttons */
   #hud-bottom {
-    bottom: calc(162px + var(--safe-bottom));
+    bottom: calc(158px + var(--safe-bottom));
     padding-bottom: 0;
   }
 }
@@ -1011,38 +1026,38 @@ body.touch-active #mobile-touch-controls {
 /* iPhone Portrait Layout (e.g. 375px - 430px wide) */
 @media (max-width: 680px) {
   .title-plaque {
-    padding: 1.35rem 1.2rem;
+    padding: 1.3rem 1.15rem;
   }
 
   #hud-root {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.38rem;
-    padding: calc(0.45rem + var(--safe-top)) calc(0.45rem + var(--safe-right)) 0.25rem calc(0.45rem + var(--safe-left));
+    gap: 0.36rem;
+    padding: calc(0.42rem + var(--safe-top)) calc(0.42rem + var(--safe-right)) 0.22rem calc(0.42rem + var(--safe-left));
   }
 
   #hud-gauges {
     grid-column: 1;
     grid-row: 1;
     min-width: 0;
-    padding: 0.38rem 0.48rem;
+    padding: 0.36rem 0.46rem;
   }
 
   #psi-dial-svg {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
   }
 
   .pixel-label {
-    font-size: 0.52rem;
+    font-size: 0.5rem;
   }
 
   .meters-stack {
-    gap: 0.28rem;
+    gap: 0.26rem;
   }
 
   .meter-header {
-    font-size: 0.52rem;
+    font-size: 0.5rem;
   }
 
   .meter-track {
@@ -1050,8 +1065,8 @@ body.touch-active #mobile-touch-controls {
   }
 
   .resource-strip {
-    margin-top: 0.32rem;
-    padding-top: 0.28rem;
+    margin-top: 0.3rem;
+    padding-top: 0.26rem;
   }
 
   .res-name {
@@ -1061,8 +1076,8 @@ body.touch-active #mobile-touch-controls {
   #hud-blueprint-wrap {
     grid-column: 2;
     grid-row: 1;
-    padding: 0.32rem 0.36rem;
-    gap: 0.22rem;
+    padding: 0.3rem 0.34rem;
+    gap: 0.2rem;
   }
 
   .plan-label-full {
@@ -1095,61 +1110,61 @@ body.touch-active #mobile-touch-controls {
     grid-row: 2;
     min-width: 0;
     max-width: none;
-    padding: 0.3rem 0.55rem;
+    padding: 0.28rem 0.52rem;
   }
 
   #current-room-name {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
   }
 
   .room-plaque-sub {
     margin-top: 0.14rem;
-    font-size: 0.52rem;
+    font-size: 0.5rem;
   }
 
   .reclaimed-banner {
-    top: calc(152px + var(--safe-top));
+    top: calc(214px + var(--safe-top));
   }
 
-  .split-ledger,
+  .upgrade-grid,
   .guide-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* iPhone Landscape Layout (e.g. 844x390) */
+/* iPhone Landscape Layout (e.g. 852x393) */
 @media (max-height: 500px) {
   #hud-root {
-    padding-top: calc(0.35rem + var(--safe-top));
-    gap: 0.4rem;
+    padding-top: calc(0.32rem + var(--safe-top));
+    gap: 0.38rem;
   }
   #psi-dial-svg {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
   }
   #minimap-canvas {
-    width: 88px;
-    height: 72px;
+    width: 86px;
+    height: 68px;
   }
   #hud-gauges,
   #hud-room-plaque,
   #hud-blueprint-wrap {
-    padding: 0.32rem 0.5rem;
+    padding: 0.3rem 0.48rem;
   }
   #hud-bottom {
-    bottom: calc(12px + var(--safe-bottom));
+    bottom: calc(10px + var(--safe-bottom));
   }
   .interaction-plaque {
-    width: min(52vw, 390px);
-    padding: 0.38rem 0.6rem;
+    width: min(50vw, 370px);
+    padding: 0.35rem 0.55rem;
   }
   #touch-joystick-zone {
-    width: 98px;
-    height: 98px;
+    width: 96px;
+    height: 96px;
   }
   #joystick-base {
-    width: 86px;
-    height: 86px;
+    width: 84px;
+    height: 84px;
   }
   .beam-touch-btn {
     width: 58px;
@@ -1158,5 +1173,9 @@ body.touch-active #mobile-touch-controls {
   .act-touch-btn {
     width: 52px;
     height: 52px;
+  }
+  .secondary-touch-btn {
+    width: 44px;
+    height: 44px;
   }
 }

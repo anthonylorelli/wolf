@@ -1,28 +1,25 @@
-# Vesper Manor — 1889 Gaslight & Mansion Restoration
+# Vesper Manor — 2D Pixel-Art Mansion Reclamation (Phaser)
 
-A mobile- and desktop-friendly 2D pixel-art **Three.js** game about reclaiming and restoring the nine haunted wings of a sprawling late-19th-century Victorian mansion retrofitted with grounded municipal steam conduits, copper boilers, and harmonic brass wards.
+A mobile- and desktop-friendly **2D pixel-art action & restoration game** built with **Phaser 4**, set across **19 asymmetric, interconnected wings** of a haunted late-19th-century Victorian steampunk estate.
 
-## Gameplay Overview
+## Highlights
 
-Since the cellar boiler lost pressure during the October gale of 1889, the limelight sconces have gone dark and restless shades stir behind the peeling damask walls.
-
-- **Banish the Gloom**: Hold **BEAM** (or `SPACE` / `Right-Click`) to focus your **Limelight Brass Lantern**, dissolving *Whispering Shades*, *Soot Wraiths*, and *Miasma Pools* into **Aether Salt**.
-- **Salvage & Pressurize**: Clear rubble, cobwebs, and coal scuttles (**ACT** or `E`) for **Brass Fittings** and **Anthracite Coal**. Repairing copper boilers and ruptured steam conduits raises **Estate PSI**, unsealing heavy bulkhead doors across the manor.
-- **Reclaim All Nine Wings**: Relight gas sconces, mend Victorian furnishings, and ignite each room's **Harmonic Brass Ward** to transform decayed, haunted rooms into warm gaslit halls and unlock passive engineering upgrades alongside entries in *Lord Alistair Vesper's 1889 Ledger*.
+- **Sprawling 19-Room Asymmetric Architecture**: Explore an organic Victorian floorplan featuring a rain-swept cobblestone forecourt, narrow service steam corridors, a subterranean Great Copper Boiler Vault, a jutting cast-iron Glass Wintergarden, a Weeping Portrait Colonnade, a Grand Clockwork Ballroom, a Two-Tier Mahogany Library, **3 hidden Revolving Bookcase passages**, a high-altitude Clocktower Steam Catwalk, and the apex Celestial Observatory rotunda.
+- **Tactile Brass Wrench Action**: Swing your **Brass Wrench** (`Click` / `J` / `E` or **WRENCH**) to smash crates and rubble into bouncing magnetic **Brass Gears**, repair ruptured steam pipes & sconces on impact, splinter wooden barricades, and **deflect spectral ecto-orbs** right back at spirits for critical damage.
+- **Calcium Limelight Tether & Steam-Step Dash**: Lock crackling golden limelight arcs onto *Whispering Shades*, *Poltergeist Armchair Mimics*, *Furnace Soot Brutes*, and *The Hollow Architect* boss, while dodging & stunning spirits with your pressurized **Steam-Step Dash**.
+- **Pneumatic Tinkerer’s Upgrades & Map Fast-Travel**: Invest **Brass Gears** and **Aether Salt** into 4 multi-tier tool upgrades, and tap any reclaimed golden room on the **19-Room Architectural Blueprint** (`M`) to fast-travel across the estate.
 
 ## Controls (iPhone / Touch & Desktop)
 
-| Platform | Move | Salvage / Restore | Limelight Beam | Stoke Coal | Overview / Ledger |
+| Platform | Move | Brass Wrench (Smash / Fix / Deflect) | Limelight Tether Beam | Steam-Step Dash | Blueprint Map / Upgrades |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **iPhone / Mobile** | Left Thumb Brass Joystick *(or tap floor)* | Tap **ACT** *(or prompt plaque)* | Hold **BEAM** | Tap **COAL** | Tap **Plan** / **Ledger** |
-| **Desktop** | `WASD` / `Arrows` / `Left-Click` | `E` / Click Prompt | Hold `SPACE` / `Right-Click` | `R` | `M` / `J` / `V` / `?` |
+| **iPhone / Touch** | Left Thumb Brass Joystick | Tap **WRENCH** *(or prompt plaque)* | Hold **BEAM** *(or drag thumb 360° to aim)* | Tap **DASH** | Tap **Map** / **Craft** |
+| **Desktop** | `WASD` / `Arrows` | `Left-Click` / `J` / `E` | Hold `SPACE` / `K` / `Right-Click` | `SHIFT` | `M` (Map) / `U` (Craft) / `V` (Audio) |
 
-## Development & GitHub Pages Deployment
+## Build & Run
 
 ```bash
 npm install
 npm run dev
 npm run build
 ```
-
-Pushes to `main` automatically build `./dist` with relative paths and deploy to GitHub Pages via [`.github/workflows/deploy-pages.yml`](./.github/workflows/deploy-pages.yml).
