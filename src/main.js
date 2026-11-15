@@ -1,43 +1,37 @@
 import './style.css';
 import Phaser from 'phaser';
-import { paintHudIcons } from './art/phaserTextures.js';
+import { paintHudCoinIcon } from './art/cutawaySprites.js';
 import { SoundEngine } from './audio/soundEngine.js';
-import { MansionScene } from './scenes/MansionScene.js';
-import { HudOverlay } from './ui/hudOverlay.js';
+import { CutawayMansionScene } from './scenes/CutawayMansionScene.js';
+import { EstateHud } from './ui/estateHud.js';
 
-paintHudIcons();
+paintHudCoinIcon();
 
 const sound = new SoundEngine();
-const mansionScene = new MansionScene();
+const mansionScene = new CutawayMansionScene();
 mansionScene.soundEngine = sound;
 
-const hud = new HudOverlay({
+const hud = new EstateHud({
   onStartGame() {
     mansionScene.startGame();
     hud.showToast(
-      'Smash crates with your Brass Wrench, light the Gatehouse sconces, and step North into the Foyer!'
+      'Ride left or right to recruit Vagrants (1 Coin), stock the Wrench & Lantern Racks, and fortify Bulkheads before Dusk!'
     );
-  },
-  onInteract() {
-    mansionScene.interactOrWrench();
-  },
-  onWrench() {
-    mansionScene.triggerWrench();
-  },
-  onDash() {
-    mansionScene.triggerDash();
-  },
-  onBeam(active, angle) {
-    mansionScene.setBeamInput(active, angle);
   },
   onJoy(jx, jy) {
     mansionScene.setJoyInput(jx, jy);
   },
-  onBuyUpgrade(id) {
-    return mansionScene.buyUpgrade(id);
+  onHoldPay(held) {
+    mansionScene.setTouchPay(held);
   },
-  onTeleport(roomId) {
-    return mansionScene.teleportToRoom(roomId);
+  onFlare() {
+    mansionScene.triggerBellFlare();
+  },
+  onClimb(dir) {
+    mansionScene.tryTakeVerticalLink(dir);
+  },
+  onToggleOverview() {
+    return mansionScene.toggleOverview();
   },
   onToggleAudio() {
     sound.init();
@@ -46,16 +40,15 @@ const hud = new HudOverlay({
 });
 
 mansionScene.onToast = (msg) => hud.showToast(msg);
-mansionScene.onRoomReclaimed = (room) => hud.showRoomReclaimed(room);
+mansionScene.onBanner = (title, sub) => hud.showBanner(title, sub);
 mansionScene.onVictory = (stats) => hud.showVictory(stats);
-mansionScene.onOpenWorkbench = () => hud.openUpgradeModal();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'canvas-container',
   width: window.innerWidth,
   height: window.innerHeight,
-  backgroundColor: '#070b10',
+  backgroundColor: '#070a0f',
   pixelArt: true,
   roundPixels: true,
   antialias: false,
@@ -66,16 +59,15 @@ const game = new Phaser.Game({
   scene: [mansionScene],
 });
 
-// Sync HUD every animation frame once MansionScene is active
 function syncHudLoop() {
-  if (mansionScene.gameStarted && mansionScene.player) {
+  if (mansionScene.gameStarted && mansionScene.heir) {
     hud.update(mansionScene.getSnapshot());
   }
   requestAnimationFrame(syncHudLoop);
 }
 requestAnimationFrame(syncHudLoop);
 
-// Allow Enter/Space on Title Screen to start immediately on Desktop
+// Allow Enter or Space on the Title Screen to mount immediately on Desktop
 window.addEventListener('keydown', (e) => {
   if (!mansionScene.gameStarted && (e.code === 'Enter' || e.code === 'Space')) {
     document.getElementById('btn-enter-manor')?.click();

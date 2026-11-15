@@ -2,7 +2,7 @@
   "name": "vesper-manor",
   "version": "1.0.0",
   "private": true,
-  "description": "Vesper Manor — A crisp 2D pixel-art Phaser game about reclaiming and restoring 19 asymmetric wings of a haunted 19th-century Victorian steampunk mansion.",
+  "description": "Vesper Manor — A 2D pixel-art side-scroller & resource-management game in Phaser across a 4-story, 22-wing cutaway Victorian steampunk mansion.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
