@@ -1,20 +1,20 @@
-# Vesper Manor — 2D Pixel-Art Mansion Reclamation (Phaser)
+# Vesper Manor — 2D Side-Scrolling Mansion Reclamation (Phaser)
 
-A mobile- and desktop-friendly **2D pixel-art action & restoration game** built with **Phaser 4**, set across **19 asymmetric, interconnected wings** of a haunted late-19th-century Victorian steampunk estate.
+A mobile- and desktop-friendly **2D pixel-art side-scroller & resource-management game** built with **Phaser 4**, inspired by **Kingdom** (*Raw Fury*) and set across **22 asymmetric rooms & grounds** in a **4-story cutaway 19th-century Victorian steampunk mansion**.
 
 ## Highlights
 
-- **Sprawling 19-Room Asymmetric Architecture**: Explore an organic Victorian floorplan featuring a rain-swept cobblestone forecourt, narrow service steam corridors, a subterranean Great Copper Boiler Vault, a jutting cast-iron Glass Wintergarden, a Weeping Portrait Colonnade, a Grand Clockwork Ballroom, a Two-Tier Mahogany Library, **3 hidden Revolving Bookcase passages**, a high-altitude Clocktower Steam Catwalk, and the apex Celestial Observatory rotunda.
-- **Tactile Brass Wrench Action**: Swing your **Brass Wrench** (`Click` / `J` / `E` or **WRENCH**) to smash crates and rubble into bouncing magnetic **Brass Gears**, repair ruptured steam pipes & sconces on impact, splinter wooden barricades, and **deflect spectral ecto-orbs** right back at spirits for critical damage.
-- **Calcium Limelight Tether & Steam-Step Dash**: Lock crackling golden limelight arcs onto *Whispering Shades*, *Poltergeist Armchair Mimics*, *Furnace Soot Brutes*, and *The Hollow Architect* boss, while dodging & stunning spirits with your pressurized **Steam-Step Dash**.
-- **Pneumatic Tinkerer’s Upgrades & Map Fast-Travel**: Invest **Brass Gears** and **Aether Salt** into 4 multi-tier tool upgrades, and tap any reclaimed golden room on the **19-Room Architectural Blueprint** (`M`) to fast-travel across the estate.
+- **4-Story Cutaway Mansion Architecture**: Ride across an asymmetric 22-wing Victorian cross-section spanning misty moorland gates, the gaslit **Grand Entrance Foyer**, a jutting **Glass Wintergarden**, subterranean **Copper Boiler & Wine Vaults**, a two-tier **Mahogany Library & Galvanic Lab**, a rain-lashed **Glass Skybridge**, and the apex **Celestial Observatory Spire**—linked by sweeping staircases and a 4-floor **Central Brass Cage Lift**.
+- **Diegetic Sovereign Coin Slots (`○ ○ ○` → `● ● ○`)**: Ride your **1889 Brass Velocipede** across polished floors with real-time reflections. Hold `S` / `Down` / `E` (or **COIN** on iPhone) beside any rack, broken fixture, bulkhead, campfire, or banner to feed **Brass Sovereigns** one-by-one into floating world slots, or tap away from slots to toss loose coins onto the floor.
+- **Autonomous Estate Retainers & Economy**: Recruit stranded **Vagrants** (`1 Coin`), stock the **Wrench Rack** (**Artificers** who build/repair Bulkheads & restore haunted rooms across all 4 stories) and **Lantern Rack** (**Lamplighter Warders** who hunt daytime *Soot Wisps* for coins and defend outermost walls at night), staff restored income wings (**House Stewards**), and bank surplus Sovereigns with the **Majordomo** for compound Dawn interest.
+- **Nightly Spectral Waves & Rift Expeditions**: Fortify 13 **Frontier Bulkhead Walls** (Timber → Riveted Iron → Brass Steam Bastion with auto-turrets) against *Greed Shades*, *Weeping Phantoms*, and *Furnace Soot Brutes*—and protect your **Signet Crown**! Muster **Lantern Strike Squads** at `Strike Banners` and ring your **Harmonic Bell Flare** to shatter all **4 Spectral Rifts**.
 
 ## Controls (iPhone / Touch & Desktop)
 
-| Platform | Move | Brass Wrench (Smash / Fix / Deflect) | Limelight Tether Beam | Steam-Step Dash | Blueprint Map / Upgrades |
+| Platform | Ride / Steam-Gallop | Feed Coin Slots / Drop Coin | Stairs & Brass Cage Lift | Harmonic Bell Flare | 4-Story Cutaway Overview |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **iPhone / Touch** | Left Thumb Brass Joystick | Tap **WRENCH** *(or prompt plaque)* | Hold **BEAM** *(or drag thumb 360° to aim)* | Tap **DASH** | Tap **Map** / **Craft** |
-| **Desktop** | `WASD` / `Arrows` | `Left-Click` / `J` / `E` | Hold `SPACE` / `K` / `Right-Click` | `SHIFT` | `M` (Map) / `U` (Craft) / `V` (Audio) |
+| **iPhone / Touch** | Left Brass Stick *(full tilt = Gallop)* | Hold **COIN** *(tap away = Drop 1)* | Tap **↑ UP / ↓ DN** *(or flick Stick)* | Tap **FLARE** | Tap **Overview** / Cutaway Map |
+| **Desktop** | `A`/`D` or `←`/`→` (`SHIFT` Gallop) | Hold `S` / `↓` / `E` *(tap = Drop 1)* | `W`/`↑` (Up) & `S`/`↓` (Down) | `SPACE` | `M` (Overview) / `V` (Audio) / `?` (Guide) |
 
 ## Build & Run
 
