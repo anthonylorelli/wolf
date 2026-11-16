@@ -1,3 +1,6 @@
+import { CUTAWAY_ROOMS } from '../data/cutawayMansionData.js';
+import { drawRoomInteriorCanvas } from './roomInteriors.js';
+
 function makeCanvas(w, h) {
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -171,7 +174,7 @@ export function generateCutawayTextures(scene) {
   register(scene, 'rift_0', drawRiftPortal(false));
   register(scene, 'rift_1', drawRiftPortal(true));
 
-  // 6. FOYER STATIONS, WARD-BARRICADES, CANDLE VIGILS & ROOM CENTERPIECES
+  // 6. FOYER STATIONS, CONDUIT JUNCTIONS, PARANORMAL SHIELD COILS & BESPOKE ROOM INTERIORS
   for (const t of [1, 2, 3]) {
     register(scene, `foyer_hearth_${t}`, drawFoyerHearth(t));
   }
@@ -183,18 +186,21 @@ export function generateCutawayTextures(scene) {
   register(scene, 'chest_closed', drawChest(false));
   register(scene, 'chest_open', drawChest(true));
 
-  for (const lv of [0, 1, 2, 3]) {
-    register(scene, `bulkhead_${lv}`, drawBulkhead(lv));
+  for (const pt of ['steam', 'electric', 'aether']) {
+    for (const st of ['off', 'ready', 'on']) {
+      register(scene, `junction_${pt}_${st}`, drawJunctionTerminal(pt, st));
+    }
   }
 
-  const fixtures = [
-    'stove', 'fern_bed', 'boiler', 'coal_hopper', 'organ', 'chandelier',
-    'bookshelf', 'portraits', 'dynamo', 'tesla', 'hearth', 'billiard',
-    'ward_altar', 'clock_gears', 'sky_sconce', 'telescope', 'brazier', 'gate_lamp',
-  ];
-  for (const fk of fixtures) {
-    register(scene, `fix_${fk}_h`, drawCenterpiece(fk, false));
-    register(scene, `fix_${fk}_r`, drawCenterpiece(fk, true));
+  register(scene, 'shield_coil_off', drawShieldCoil('off'));
+  register(scene, 'shield_coil_steam', drawShieldCoil('steam'));
+  register(scene, 'shield_coil_electric', drawShieldCoil('electric'));
+  register(scene, 'shield_coil_aether', drawShieldCoil('aether'));
+
+  // Bespoke Full-Width Interior Dioramas for all 22 Named Rooms (Haunted vs Powered)
+  for (const def of CUTAWAY_ROOMS) {
+    register(scene, `interior_${def.id}_h`, drawRoomInteriorCanvas(def, false));
+    register(scene, `interior_${def.id}_r`, drawRoomInteriorCanvas(def, true));
   }
 
   // 7. CONSECRATED SILVER FLORINS, SLOTS, PROJECTILES & GLOWS
@@ -504,10 +510,7 @@ function drawRoomBackdrop(style, restored) {
   }
 
   if (!restored) {
-    dither(ctx, 0, 14, 18, 18, 'rgba(180,200,198,0.35)', 'rgba(0,0,0,0)');
-  } else {
-    rect(ctx, 16, 68, 4, 12, '#d4a043');
-    rect(ctx, 14, 62, 8, 7, '#fff0ad');
+    dither(ctx, 0, 14, 18, 18, 'rgba(180,200,198,0.3)', 'rgba(0,0,0,0)');
   }
 
   return canvas;
@@ -745,25 +748,36 @@ function drawRiftPortal(alt) {
 }
 
 /* ============================================================================
- * STATIONS, WARD-BARRICADES, CANDLE VIGILS & ROOM CENTERPIECES
+ * CENTRAL TRI-MANIFOLD DYNAMO, JUNCTION TERMINALS & PARANORMAL SHIELD COILS
  * ============================================================================ */
 function drawFoyerHearth(tier) {
-  const { canvas, ctx } = makeCanvas(68, 76);
-  rect(ctx, 6, 18, 56, 56, '#4a2d19');
-  rect(ctx, 2, 14, 64, 6, '#7a4b2a');
-  rect(ctx, 18, 36, 32, 38, '#141210');
-  const fireH = 12 + tier * 6;
-  rect(ctx, 22, 72 - fireH, 24, fireH, '#e86820');
-  rect(ctx, 26, 74 - fireH, 16, fireH - 4, '#ffd966');
+  const { canvas, ctx } = makeCanvas(76, 84);
+  // Heavy carved walnut & riveted iron dynamo housing
+  rect(ctx, 10, 22, 56, 60, '#4a2d19');
+  rect(ctx, 6, 18, 64, 6, '#7a4b2a');
+  // Left Galvanic Busbar Riser (gold/porcelain)
+  rect(ctx, 12, 4, 6, 16, '#deb04e');
+  rect(ctx, 10, 8, 10, 3, '#f2f5f7');
+  rect(ctx, 10, 13, 10, 3, '#f2f5f7');
+  // Right Copper Steam Riser Pipe + Pressure Gauge
+  rect(ctx, 58, 4, 7, 16, '#d96e34');
+  rect(ctx, 56, 10, 11, 4, '#ebb849');
+  // Central Aetheric Crystal Condenser Chamber!
+  rect(ctx, 31, 4, 14, 14, '#2a4d4d');
+  rect(ctx, 34, 6, 8, 10, '#7ef7e3');
   if (tier >= 2) {
-    rect(ctx, 10, 2, 6, 14, '#cf6e3a');
-    rect(ctx, 52, 2, 6, 14, '#cf6e3a');
+    rect(ctx, 36, 8, 4, 6, '#ffffff');
+    rect(ctx, 4, 34, 6, 36, '#cf6e3a');
+    rect(ctx, 66, 34, 6, 36, '#deb04e');
   }
   if (tier >= 3) {
-    // Astral Brass Orrery Crest above hearth
-    rect(ctx, 26, 4, 16, 12, '#f2c45a');
-    rect(ctx, 30, 22, 8, 8, '#7ef7e3');
+    rect(ctx, 26, 1, 24, 5, '#ffe680');
   }
+  // Blazing Boiler-Hearth Firebox
+  rect(ctx, 22, 42, 32, 40, '#141210');
+  const fireH = 14 + tier * 6;
+  rect(ctx, 26, 80 - fireH, 24, fireH, '#e86820');
+  rect(ctx, 30, 82 - fireH, 16, fireH - 4, '#ffd966');
   outline(canvas);
   return canvas;
 }
@@ -799,41 +813,56 @@ function drawSafeVault() {
   return canvas;
 }
 
-function drawBulkhead(level) {
-  const { canvas, ctx } = makeCanvas(36, 78);
-  if (level === 0) {
-    // Unwarded threshold stone & salt line
-    rect(ctx, 6, 68, 24, 8, '#473e36');
-    rect(ctx, 10, 66, 16, 2, '#dce8f2');
-    outline(canvas);
-    return canvas;
+function drawJunctionTerminal(powerType, state) {
+  // Wall-mounted steampunk-occult Conduit Junction Box (28x38)
+  const { canvas, ctx } = makeCanvas(28, 38);
+  const isOn = state === 'on';
+  const isReady = state === 'ready';
+
+  // Conduit drop-neck at top
+  rect(ctx, 11, 2, 6, 9, isOn ? '#deb04e' : '#4a4e54');
+  // Iron/slate backing box
+  rect(ctx, 5, 10, 18, 24, '#242b33');
+  rect(ctx, 7, 12, 14, 20, '#343e4a');
+
+  if (powerType === 'steam') {
+    // Copper valve manifold + red handwheel + pressure gauge
+    rect(ctx, 9, 14, 10, 16, isOn ? '#d96e34' : '#594740');
+    rect(ctx, 11, 15, 6, 5, isOn ? '#fff4d4' : isReady ? '#ffbe66' : '#474f54');
+    rect(ctx, 10, 22, 8, 6, isOn ? '#c9382b' : isReady ? '#d9783b' : '#4f3a38');
+  } else if (powerType === 'electric') {
+    // Porcelain insulators + brass knife-switch + pilot bulb
+    rect(ctx, 8, 8, 4, 3, '#eef4f7');
+    rect(ctx, 16, 8, 4, 3, '#eef4f7');
+    rect(ctx, 11, 14, 6, 5, isOn ? '#fff799' : isReady ? '#ffd24d' : '#3b4247');
+    rect(ctx, 10, 21, 8, 9, isOn ? '#ebb849' : '#575248');
+  } else {
+    // Crystal Aetheric Resonance Coupling
+    rect(ctx, 9, 13, 10, 18, isOn ? '#2f8a82' : '#26383b');
+    rect(ctx, 11, 15, 6, 14, isOn ? '#7ef7e3' : isReady ? '#4adbc8' : '#32464a');
+    if (isOn) rect(ctx, 13, 18, 2, 8, '#ffffff');
   }
-  if (level === 1) {
-    // Salt & Oak Ward-Barricade with brass ward-sigil
-    rect(ctx, 8, 28, 20, 48, '#633e20');
-    rect(ctx, 6, 36, 24, 6, '#87572f');
-    rect(ctx, 6, 56, 24, 6, '#87572f');
-    rect(ctx, 15, 44, 6, 8, '#7ef7e3');
-    for (const sx of [10, 18, 25]) rect(ctx, sx, 22, 3, 8, '#cfa044');
-    outline(canvas);
-    return canvas;
-  }
-  if (level === 2) {
-    // Cold-Iron Ward Gate with consecrated lantern eye
-    rect(ctx, 6, 14, 24, 62, '#2d353d');
-    rect(ctx, 9, 18, 18, 54, '#414c57');
-    rect(ctx, 6, 40, 24, 6, '#b88735');
-    rect(ctx, 14, 24, 8, 8, '#7ef7e3');
-    rect(ctx, 16, 26, 4, 4, '#ffffff');
-    outline(canvas);
-    return canvas;
-  }
-  // Level 3: Galvanic Brass Sanctum Seal with top Limelight Sconce Turret!
-  rect(ctx, 4, 8, 28, 68, '#8c6124');
-  rect(ctx, 8, 12, 20, 60, '#cfa044');
-  rect(ctx, 4, 38, 28, 8, '#363e47');
-  rect(ctx, 11, 2, 14, 9, '#7ef7e3');
-  rect(ctx, 14, 4, 8, 5, '#ffffff');
+
+  outline(canvas);
+  return canvas;
+}
+
+function drawShieldCoil(powerType) {
+  // Compact floor/ceiling threshold Paranormal Shield Emitter Plinth (26x18) — zero physical wall!
+  const { canvas, ctx } = makeCanvas(26, 18);
+  const active = powerType !== 'off';
+  rect(ctx, 3, 10, 20, 7, '#262e36');
+  rect(ctx, 6, 6, 14, 5, active ? '#cfa042' : '#4f5459');
+  const core =
+    powerType === 'steam'
+      ? '#ffbe66'
+      : powerType === 'electric'
+        ? '#fff599'
+        : powerType === 'aether'
+          ? '#7ef7e3'
+          : '#364047';
+  rect(ctx, 9, 3, 8, 4, core);
+  if (active) rect(ctx, 11, 4, 4, 2, '#ffffff');
   outline(canvas);
   return canvas;
 }
@@ -850,12 +879,10 @@ function drawStrikeBanner() {
 }
 
 function drawCandleVigil() {
-  // 19th-Century Chalk Ward-Circle & Tallow Candle Candelabra (replaces outdoor campfires!)
+  // 19th-Century Chalk Ward-Circle & Tallow Candle Candelabra
   const { canvas, ctx } = makeCanvas(36, 28);
-  // Chalk ward-ring on floorboards
   rect(ctx, 4, 22, 28, 3, '#c8d6de');
   rect(ctx, 8, 20, 20, 2, '#5ef2dc');
-  // Brass 3-branch floor candelabrum & dripping tallow candles
   rect(ctx, 15, 16, 6, 8, '#b88735');
   for (const [cx, h] of [[10, 7], [17, 10], [24, 6]]) {
     rect(ctx, cx, 21 - h, 3, h, '#f2ead8');
@@ -872,64 +899,6 @@ function drawChest(open) {
   rect(ctx, 4, open ? 4 : 8, 22, 5, '#754826');
   rect(ctx, 13, 11, 4, 5, '#dce8f2');
   if (!open) px(ctx, 14, 12, '#7ef7e3');
-  outline(canvas);
-  return canvas;
-}
-
-function drawCenterpiece(kind, restored) {
-  const { canvas, ctx } = makeCanvas(56, 64);
-  const wood = restored ? '#6b3e22' : '#332924';
-  const brass = restored ? '#deb04e' : '#575248';
-  const copper = restored ? '#cf6a38' : '#4a3d38';
-  const glow = restored ? '#ffe482' : '#354547';
-  const spiritGlow = restored ? '#7ef7e3' : '#2c3d40';
-
-  if (kind === 'stove' || kind === 'coal_hopper') {
-    rect(ctx, 8, 26, 40, 36, '#23282e');
-    rect(ctx, 22, 4, 10, 22, copper);
-    rect(ctx, 14, 42, 28, 12, restored ? '#ff8426' : '#15181c');
-    if (restored) rect(ctx, 18, 45, 20, 6, '#ffe580');
-  } else if (kind === 'fern_bed') {
-    rect(ctx, 6, 44, 44, 18, brass);
-    if (restored) {
-      rect(ctx, 8, 20, 40, 24, '#297045');
-      rect(ctx, 14, 12, 28, 18, '#46a165');
-      rect(ctx, 18, 18, 5, 5, '#ffd45c');
-      rect(ctx, 33, 22, 5, 5, '#7ef7e3');
-    } else {
-      rect(ctx, 18, 30, 4, 14, '#4f4d44');
-      rect(ctx, 34, 28, 4, 16, '#4f4d44');
-    }
-  } else if (kind === 'boiler' || kind === 'dynamo' || kind === 'tesla') {
-    rect(ctx, 6, 48, 44, 14, '#282e36');
-    rect(ctx, 12, 12, 32, 38, copper);
-    rect(ctx, 12, 22, 32, 4, brass);
-    rect(ctx, 12, 36, 32, 4, brass);
-    rect(ctx, 22, 26, 12, 10, kind === 'tesla' ? spiritGlow : glow);
-  } else if (kind === 'ward_altar') {
-    // Consecrated Séance Cloak & Ward-Boot Stand
-    rect(ctx, 12, 48, 32, 14, wood);
-    rect(ctx, 25, 10, 6, 38, brass);
-    rect(ctx, 16, 18, 24, 18, restored ? '#6e1f2b' : '#2d2628');
-    rect(ctx, 23, 12, 10, 6, spiritGlow);
-  } else if (kind === 'organ') {
-    for (let x = 12; x <= 40; x += 5) {
-      rect(ctx, x, restored ? 6 : 8 + (x % 4), 4, 28, brass);
-    }
-    rect(ctx, 8, 34, 40, 28, wood);
-    rect(ctx, 12, 42, 32, 4, restored ? '#f7f0dc' : '#787d7a');
-  } else if (kind === 'telescope') {
-    rect(ctx, 24, 34, 8, 28, wood);
-    rect(ctx, 12, 18, 34, 10, brass);
-    rect(ctx, 42, 14, 8, 14, spiritGlow);
-  } else if (kind === 'clock_gears') {
-    drawPixelWheel(ctx, 28, 30, 18, restored ? 1 : 0);
-    rect(ctx, 25, 30, 6, 30, brass);
-  } else {
-    rect(ctx, 10, 16, 36, 46, wood);
-    rect(ctx, 16, 22, 24, 28, brass);
-    rect(ctx, 20, 28, 16, 18, glow);
-  }
   outline(canvas);
   return canvas;
 }

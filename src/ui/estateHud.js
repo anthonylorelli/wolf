@@ -15,6 +15,13 @@ const FLOOR_MINI_Y = {
   '-1': 56,
 };
 
+const MINI_POWER_COLORS = {
+  hub: '#f0c465',
+  steam: '#d9783b',
+  electric: '#e6be4c',
+  aether: '#43d4c0',
+};
+
 export class EstateHud {
   constructor(callbacks) {
     this.cb = callbacks;
@@ -45,6 +52,7 @@ export class EstateHud {
       rosterArtificers: document.getElementById('roster-artificers'),
       rosterWarders: document.getElementById('roster-warders'),
       rosterServants: document.getElementById('roster-servants'),
+      rosterShields: document.getElementById('roster-shields'),
 
       currentRoomName: document.getElementById('current-room-name'),
       currentRoomStatus: document.getElementById('current-room-status'),
@@ -162,7 +170,7 @@ export class EstateHud {
       this.els.victoryModal.classList.add('hidden');
     });
 
-    // Hold-to-pay support on the bottom prompt button too (great for mouse or single-hand play)
+    // Hold-to-construct / switch shield / pay support on the bottom prompt button too
     const startPay = (e) => {
       e.preventDefault();
       this.cb.onHoldPay?.(true);
@@ -248,7 +256,7 @@ export class EstateHud {
       if (e.pointerId === joyPointerId) resetStick();
     });
 
-    // 2. Right Thumb Primary FLORIN Button (Hold = feed world slots; Tap = drop 1 consecrated Ward Florin)
+    // 2. Right Thumb Primary Action Button (Hold = Wire Conduit / Switch Shield / Pay Slot; Tap = Ward Florin)
     let coinPointerId = null;
     const releaseCoin = () => {
       if (coinPointerId === null) return;
@@ -307,7 +315,7 @@ export class EstateHud {
   showVictory(stats) {
     this.els.victoryStats.innerHTML = `
       <div class="stat-pill"><span>Nights Survived</span><strong>Day ${stats.days}</strong></div>
-      <div class="stat-pill"><span>Wings Sanctified</span><strong>${stats.restoredRooms} / ${stats.totalRooms}</strong></div>
+      <div class="stat-pill"><span>Wings Energized</span><strong>${stats.restoredRooms} / ${stats.totalRooms}</strong></div>
       <div class="stat-pill"><span>Rifts Shattered</span><strong>${stats.riftsSealed} / ${stats.totalRifts}</strong></div>
       <div class="stat-pill"><span>Manor Retainers</span><strong>${stats.retainers}</strong></div>
     `;
@@ -320,14 +328,16 @@ export class EstateHud {
       heir,
       activeRoom,
       rooms,
-      bulkheads,
+      shields,
+      activeShields,
+      maxShields,
       rifts,
       enemies,
       restoredCount,
       totalRooms,
       riftsLeft,
       roster,
-      nearbyPayable,
+      nearbyInteractable,
       nearbyLinks,
       isOverview,
     } = snap;
@@ -371,23 +381,51 @@ export class EstateHud {
     this.els.staminaBar.style.width = `${Math.round(heir.stamina)}%`;
     this.els.staminaBar.classList.toggle('venting', heir.exhaustedTimer > 0);
 
-    // 3. Retainer Roster
+    // 3. Retainer Roster & Paranormal Shield Grid Readout
     this.els.rosterArtificers.textContent = String(roster.artificers);
     this.els.rosterWarders.textContent = String(roster.warders);
-    this.els.rosterServants.textContent = String(roster.servants);
+    if (this.els.rosterServants) {
+      this.els.rosterServants.textContent = String(roster.servants);
+    }
+    if (this.els.rosterShields) {
+      this.els.rosterShields.textContent = `${activeShields}/${maxShields}`;
+    }
 
-    // 4. Active Cutaway Wing Plaque
+    // 4. Active Cutaway Wing Plaque (Power Line & Shield State)
     if (activeRoom) {
       this.els.currentRoomName.textContent = activeRoom.def.name;
-      if (activeRoom.isRestored) {
-        this.els.currentRoomStatus.textContent = 'Restored';
-        this.els.currentRoomStatus.className = 'status-tag reclaimed';
-      } else if (activeRoom.restoreQueued) {
-        this.els.currentRoomStatus.textContent = 'Restoring...';
+      if (activeRoom.isPowered) {
+        const shielding =
+          activeRoom.def.id !== 'grand_foyer' &&
+          activeRoom.shields.some((s) => s.active && !s.overloaded);
+        if (shielding) {
+          this.els.currentRoomStatus.textContent = 'Shielded';
+          this.els.currentRoomStatus.className = 'status-tag shielded';
+        } else if (activeRoom.def.powerType === 'steam') {
+          this.els.currentRoomStatus.textContent = 'Steam Live';
+          this.els.currentRoomStatus.className = 'status-tag steam-live';
+        } else if (activeRoom.def.powerType === 'electric') {
+          this.els.currentRoomStatus.textContent = 'Galvanic Live';
+          this.els.currentRoomStatus.className = 'status-tag reclaimed';
+        } else if (activeRoom.def.powerType === 'aether') {
+          this.els.currentRoomStatus.textContent = 'Aether Live';
+          this.els.currentRoomStatus.className = 'status-tag aether-live';
+        } else {
+          this.els.currentRoomStatus.textContent = 'Dynamo Core';
+          this.els.currentRoomStatus.className = 'status-tag reclaimed';
+        }
+      } else if (activeRoom.conduitProgress > 0.01) {
+        this.els.currentRoomStatus.textContent = `Wiring ${Math.round(activeRoom.conduitProgress * 100)}%`;
         this.els.currentRoomStatus.className = 'status-tag working';
       } else {
-        this.els.currentRoomStatus.textContent = 'Haunted';
-        this.els.currentRoomStatus.className = 'status-tag haunted';
+        const canWire = activeRoom.def.connectFrom?.some((c) => rooms.get(c.room)?.isPowered);
+        if (canWire) {
+          this.els.currentRoomStatus.textContent = 'Ready to Wire';
+          this.els.currentRoomStatus.className = 'status-tag working';
+        } else {
+          this.els.currentRoomStatus.textContent = 'Unpowered';
+          this.els.currentRoomStatus.className = 'status-tag haunted';
+        }
       }
     } else {
       this.els.currentRoomName.textContent = 'Misty Estate Grounds';
@@ -397,11 +435,11 @@ export class EstateHud {
 
     this.els.currentFloorLabel.textContent = FLOOR_NAMES[heir.floor] || `Floor ${heir.floor}`;
     const sealed = 4 - riftsLeft;
-    this.els.estateSummary.textContent = `${restoredCount}/${totalRooms} Wings • ${sealed}/4 Rifts Sealed`;
+    this.els.estateSummary.textContent = `${restoredCount}/${totalRooms} Powered • ${sealed}/4 Rifts`;
     this.els.estateTierLabel.textContent = `Tier ${['I', 'II', 'III'][state.estateTier - 1] || 'I'}`;
     this.els.btnOverview.classList.toggle('active-toggle', Boolean(isOverview));
 
-    // 5. Contextual Touch Buttons & World Slot / Stair Caption
+    // 5. Contextual Touch Buttons & World Conduit / Shield / Slot Caption
     const hasUp = nearbyLinks.some((l) => l.toFloor > l.fromFloor);
     const hasDown = nearbyLinks.some((l) => l.toFloor < l.fromFloor);
     this.els.touchBtnUp.disabled = !hasUp;
@@ -417,29 +455,68 @@ export class EstateHud {
       this.els.touchBtnFlare.classList.remove('cooling');
     }
 
-    if (nearbyPayable) {
-      const rem = Math.max(1, nearbyPayable.cost - (nearbyPayable.obj.paidSlots || 0));
+    if (nearbyInteractable?.mode === 'wire') {
+      const pct = Math.round((nearbyInteractable.room.conduitProgress || 0) * 100);
+      this.els.touchCoinVerb.textContent = 'HOLD';
+      this.els.touchCoinSub.textContent = pct > 0 ? `${pct}% WIRE` : 'WIRE LINE';
+      this.els.touchBtnCoin.classList.add('slot-ready');
+    } else if (nearbyInteractable?.mode === 'shield') {
+      const sh = nearbyInteractable.shield;
+      this.els.touchCoinVerb.textContent = 'HOLD';
+      this.els.touchCoinSub.textContent = sh.overloaded ? 'RESET' : sh.active ? 'SHIELD OFF' : 'SHIELD ON';
+      this.els.touchBtnCoin.classList.add('slot-ready');
+    } else if (nearbyInteractable?.mode === 'coin') {
+      const rem = Math.max(1, nearbyInteractable.cost - (nearbyInteractable.obj.paidSlots || 0));
       this.els.touchCoinVerb.textContent = 'HOLD';
       this.els.touchCoinSub.textContent = `PAY ${rem}●`;
       this.els.touchBtnCoin.classList.add('slot-ready');
+    } else if (nearbyInteractable?.mode === 'unconnected') {
+      this.els.touchCoinVerb.textContent = 'NO LINE';
+      this.els.touchCoinSub.textContent = 'WIRE PREV';
+      this.els.touchBtnCoin.classList.remove('slot-ready');
     } else {
       this.els.touchCoinVerb.textContent = 'FLORIN';
       this.els.touchCoinSub.textContent = 'WARD 1';
       this.els.touchBtnCoin.classList.remove('slot-ready');
     }
 
-    if (nearbyPayable) {
+    if (nearbyInteractable) {
       this.els.worldPrompt.classList.remove('hidden');
-      this.els.promptTitle.textContent = nearbyPayable.label;
-      const costTxt = `${nearbyPayable.cost} Silver Florin${nearbyPayable.cost > 1 ? 's' : ''}`;
-      this.els.promptDesc.textContent = nearbyPayable.sub ? `${costTxt} • ${nearbyPayable.sub}` : costTxt;
-      this.els.btnPromptPay.classList.remove('hidden');
+      this.els.promptTitle.textContent = nearbyInteractable.label;
+
+      if (nearbyInteractable.mode === 'wire') {
+        const pName = nearbyInteractable.room.powerInfo.label;
+        this.els.promptDesc.textContent = `No Coin Cost (${pName}) • ${nearbyInteractable.sub}`;
+        this.els.btnPromptPay.innerHTML = 'Hold <kbd class="desktop-kbd">E</kbd> Wire';
+        this.els.btnPromptPay.classList.remove('hidden');
+      } else if (nearbyInteractable.mode === 'shield') {
+        const sh = nearbyInteractable.shield;
+        this.els.promptDesc.textContent = `Room Power • ${nearbyInteractable.sub}`;
+        this.els.btnPromptPay.innerHTML = sh.overloaded
+          ? 'Hold <kbd class="desktop-kbd">E</kbd> Reset'
+          : sh.active
+            ? 'Hold <kbd class="desktop-kbd">E</kbd> Release'
+            : 'Hold <kbd class="desktop-kbd">E</kbd> Shield';
+        this.els.btnPromptPay.classList.remove('hidden');
+      } else if (nearbyInteractable.mode === 'coin') {
+        const costTxt = `${nearbyInteractable.cost} Silver Florin${nearbyInteractable.cost > 1 ? 's' : ''}`;
+        this.els.promptDesc.textContent = nearbyInteractable.sub
+          ? `${costTxt} • ${nearbyInteractable.sub}`
+          : costTxt;
+        this.els.btnPromptPay.innerHTML = 'Hold <kbd class="desktop-kbd">E</kbd> Pay';
+        this.els.btnPromptPay.classList.remove('hidden');
+      } else {
+        this.els.promptDesc.textContent = nearbyInteractable.sub || '';
+        this.els.btnPromptPay.classList.add('hidden');
+      }
+
       this.els.btnPromptUp.classList.toggle('hidden', !hasUp);
       this.els.btnPromptDown.classList.toggle('hidden', !hasDown);
     } else if (nearbyLinks.length > 0) {
       this.els.worldPrompt.classList.remove('hidden');
       const primary = nearbyLinks[0];
-      this.els.promptTitle.textContent = primary.kind === 'lift' ? 'Central Brass Cage Lift' : 'Estate Staircase';
+      this.els.promptTitle.textContent =
+        primary.kind === 'lift' ? 'Central Brass Cage Lift' : 'Estate Staircase';
       this.els.promptDesc.textContent = nearbyLinks.map((l) => l.label).join('  •  ');
       this.els.btnPromptPay.classList.add('hidden');
       this.els.btnPromptUp.classList.toggle('hidden', !hasUp);
@@ -448,11 +525,11 @@ export class EstateHud {
       this.els.worldPrompt.classList.add('hidden');
     }
 
-    // 6. 4-Story Side-Elevation Cutaway Blueprint Minimap
-    this._renderCutawayMinimap(rooms, bulkheads, rifts, enemies, heir);
+    // 6. 4-Story Side-Elevation Cutaway Blueprint Minimap (Power Grid + Paranormal Shields)
+    this._renderCutawayMinimap(rooms, shields, rifts, enemies, heir);
   }
 
-  _renderCutawayMinimap(rooms, bulkheads, rifts, enemies, heir) {
+  _renderCutawayMinimap(rooms, shields, rifts, enemies, heir) {
     const ctx = this.miniCtx;
     const cw = this.els.minimapCanvas.width;
     const ch = this.els.minimapCanvas.height;
@@ -466,16 +543,16 @@ export class EstateHud {
     ctx.fillStyle = '#18212b';
     ctx.fillRect(0, FLOOR_MINI_Y[0] + 11, cw, 1);
 
-    // Draw all 22 cutaway rooms in true 4-story side-elevation!
+    // Draw all 22 cutaway rooms color-coded by live power network!
     for (const def of CUTAWAY_ROOMS) {
       const rm = rooms.get(def.id);
       const rx = Math.round(mapX(def.x));
       const rw = Math.max(2, Math.round(def.w * scaleX) - 1);
       const ry = FLOOR_MINI_Y[def.floor];
 
-      if (rm?.isRestored) {
-        ctx.fillStyle = '#d4a246';
-      } else if (rm?.restoreQueued) {
+      if (rm?.isPowered) {
+        ctx.fillStyle = MINI_POWER_COLORS[def.powerType] || '#d4a246';
+      } else if (rm?.conduitProgress > 0.02) {
         ctx.fillStyle = '#8b9d52';
       } else if (def.outdoor) {
         ctx.fillStyle = '#192830';
@@ -483,6 +560,15 @@ export class EstateHud {
         ctx.fillStyle = '#263842';
       }
       ctx.fillRect(rx, ry, rw, 10);
+
+      // Draw vertical conduit riser ticks for multi-floor power branches
+      if (rm?.isPowered && rm.poweredFrom?.riserX) {
+        const px = Math.round(mapX(rm.poweredFrom.riserX));
+        const y1 = Math.min(ry, FLOOR_MINI_Y[rm.poweredFrom.parent.def.floor]) + 5;
+        const y2 = Math.max(ry, FLOOR_MINI_Y[rm.poweredFrom.parent.def.floor]) + 5;
+        ctx.fillStyle = MINI_POWER_COLORS[def.powerType] || '#d4a246';
+        ctx.fillRect(px, y1, 1, y2 - y1);
+      }
 
       // Highlight current room outline
       if (heir.floor === def.floor && heir.x >= def.x && heir.x <= def.x + def.w) {
@@ -494,16 +580,16 @@ export class EstateHud {
 
     // Central Brass Cage Lift vertical spine
     const liftX = Math.round(mapX(2825));
-    ctx.fillStyle = 'rgba(218, 172, 82, 0.55)';
+    ctx.fillStyle = 'rgba(218, 172, 82, 0.45)';
     ctx.fillRect(liftX, FLOOR_MINI_Y[2], 1, FLOOR_MINI_Y['-1'] - FLOOR_MINI_Y[2] + 10);
 
-    // Standing Ward Gates
-    for (const bh of bulkheads) {
-      if (bh.level <= 0 || bh.hp <= 0) continue;
-      const bx = Math.round(mapX(bh.x));
-      const by = FLOOR_MINI_Y[bh.floor];
-      ctx.fillStyle = bh.level >= 3 ? '#ffe588' : bh.level === 2 ? '#c4d4dc' : '#b88344';
-      ctx.fillRect(bx, by + 1, 2, 9);
+    // Active Paranormal Doorway Shields!
+    for (const sh of shields) {
+      if (!sh.active) continue;
+      const sx = Math.round(mapX(sh.x));
+      const sy = FLOOR_MINI_Y[sh.floor];
+      ctx.fillStyle = sh.overloaded ? '#ff6e59' : sh.powerInfo.hex;
+      ctx.fillRect(sx, sy, 2, 10);
     }
 
     // Active Spectral Rifts

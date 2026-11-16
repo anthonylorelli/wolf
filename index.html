@@ -13,7 +13,7 @@
     <title>Vesper Manor — 19th-Century Paranormal Cutaway Adventure (Phaser)</title>
     <meta
       name="description"
-      content="Choose your 1889 paranormal investigator—Mina Vesper or Dr. Julian Vesper—and explore a 4-story cutaway Victorian mansion on foot in crisp 2D pixel art. Unleash Séance Exorcisms, consecrate Silver Florins, arm Artificers and Lamplighter Warders, and seal 4 Spectral Rifts."
+      content="Choose your 1889 paranormal investigator—Mina Vesper or Dr. Julian Vesper—and explore 22 richly decorated cutaway Victorian rooms on foot. Construct Steam Pipes, Electrical Lines, and Aetheric Conduits from the Foyer Dynamo, channel room power into Paranormal Shields, and shatter 4 Spectral Rifts."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -41,9 +41,9 @@
           <p class="estate-subtitle">19th-Century Occult Investigation &amp; Mansion Reclamation</p>
           <div class="brass-divider"></div>
           <p class="estate-premise">
-            Stride on foot through Uncle Alistair&rsquo;s 22-wing Victorian cutaway estate. Unleash
-            <strong>S&eacute;ance Exorcisms</strong>, consecrate <strong>Silver Florins</strong> to rally shivering
-            Housefolk, arm <strong>Artificers</strong> &amp; <strong>Lamplighter Warders</strong>, and shatter all four
+            Stride on foot through 22 bespoke rooms of Uncle Alistair&rsquo;s 4-story cutaway estate. Construct
+            <strong>Steam Pipes</strong>, <strong>Galvanic Lines</strong> &amp; <strong>Aetheric Conduits</strong>
+            outward from the Foyer Dynamo, apply room power to <strong>Paranormal Shields</strong>, and shatter all four
             <strong>Spectral Rifts</strong>!
           </p>
 
@@ -84,13 +84,13 @@
 
           <div class="title-controls-preview desktop-hints">
             <span><kbd>A</kbd>/<kbd>D</kbd> or <kbd>&larr;</kbd>/<kbd>&rarr;</kbd> Stride (<kbd>SHIFT</kbd> Astral Step)</span>
-            <span>Hold <kbd>S</kbd>/<kbd>&darr;</kbd>/<kbd>E</kbd> Consecrate Florins</span>
+            <span>Hold <kbd>E</kbd>/<kbd>S</kbd>/<kbd>&darr;</kbd> Wire Conduits &amp; Switch Shields</span>
             <span><kbd>W</kbd>/<kbd>&uarr;</kbd> &amp; <kbd>S</kbd>/<kbd>&darr;</kbd> Stairs / Cage Lift</span>
             <span><kbd>SPACE</kbd> S&eacute;ance Exorcism &bull; <kbd>M</kbd> Cutaway Map</span>
           </div>
           <div class="title-controls-preview touch-hints">
             <span><strong>Left Stick</strong> Walk / Sprint</span>
-            <span><strong>Hold FLORIN</strong> Feed Ward Slots</span>
+            <span><strong>Hold ACTION</strong> Wire Lines &amp; Shields</span>
             <span><strong>EXORCISE</strong> S&eacute;ance Pulse</span>
             <span><strong>&uarr; / &darr;</strong> Stairs &amp; Lift</span>
           </div>
@@ -105,7 +105,7 @@
         <!-- Top-Left: Consecrated Florin Satchel, Spirit-Lantern Ward Flames & Manor Staff -->
         <aside id="hud-pouch-panel" class="brass-panel">
           <div class="pouch-top-row">
-            <div class="pouch-readout" title="Consecrated Silver Florins in your investigator satchel">
+            <div class="pouch-readout" title="Consecrated Silver Florins for Foyer Gear, Vigils &amp; Dynamo Upgrades">
               <canvas id="hud-coin-icon" width="16" height="16" class="pixel-icon"></canvas>
               <strong id="coin-count">12</strong>
               <span id="coin-cap" class="coin-cap-label">/30</span>
@@ -129,15 +129,18 @@
             </div>
           </div>
 
-          <div id="hud-roster" class="roster-strip" aria-label="Manor Retainers">
-            <span class="roster-chip" title="Artificers (Ward Builders &amp; Room Restorers)">
+          <div id="hud-roster" class="roster-strip" aria-label="Manor Retainers and Shield Grid">
+            <span class="roster-chip" title="Artificers (Conduit Builders &amp; Shield Tuners)">
               Wrench <strong id="roster-artificers">1</strong>
             </span>
-            <span class="roster-chip" title="Lamplighter Warders (Ectoplasm Hunters &amp; Night Guards)">
-              Lantern <strong id="roster-warders">2</strong>
+            <span class="roster-chip" title="Lamplighter Warders (Ectoplasm Hunters &amp; Rift Guards)">
+              Warder <strong id="roster-warders">2</strong>
             </span>
-            <span class="roster-chip" title="Attendants &amp; Conservatory Stewards">
+            <span class="roster-chip" title="Attendants &amp; Stewards">
               Staff <strong id="roster-servants">0</strong>
+            </span>
+            <span class="roster-chip shield-grid-chip" title="Active Paranormal Shields / Total Dynamo Grid Capacity">
+              Grid <strong id="roster-shields">2/4</strong>
             </span>
           </div>
         </aside>
@@ -146,11 +149,11 @@
         <div id="hud-wing-plaque" class="brass-panel">
           <div class="room-plaque-top">
             <span id="current-room-name">Grand Entrance Foyer</span>
-            <span id="current-room-status" class="status-tag reclaimed">Restored</span>
+            <span id="current-room-status" class="status-tag reclaimed">Dynamo Core</span>
           </div>
           <div class="room-plaque-sub">
             <span id="current-floor-label">Ground Wing (Floor 0)</span>
-            <span id="estate-summary">1/22 Wings &bull; 0/4 Rifts Sealed</span>
+            <span id="estate-summary">1/22 Powered &bull; 0/4 Rifts</span>
           </div>
         </div>
 
@@ -197,7 +200,7 @@
           </div>
         </div>
 
-        <!-- Right Thumb Action Cluster: Stairs Up/Down, Séance Exorcise Pulse, Hold-to-Consecrate Florin -->
+        <!-- Right Thumb Action Cluster: Stairs Up/Down, Séance Exorcise Pulse, Hold-to-Wire / Switch Shield / Florin -->
         <div id="touch-action-cluster">
           <div class="touch-stairs-stack">
             <button
@@ -234,7 +237,7 @@
             id="touch-btn-coin"
             class="touch-round-btn coin-touch-btn"
             type="button"
-            aria-label="Hold to Consecrate Slots or Tap to Drop Ward Florin"
+            aria-label="Hold to Construct Conduit, Switch Paranormal Shield, or Consecrate Florin"
           >
             <span id="touch-coin-verb" class="touch-btn-main">FLORIN</span>
             <span id="touch-coin-sub" class="touch-btn-sub">WARD 1</span>
@@ -248,12 +251,12 @@
 
         <div id="world-prompt" class="interaction-plaque hidden">
           <div class="interact-info">
-            <strong id="prompt-title">Wrench Rack</strong>
-            <span id="prompt-desc">2 Silver Florins &bull; Equips an Attendant as an Artificer</span>
+            <strong id="prompt-title">Conduit Junction</strong>
+            <span id="prompt-desc">Hold E or S to construct power line from adjacent wing</span>
           </div>
           <div class="prompt-actions">
             <button id="btn-prompt-pay" class="brass-btn compact-btn hidden" type="button">
-              Hold <kbd class="desktop-kbd">S</kbd> Pay
+              Hold <kbd class="desktop-kbd">E</kbd> Wire
             </button>
             <button id="btn-prompt-up" class="brass-btn compact-btn hidden" type="button">
               <kbd class="desktop-kbd">W</kbd> Up
@@ -274,39 +277,40 @@
           </div>
           <div class="modal-body guide-grid">
             <div class="guide-item">
-              <h3>1. Consecrated Silver Florins</h3>
+              <h3>1. Steam, Electric &amp; Aether Lines</h3>
               <p>
-                Pause beside any occult mechanism, tool rack, candle vigil, or ward gate to reveal floating slots
-                (<strong>&circ; &circ; &circ;</strong>). Hold <kbd>S</kbd> / <kbd>&darr;</kbd> / <kbd>E</kbd> (or hold
-                <strong>FLORIN</strong> on iPhone) to feed <strong>Silver Florins</strong>! Tap away from slots to drop a
-                ward-florin on the floorboards that <strong>scorches &amp; repels Poltergeist Specters</strong> on contact.
+                Rooms cost <strong>0 coins</strong> to restore! Instead, construct <strong>Copper Steam Pipes</strong>,
+                <strong>Galvanic Electrical Lines</strong>, and <strong>Crystal Aetheric Conduits</strong> outward room
+                by room from the Foyer Dynamo. Hold <kbd>E</kbd> / <kbd>S</kbd> / <kbd>&darr;</kbd> (or hold the right
+                thumb button) at an adjacent room&rsquo;s <strong>Junction Terminal</strong>; Artificers also finish
+                queued lines!
               </p>
             </div>
             <div class="guide-item">
-              <h3>2. S&eacute;ance Exorcism &amp; Ward Flames</h3>
+              <h3>2. Room-Powered Paranormal Shields</h3>
               <p>
-                Press <kbd>SPACE</kbd> (or tap <strong>EXORCISE</strong>) to raise your Spirit-Censer or Leyden Lantern,
-                blasting nearby apparitions with direct astral damage, condensing Ectoplasm Orbs into Florins, and
-                inspiring staff. Three <strong>Ward Flames (&#10022;&#10022;&#10022;)</strong> guard your soul and
-                rekindle inside warm restored wings.
+                There are no wooden or iron walls. Once a room has live power, hold <kbd>E</kbd> / <kbd>S</kbd> at its
+                doorway <strong>Shield Emitter Relay</strong> (<strong>0 Florins</strong>) to project a
+                <strong>Salt-Steam Ward</strong> (knockback), <strong>Galvanic Arc-Shield</strong> (shock damage), or
+                <strong>Astral Resonance Shield</strong> (chill slow) blocking enemy entrance!
               </p>
             </div>
             <div class="guide-item">
-              <h3>3. Rallying Staff &amp; 4-Story Lift</h3>
+              <h3>3. S&eacute;ance Exorcism &amp; Silver Florins</h3>
               <p>
-                Rally shivering <strong>Housefolk</strong> beside Candlelight Vigils (<strong>1 Florin</strong>), then
-                stock the Foyer <strong>Wrench Rack</strong> (Artificers) and <strong>Lantern Rack</strong> (Lamplighter
-                Warders). Traverse all <strong>22 asymmetric wings</strong> across 4 stories via staircases and the
-                central <strong>Brass Cage Lift</strong>.
+                Press <kbd>SPACE</kbd> (<strong>EXORCISE</strong>) to blast apparitions, surge +40 charge into nearby
+                Paranormal Shields, and condense Ectoplasm Orbs into <strong>Silver Florins</strong>. Spend Florins in
+                the Foyer to rally <strong>Housefolk</strong>, forge <strong>Wrenches &amp; Lanterns</strong>, and
+                upgrade the <strong>Dynamo Core</strong>!
               </p>
             </div>
             <div class="guide-item">
-              <h3>4. Sanctum Seals &amp; Rift Banishment</h3>
+              <h3>4. Generator Wings &amp; Spectral Rifts</h3>
               <p>
-                Kindle the Foyer <strong>S&eacute;ance Hearth</strong> to Tier II &amp; III to unlock
-                <strong>Cold-Iron Ward Gates</strong>, <strong>Galvanic Sanctum Seals</strong>, the
-                <strong>Majordomo Safe</strong>, and <strong>Banishment Standards</strong> to march Warders out and
-                shatter all 4 Spectral Rifts!
+                Powering specialized rooms like the <strong>Great Copper Boiler Vault</strong>,
+                <strong>Subterranean Cistern</strong>, and <strong>Galvanic Lab</strong> expands your
+                <strong>Shield Grid</strong> capacity and unlocks automated shield turrets. Deploy
+                <strong>Banishment Squads</strong> past your outermost Shields to shatter all 4 Spectral Rifts!
               </p>
             </div>
           </div>
