@@ -507,17 +507,21 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.35rem;
+  gap: 0.3rem;
   margin-top: 0.34rem;
   padding-top: 0.28rem;
   border-top: 1px solid rgba(212, 168, 87, 0.18);
   font-family: var(--font-pixel);
-  font-size: 0.54rem;
+  font-size: 0.52rem;
   color: var(--text-warm-muted);
 }
 
 .roster-chip strong {
   color: var(--text-cream);
+}
+
+.shield-grid-chip strong {
+  color: hsl(168, 76%, 76%);
 }
 
 /* Top-Center: Active Cutaway Wing Plaque */
@@ -558,6 +562,24 @@ kbd {
   border: 1px solid hsla(42, 68%, 56%, 0.5);
 }
 
+.status-tag.steam-live {
+  background: hsla(22, 62%, 24%, 0.92);
+  color: hsl(28, 92%, 78%);
+  border: 1px solid hsla(25, 70%, 54%, 0.55);
+}
+
+.status-tag.aether-live {
+  background: hsla(172, 52%, 20%, 0.92);
+  color: hsl(168, 84%, 78%);
+  border: 1px solid hsla(168, 56%, 52%, 0.55);
+}
+
+.status-tag.shielded {
+  background: linear-gradient(180deg, hsla(170, 56%, 22%, 0.95), hsla(38, 52%, 20%, 0.95));
+  color: hsl(44, 96%, 84%);
+  border: 1px solid hsla(168, 66%, 60%, 0.65);
+}
+
 .status-tag.working {
   background: hsla(74, 40%, 22%, 0.9);
   color: hsl(78, 72%, 75%);
@@ -565,9 +587,9 @@ kbd {
 }
 
 .status-tag.haunted {
-  background: hsla(174, 44%, 18%, 0.9);
-  color: hsl(168, 58%, 72%);
-  border: 1px solid hsla(168, 44%, 44%, 0.45);
+  background: hsla(196, 30%, 16%, 0.9);
+  color: hsl(186, 36%, 72%);
+  border: 1px solid hsla(190, 30%, 38%, 0.45);
 }
 
 .room-plaque-sub {
@@ -1177,9 +1199,13 @@ kbd {
   }
 
   #hud-root {
-    grid-template-columns: auto minmax(180px, 260px) auto;
+    grid-template-columns: auto minmax(245px, 350px) auto;
     gap: 0.35rem;
     padding: calc(0.28rem + var(--safe-top)) calc(0.5rem + var(--safe-right)) 0 calc(0.5rem + var(--safe-left));
+  }
+
+  .room-plaque-sub {
+    white-space: nowrap;
   }
 
   #hud-pouch-panel,
