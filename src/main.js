@@ -21,7 +21,7 @@ const hud = new EstateHud({
     mansionScene.startGame();
     const inv = INVESTIGATORS[gender] || INVESTIGATORS.female;
     hud.showToast(
-      `${inv.name}: Stride left or right to rally Housefolk (1 Florin), arm Artificers & Warders, and exorcise apparitions!`
+      `${inv.name}: Hold E/S at adjacent Junctions to run Galvanic Lines (West), Steam Pipes (East) & Aether Conduits (Upstairs), and channel power into Paranormal Shields!`
     );
   },
   onJoy(jx, jy) {
