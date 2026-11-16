@@ -1,4 +1,5 @@
-import { WORLD_W, CUTAWAY_ROOMS } from '../data/cutawayMansionData.js';
+import { paintCharacterPreviews } from '../art/cutawaySprites.js';
+import { WORLD_W, CUTAWAY_ROOMS, INVESTIGATORS } from '../data/cutawayMansionData.js';
 
 const FLOOR_NAMES = {
   2: 'Apex Spire (Floor 2)',
@@ -19,9 +20,14 @@ export class EstateHud {
     this.cb = callbacks;
     this.toastTimer = null;
     this.bannerTimer = null;
+    this.selectedGender = 'female';
+    this.previewFrame = 0;
+    this.previewTimer = null;
 
     this.els = {
       titleOverlay: document.getElementById('title-overlay'),
+      cardFemale: document.getElementById('card-female'),
+      cardMale: document.getElementById('card-male'),
       btnEnter: document.getElementById('btn-enter-manor'),
       hudRoot: document.getElementById('hud-root'),
       hudBottom: document.getElementById('hud-bottom'),
@@ -31,7 +37,7 @@ export class EstateHud {
       coinCap: document.getElementById('coin-cap'),
       vaultBadge: document.getElementById('vault-badge'),
       vaultCount: document.getElementById('vault-count'),
-      crownBadge: document.getElementById('crown-badge'),
+      wardFlames: document.getElementById('ward-flames'),
 
       dayPhasePill: document.getElementById('day-phase-pill'),
       staminaBar: document.getElementById('stamina-bar'),
@@ -83,17 +89,50 @@ export class EstateHud {
     };
 
     this.miniCtx = this.els.minimapCanvas.getContext('2d');
+    this._startCharacterPreviewLoop();
     this._bindEvents();
     this._bindTouchControls();
   }
 
+  _startCharacterPreviewLoop() {
+    paintCharacterPreviews(0);
+    this.previewTimer = setInterval(() => {
+      if (!this.els.titleOverlay.classList.contains('active')) return;
+      this.previewFrame = (this.previewFrame + 1) % 4;
+      paintCharacterPreviews(this.previewFrame);
+    }, 220);
+  }
+
+  selectGender(gender) {
+    if (gender !== 'female' && gender !== 'male') return;
+    this.selectedGender = gender;
+    const isFemale = gender === 'female';
+    this.els.cardFemale?.classList.toggle('selected', isFemale);
+    this.els.cardFemale?.setAttribute('aria-checked', String(isFemale));
+    this.els.cardMale?.classList.toggle('selected', !isFemale);
+    this.els.cardMale?.setAttribute('aria-checked', String(!isFemale));
+
+    const inv = INVESTIGATORS[gender] || INVESTIGATORS.female;
+    if (this.els.btnEnter) {
+      this.els.btnEnter.textContent = `Enter Vesper Manor as ${inv.name}`;
+    }
+    this.cb.onSelectGender?.(gender);
+  }
+
   _bindEvents() {
+    this.els.cardFemale?.addEventListener('click', () => this.selectGender('female'));
+    this.els.cardMale?.addEventListener('click', () => this.selectGender('male'));
+
     this.els.btnEnter.addEventListener('click', () => {
+      if (this.previewTimer) {
+        clearInterval(this.previewTimer);
+        this.previewTimer = null;
+      }
       this.els.titleOverlay.classList.remove('active');
       this.els.hudRoot.classList.remove('hud-hidden');
       this.els.hudBottom.classList.remove('hud-hidden');
       this.els.touchControls.classList.remove('hud-hidden');
-      this.cb.onStartGame?.();
+      this.cb.onStartGame?.(this.selectedGender);
     });
 
     const toggleOverview = () => {
@@ -139,9 +178,16 @@ export class EstateHud {
     this.els.btnPromptUp.addEventListener('click', () => this.cb.onClimb?.(1));
     this.els.btnPromptDown.addEventListener('click', () => this.cb.onClimb?.(-1));
 
-    // Global keyboard shortcuts for Overview [M], Mute [V], Guide [? / H], Escape
+    // Keyboard shortcuts on Title Screen (ArrowLeft/ArrowRight to pick investigator) & In-Game
     window.addEventListener('keydown', (e) => {
-      if (this.els.titleOverlay.classList.contains('active')) return;
+      if (this.els.titleOverlay.classList.contains('active')) {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+          this.selectGender('female');
+        } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+          this.selectGender('male');
+        }
+        return;
+      }
       if (e.code === 'KeyM') {
         toggleOverview();
       } else if (e.code === 'KeyV') {
@@ -155,7 +201,7 @@ export class EstateHud {
   }
 
   _bindTouchControls() {
-    // 1. Left Thumb Gimbal Stick (Supports horizontal trot/gallop + vertical stair/lift flick!)
+    // 1. Left Thumb Gimbal Stick (Supports horizontal stride/sprint + vertical stair/lift flick!)
     let joyPointerId = null;
     const maxRadius = 38;
 
@@ -202,7 +248,7 @@ export class EstateHud {
       if (e.pointerId === joyPointerId) resetStick();
     });
 
-    // 2. Right Thumb Primary COIN Button (Hold = feed world slots; Tap = toss 1 loose coin)
+    // 2. Right Thumb Primary FLORIN Button (Hold = feed world slots; Tap = drop 1 consecrated Ward Florin)
     let coinPointerId = null;
     const releaseCoin = () => {
       if (coinPointerId === null) return;
@@ -221,7 +267,7 @@ export class EstateHud {
     this.els.touchBtnCoin.addEventListener('pointerup', releaseCoin);
     this.els.touchBtnCoin.addEventListener('pointercancel', releaseCoin);
 
-    // 3. Harmonic Bell Flare Button
+    // 3. Séance Exorcise Pulse Button
     this.els.touchBtnFlare.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       this.cb.onFlare?.();
@@ -260,10 +306,10 @@ export class EstateHud {
 
   showVictory(stats) {
     this.els.victoryStats.innerHTML = `
-      <div class="stat-pill"><span>Days Survived</span><strong>Day ${stats.days}</strong></div>
-      <div class="stat-pill"><span>Wings Restored</span><strong>${stats.restoredRooms} / ${stats.totalRooms}</strong></div>
+      <div class="stat-pill"><span>Nights Survived</span><strong>Day ${stats.days}</strong></div>
+      <div class="stat-pill"><span>Wings Sanctified</span><strong>${stats.restoredRooms} / ${stats.totalRooms}</strong></div>
       <div class="stat-pill"><span>Rifts Shattered</span><strong>${stats.riftsSealed} / ${stats.totalRifts}</strong></div>
-      <div class="stat-pill"><span>Estate Retainers</span><strong>${stats.retainers}</strong></div>
+      <div class="stat-pill"><span>Manor Retainers</span><strong>${stats.retainers}</strong></div>
     `;
     this.els.victoryModal.classList.remove('hidden');
   }
@@ -286,7 +332,7 @@ export class EstateHud {
       isOverview,
     } = snap;
 
-    // 1. Coin Pouch, Safe & Crown
+    // 1. Consecrated Silver Florin Satchel, Safe & Spirit-Lantern Ward Flames
     this.els.coinCount.textContent = String(state.coins);
     this.els.coinCap.textContent = `/${state.maxPouch ?? 30}`;
 
@@ -297,15 +343,16 @@ export class EstateHud {
       this.els.vaultBadge.classList.add('hidden');
     }
 
-    if (state.hasCrown) {
-      this.els.crownBadge.textContent = 'Crown';
-      this.els.crownBadge.className = 'crown-chip intact';
-    } else {
-      this.els.crownBadge.textContent = 'Crown Loose!';
-      this.els.crownBadge.className = 'crown-chip danger';
+    const lit = state.wardFlames ?? 3;
+    const maxW = state.maxWardFlames ?? 3;
+    const glyphs = [];
+    for (let i = 0; i < maxW; i++) {
+      glyphs.push(i < lit ? '\u2726' : '\u2727');
     }
+    this.els.wardFlames.textContent = glyphs.join(' ');
+    this.els.wardFlames.className = lit >= 2 ? 'ward-chip intact' : 'ward-chip danger';
 
-    // 2. Day / Dusk / Night / Blood-Storm Pill & Velocipede Stamina
+    // 2. Day / Dusk / Night / Blood-Moon Pill & Astral-Step Stamina
     let phaseLabel = 'MORNING';
     let phaseCls = 'phase-day';
     if (state.phase === 'day' && state.timeOfDay >= 0.34) {
@@ -315,7 +362,7 @@ export class EstateHud {
       phaseCls = 'phase-dusk';
     } else if (state.phase === 'night') {
       const isStorm = state.day % 4 === 0;
-      phaseLabel = isStorm ? 'BLOOD STORM' : 'NIGHT WAVE';
+      phaseLabel = isStorm ? 'BLOOD MOON' : 'NIGHT HAUNT';
       phaseCls = isStorm ? 'phase-storm' : 'phase-night';
     }
     this.els.dayPhasePill.textContent = `DAY ${state.day} • ${phaseLabel}`;
@@ -366,7 +413,7 @@ export class EstateHud {
       this.els.touchFlareSub.textContent = `${Math.ceil(heir.flareCooldown)}S`;
       this.els.touchBtnFlare.classList.add('cooling');
     } else {
-      this.els.touchFlareSub.textContent = 'BELL';
+      this.els.touchFlareSub.textContent = 'SÉANCE';
       this.els.touchBtnFlare.classList.remove('cooling');
     }
 
@@ -376,15 +423,15 @@ export class EstateHud {
       this.els.touchCoinSub.textContent = `PAY ${rem}●`;
       this.els.touchBtnCoin.classList.add('slot-ready');
     } else {
-      this.els.touchCoinVerb.textContent = 'COIN';
-      this.els.touchCoinSub.textContent = 'DROP 1';
+      this.els.touchCoinVerb.textContent = 'FLORIN';
+      this.els.touchCoinSub.textContent = 'WARD 1';
       this.els.touchBtnCoin.classList.remove('slot-ready');
     }
 
     if (nearbyPayable) {
       this.els.worldPrompt.classList.remove('hidden');
       this.els.promptTitle.textContent = nearbyPayable.label;
-      const costTxt = `${nearbyPayable.cost} Sovereign${nearbyPayable.cost > 1 ? 's' : ''}`;
+      const costTxt = `${nearbyPayable.cost} Silver Florin${nearbyPayable.cost > 1 ? 's' : ''}`;
       this.els.promptDesc.textContent = nearbyPayable.sub ? `${costTxt} • ${nearbyPayable.sub}` : costTxt;
       this.els.btnPromptPay.classList.remove('hidden');
       this.els.btnPromptUp.classList.toggle('hidden', !hasUp);
@@ -450,7 +497,7 @@ export class EstateHud {
     ctx.fillStyle = 'rgba(218, 172, 82, 0.55)';
     ctx.fillRect(liftX, FLOOR_MINI_Y[2], 1, FLOOR_MINI_Y['-1'] - FLOOR_MINI_Y[2] + 10);
 
-    // Standing Bulkhead Walls
+    // Standing Ward Gates
     for (const bh of bulkheads) {
       if (bh.level <= 0 || bh.hp <= 0) continue;
       const bx = Math.round(mapX(bh.x));
@@ -468,7 +515,7 @@ export class EstateHud {
       ctx.fillRect(rx - 1, ry + 1, 3, 8);
     }
 
-    // Night Wave Enemies (crimson-amber ticks)
+    // Night Wave Apparitions (crimson-amber ticks)
     ctx.fillStyle = '#ff6e59';
     for (const en of enemies) {
       const ex = Math.round(mapX(en.x));
@@ -476,7 +523,7 @@ export class EstateHud {
       ctx.fillRect(ex, ey + 4, 2, 4);
     }
 
-    // Heir Position Dot
+    // Investigator Position Dot
     const hx = Math.round(mapX(heir.x));
     const hy = FLOOR_MINI_Y[heir.floor] + 3;
     ctx.fillStyle = '#ffffff';

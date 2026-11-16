@@ -26,7 +26,7 @@ function dither(ctx, x, y, w, h, c1, c2) {
   }
 }
 
-function outline(canvas, hex = '#0d0907') {
+function outline(canvas, hex = '#0b0807') {
   const w = canvas.width;
   const h = canvas.height;
   const ctx = canvas.getContext('2d');
@@ -41,7 +41,12 @@ function outline(canvas, hex = '#0d0907') {
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       if (alpha(x, y) === 0) {
-        if (alpha(x - 1, y) > 128 || alpha(x + 1, y) > 128 || alpha(x, y - 1) > 128 || alpha(x, y + 1) > 128) {
+        if (
+          alpha(x - 1, y) > 128 ||
+          alpha(x + 1, y) > 128 ||
+          alpha(x, y - 1) > 128 ||
+          alpha(x, y + 1) > 128
+        ) {
           targets.push((y * w + x) * 4);
         }
       }
@@ -61,17 +66,66 @@ function register(scene, key, canvas) {
   scene.textures.addCanvas(key, canvas);
 }
 
+/**
+ * Paints the consecrated 1889 Silver-Brass Ward Florin icon in the HUD
+ */
 export function paintHudCoinIcon() {
   const el = document.getElementById('hud-coin-icon');
   if (!el) return;
   const ctx = el.getContext('2d');
   ctx.clearRect(0, 0, 16, 16);
-  rect(ctx, 4, 2, 8, 12, '#cf9634');
-  rect(ctx, 2, 4, 12, 8, '#cf9634');
-  rect(ctx, 4, 4, 8, 8, '#fad46b');
-  rect(ctx, 6, 5, 3, 6, '#fff4bf');
-  rect(ctx, 7, 6, 2, 4, '#9e6d1e');
+  rect(ctx, 4, 2, 8, 12, '#8b9bb0');
+  rect(ctx, 2, 4, 12, 8, '#8b9bb0');
+  rect(ctx, 4, 4, 8, 8, '#dce8f2');
+  // Inner consecrated ward-star sigil
+  rect(ctx, 7, 5, 2, 6, '#56d9c7');
+  rect(ctx, 5, 7, 6, 2, '#56d9c7');
+  px(ctx, 7, 7, '#fff7cc');
   outline(el);
+}
+
+/**
+ * Renders live animated 2x pixel-art portraits of both selectable 19th-Century Paranormal Investigators
+ * onto the Start Screen selector canvases (#preview-female and #preview-male)
+ */
+const previewCache = { female: [], male: [] };
+
+export function paintCharacterPreviews(frameIdx = 0) {
+  if (previewCache.female.length === 0) {
+    for (let f = 0; f < 4; f++) {
+      previewCache.female.push(drawInvestigator('female', f));
+      previewCache.male.push(drawInvestigator('male', f));
+    }
+  }
+
+  for (const gender of ['female', 'male']) {
+    const el = document.getElementById(`preview-${gender}`);
+    if (!el) continue;
+    const ctx = el.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, el.width, el.height);
+
+    // Subtle atmospheric gaslight + ectoplasmic floor halo inside portrait frame
+    const grad = ctx.createRadialGradient(
+      el.width * 0.52,
+      el.height * 0.46,
+      4,
+      el.width * 0.52,
+      el.height * 0.5,
+      el.width * 0.48
+    );
+    grad.addColorStop(0, 'rgba(94, 242, 220, 0.22)');
+    grad.addColorStop(0.55, 'rgba(218, 168, 78, 0.10)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, el.width, el.height);
+
+    const src = previewCache[gender][frameIdx % 4];
+    const scale = 2;
+    const dx = Math.round((el.width - src.width * scale) / 2);
+    const dy = Math.round((el.height - src.height * scale) / 2) + 2;
+    ctx.drawImage(src, dx, dy, src.width * scale, src.height * scale);
+  }
 }
 
 export function generateCutawayTextures(scene) {
@@ -90,24 +144,26 @@ export function generateCutawayTextures(scene) {
   register(scene, 'lift_car', drawLiftCar());
   register(scene, 'stair_arch', drawStairArch());
 
-  // 3. THE HEIR ON BRASS VELOCIPEDE
-  register(scene, 'heir_0', drawHeirVelocipede(0, true));
-  register(scene, 'heir_1', drawHeirVelocipede(1, true));
-  register(scene, 'heir_nocrown_0', drawHeirVelocipede(0, false));
-  register(scene, 'heir_nocrown_1', drawHeirVelocipede(1, false));
+  // 3. 19TH-CENTURY PARANORMAL INVESTIGATORS (FEMALE & MALE, ON FOOT, 4 STRIDE FRAMES + SÉANCE CAST)
+  for (const gender of ['female', 'male']) {
+    for (let f = 0; f < 4; f++) {
+      register(scene, `hero_${gender}_${f}`, drawInvestigator(gender, f));
+    }
+    register(scene, `hero_${gender}_cast`, drawInvestigator(gender, 4));
+  }
 
-  // 4. RETAINERS & VAGRANTS
-  for (const role of ['vagrant', 'servant', 'artificer', 'warder', 'steward']) {
+  // 4. MANOR STAFF & SHIVERING HOUSEFOLK
+  for (const role of ['housefolk', 'servant', 'artificer', 'warder', 'steward']) {
     register(scene, `${role}_0`, drawFolk(role, 0));
     register(scene, `${role}_1`, drawFolk(role, 1));
   }
   register(scene, 'majordomo', drawMajordomo());
 
-  // 5. SPOOKY ENEMIES, DAY WISPS & RIFTS
-  register(scene, 'wisp_0', drawWisp(false));
-  register(scene, 'wisp_1', drawWisp(true));
-  register(scene, 'greed_0', drawEnemy('greed', false));
-  register(scene, 'greed_1', drawEnemy('greed', true));
+  // 5. APPARITIONS, ECTOPLASM ORBS & SPECTRAL RIFTS
+  register(scene, 'wisp_0', drawEctoOrb(false));
+  register(scene, 'wisp_1', drawEctoOrb(true));
+  register(scene, 'specter_0', drawEnemy('specter', false));
+  register(scene, 'specter_1', drawEnemy('specter', true));
   register(scene, 'phantom_0', drawEnemy('phantom', false));
   register(scene, 'phantom_1', drawEnemy('phantom', true));
   register(scene, 'brute_0', drawEnemy('brute', false));
@@ -115,7 +171,7 @@ export function generateCutawayTextures(scene) {
   register(scene, 'rift_0', drawRiftPortal(false));
   register(scene, 'rift_1', drawRiftPortal(true));
 
-  // 6. FOYER STATIONS, BULKHEAD FORTIFICATIONS & ROOM CENTERPIECES
+  // 6. FOYER STATIONS, WARD-BARRICADES, CANDLE VIGILS & ROOM CENTERPIECES
   for (const t of [1, 2, 3]) {
     register(scene, `foyer_hearth_${t}`, drawFoyerHearth(t));
   }
@@ -123,7 +179,7 @@ export function generateCutawayTextures(scene) {
   register(scene, 'rack_lantern', drawToolRack('lantern'));
   register(scene, 'safe_vault', drawSafeVault());
   register(scene, 'strike_banner', drawStrikeBanner());
-  register(scene, 'campfire', drawCampfire());
+  register(scene, 'candle_vigil', drawCandleVigil());
   register(scene, 'chest_closed', drawChest(false));
   register(scene, 'chest_open', drawChest(true));
 
@@ -134,24 +190,231 @@ export function generateCutawayTextures(scene) {
   const fixtures = [
     'stove', 'fern_bed', 'boiler', 'coal_hopper', 'organ', 'chandelier',
     'bookshelf', 'portraits', 'dynamo', 'tesla', 'hearth', 'billiard',
-    'velocipede_dock', 'clock_gears', 'sky_sconce', 'telescope', 'brazier', 'gate_lamp',
+    'ward_altar', 'clock_gears', 'sky_sconce', 'telescope', 'brazier', 'gate_lamp',
   ];
   for (const fk of fixtures) {
     register(scene, `fix_${fk}_h`, drawCenterpiece(fk, false));
     register(scene, `fix_${fk}_r`, drawCenterpiece(fk, true));
   }
 
-  // 7. COINS, DIEGETIC COIN SLOTS, PROJECTILES & GLOWS
-  register(scene, 'coin_0', drawCoin(false));
-  register(scene, 'coin_1', drawCoin(true));
-  register(scene, 'crown_drop', drawCrown());
+  // 7. CONSECRATED SILVER FLORINS, SLOTS, PROJECTILES & GLOWS
+  register(scene, 'coin_0', drawFlorin(false));
+  register(scene, 'coin_1', drawFlorin(true));
   register(scene, 'slot_empty', drawCoinSlot(false));
   register(scene, 'slot_filled', drawCoinSlot(true));
   register(scene, 'bolt_limelight', drawBolt('#ffe580', '#ffffff'));
   register(scene, 'bolt_ecto', drawBolt('#5ef2dc', '#d9fff9'));
   register(scene, 'px_dot', drawDot());
   register(scene, 'glow_warm', drawRadialGlow(160, [255, 192, 82], 0.52));
-  register(scene, 'glow_ecto', drawRadialGlow(120, [78, 232, 208], 0.42));
+  register(scene, 'glow_ecto', drawRadialGlow(130, [86, 238, 214], 0.44));
+}
+
+/* ============================================================================
+ * 19TH-CENTURY PARANORMAL PROTAGONISTS (FEMALE & MALE — 48x54)
+ *   frame 0..3 : 4-phase on-foot stride with coat billow & lantern sway
+ *   frame 4    : Raised-lantern Astral Séance / Exorcism channel pose
+ * ============================================================================ */
+function drawInvestigator(gender, frame) {
+  const { canvas, ctx } = makeCanvas(48, 54);
+  const isCast = frame === 4;
+  const strides = [0, 3, 0, -3, 0];
+  const bobs = [0, -1, 0, -1, -1];
+  const stride = strides[frame] || 0;
+  const bob = bobs[frame] || 0;
+  const wave = frame % 2 === 1 ? 1 : 0;
+
+  if (gender === 'female') {
+    // --- MADAME MINA VESPER: ESOTERIC MEDIUM & AETHER CARTOGRAPHER ---
+    // 1. Trailing Spectral Verdigris Ward-Stole / Scarf (billows behind shoulders)
+    rect(ctx, 5 - wave * 2, 22 + bob, 11, 4, '#1b4f4a');
+    rect(ctx, 3 - wave * 2, 25 + bob + wave, 9, 4, '#2f7d74');
+    rect(ctx, 2 - wave * 2, 28 + bob, 6, 3, '#6bf7e2');
+    px(ctx, 1, 29 + bob + wave, '#d9fff9');
+
+    // 2. Victorian Buttoned Ankle Boots (feet at y = 51)
+    rect(ctx, 17 - stride, 45, 5, 7, '#161110');
+    rect(ctx, 18 - stride, 50, 6, 2, '#0d0a09');
+    px(ctx, 19 - stride, 47, '#cfa044'); // boot brass button
+    rect(ctx, 23 + stride, 45, 5, 7, '#1c1513');
+    rect(ctx, 24 + stride, 50, 6, 2, '#0d0a09');
+    px(ctx, 25 + stride, 47, '#cfa044');
+
+    // 3. Sweeping Late-Victorian Bustle Greatcoat Skirt (Charcoal-Slate & Oxblood-Crimson)
+    rect(ctx, 12 - wave, 31 + bob, 17 + wave, 15, '#1a2129');
+    rect(ctx, 10 - wave, 36 + bob, 11, 10, '#242e38'); // Victorian bustle flare at back
+    rect(ctx, 15, 32 + bob, 12, 13, '#28333f');
+    // Crimson underskirt pleat & occult gold-thread hem
+    rect(ctx, 21 + Math.max(0, stride), 34 + bob, 5, 11, '#6e1f2b');
+    rect(ctx, 11 - wave, 44 + bob, 18 + wave, 2, '#c9963b');
+
+    // 4. Fitted Oxblood Corset-Bodice, High Ivory Lace Jabot & Spirit Brooch
+    rect(ctx, 16, 20 + bob, 11, 12, '#591923');
+    rect(ctx, 18, 21 + bob, 8, 10, '#7d2432');
+    // Brass corset buttons
+    px(ctx, 24, 23 + bob, '#f2c45a');
+    px(ctx, 24, 26 + bob, '#f2c45a');
+    px(ctx, 24, 29 + bob, '#f2c45a');
+    // Hip Occult Grimoire & Glowing Leyden Vial
+    rect(ctx, 14, 30 + bob, 5, 6, '#523018');
+    rect(ctx, 15, 31 + bob, 3, 4, '#e6b450');
+    rect(ctx, 20, 30 + bob, 3, 5, '#6bf7e2');
+    // High ivory lace collar + glowing verdigris cameo brooch
+    rect(ctx, 19, 18 + bob, 7, 3, '#f5ecdc');
+    rect(ctx, 24, 19 + bob, 2, 2, '#6bf7e2');
+
+    // 5. Sculpted Profile, Victorian Chignon Updo, Brass Planchette Comb & Spirit-Monocle
+    // Back chignon bun
+    rect(ctx, 13, 9 + bob, 6, 7, '#211110');
+    rect(ctx, 14, 10 + bob, 4, 5, '#3b1e1c');
+    // Gleaming brass crescent-star hair comb pinned into chignon!
+    rect(ctx, 15, 6 + bob, 2, 4, '#deb04e');
+    px(ctx, 14, 5 + bob, '#fff3b8');
+    px(ctx, 17, 5 + bob, '#fff3b8');
+    // Face & crown hair wave
+    rect(ctx, 18, 9 + bob, 9, 9, '#f2d5be');
+    rect(ctx, 18, 15 + bob, 4, 3, '#d9b298'); // jaw shadow
+    rect(ctx, 17, 6 + bob, 11, 4, '#2b1514'); // Edwardian/Victorian swept pompadour
+    rect(ctx, 18, 7 + bob, 8, 2, '#4f2724'); // warm auburn highlight
+    rect(ctx, 17, 10 + bob, 3, 5, '#2b1514'); // temple curl
+    // Eye + Verdigris Astral Spirit-Lens Monocle & fine brass chain!
+    px(ctx, 24, 12 + bob, '#140d0c');
+    rect(ctx, 24, 11 + bob, 3, 3, '#7ef7e3');
+    px(ctx, 25, 12 + bob, '#ebfffb');
+    px(ctx, 23, 14 + bob, '#d9a444');
+    px(ctx, 22, 16 + bob, '#d9a444');
+
+    // 6. Extended Sleeve & Swinging Brass Spirit-Censer Thurible!
+    if (isCast) {
+      // Raised-arm Séance Exorcism pose!
+      rect(ctx, 24, 15 + bob, 9, 4, '#591923');
+      rect(ctx, 32, 12 + bob, 3, 4, '#241a18'); // gloved hand aloft
+      rect(ctx, 33, 16 + bob, 1, 5, '#deb04e'); // chain
+      drawSpiritCenser(ctx, 30, 21 + bob, true);
+      // Levitating Astral Tarot / Planchette Sigils around Mina!
+      rect(ctx, 9, 10, 3, 4, '#ffe484');
+      rect(ctx, 39, 9, 3, 4, '#7ef7e3');
+      rect(ctx, 28, 2, 4, 3, '#ebfffb');
+    } else {
+      const sway = frame === 1 ? 1 : frame === 3 ? -1 : 0;
+      rect(ctx, 24, 22 + bob, 10, 4, '#591923');
+      rect(ctx, 33, 22 + bob, 3, 3, '#241a18'); // gloved hand
+      // Delicate swinging censer chain
+      px(ctx, 35, 25 + bob, '#deb04e');
+      px(ctx, 35 + sway, 27 + bob, '#deb04e');
+      px(ctx, 35 + sway, 29 + bob, '#deb04e');
+      drawSpiritCenser(ctx, 32 + sway, 30 + bob, false);
+      // Orbiting ghostly motes trailing from the thurible
+      px(ctx, 41 + sway, 24 + bob - wave * 2, '#8cf7e6');
+      px(ctx, 39 - sway, 19 + bob - wave, '#ffe694');
+      px(ctx, 43, 29 + bob + wave, '#d9fff9');
+    }
+  } else {
+    // --- DR. JULIAN VESPER: PSYCHICAL ANTIQUARIAN & OCCULT ENGINEER ---
+    // 1. Copper Ectoplasm-Condenser Backpack Coil & Ghost-Vapor Wisp
+    rect(ctx, 10, 20 + bob, 6, 11, '#7a4422');
+    rect(ctx, 11, 22 + bob, 4, 7, '#c97838');
+    rect(ctx, 11, 24 + bob, 3, 3, '#7ef7e3'); // glowing condenser gauge!
+    px(ctx, 8 - wave, 17 + bob - wave, '#8cf7e6');
+    px(ctx, 6 - wave, 15 + bob, '#d9fff9');
+
+    // 2. Buckskin Ankle Spats & Polished Dark Leather Boots (feet at y = 51)
+    rect(ctx, 17 - stride, 44, 5, 8, '#141210');
+    rect(ctx, 17 - stride, 45, 5, 2, '#9e8868'); // subtle ankle gaiter spats
+    rect(ctx, 18 - stride, 50, 6, 2, '#0b0908');
+    rect(ctx, 23 + stride, 44, 5, 8, '#1c1614');
+    rect(ctx, 23 + stride, 45, 5, 2, '#b59d79');
+    rect(ctx, 24 + stride, 50, 6, 2, '#0b0908');
+
+    // 3. Sweeping Ankle-Length Inverness Cape-Overcoat with Claret Inner Lining!
+    rect(ctx, 11 - wave * 2, 31 + bob, 18 + wave, 14, '#182029');
+    rect(ctx, 14, 31 + bob, 13, 13, '#232e3b');
+    // Flashing claret-crimson inner cape lining on stride!
+    rect(ctx, 21 + Math.max(0, stride), 33 + bob, 5, 10, '#78202c');
+    // Layered Inverness shoulder capelet (billows with steps!)
+    rect(ctx, 12 - wave, 20 + bob, 16, 10, '#2a3745');
+    rect(ctx, 12 - wave, 28 + bob, 15, 2, '#9e7432'); // brass-trimmed capelet edge
+
+    // 4. Waistcoat, Exorcist's Leyden Bandolier & Silver Occult Cane
+    rect(ctx, 19, 21 + bob, 8, 11, '#472d1b');
+    // Diagonal leather bandolier with 3 glowing cyan Aether Phials!
+    px(ctx, 19, 22 + bob, '#6e4221');
+    px(ctx, 21, 24 + bob, '#7ef7e3');
+    px(ctx, 23, 26 + bob, '#7ef7e3');
+    px(ctx, 25, 28 + bob, '#7ef7e3');
+    // High ivory cravat + amber spirit-stone pin
+    rect(ctx, 20, 18 + bob, 6, 3, '#f5ecdc');
+    px(ctx, 24, 19 + bob, '#ffd966');
+
+    // Rear hand & Silver-Orb Occult Cane
+    if (!isCast) {
+      rect(ctx, 13 - stride, 30 + bob, 2, 18, '#291c14'); // ebony cane shaft
+      rect(ctx, 12 - stride, 28 + bob, 4, 3, '#dce8f2'); // silver skull/orb pommel
+    }
+
+    // 5. Sculpted Bearded Profile & Tall Stovepipe Top Hat with Aether-Spectrometer Goggles!
+    rect(ctx, 18, 10 + bob, 9, 8, '#edd0b4');
+    rect(ctx, 18, 14 + bob, 4, 4, '#cfa88a');
+    // Neat dark Victorian mustache & goatee
+    rect(ctx, 23, 15 + bob, 4, 2, '#211714');
+    rect(ctx, 24, 16 + bob, 3, 3, '#211714');
+    px(ctx, 24, 12 + bob, '#140e0c'); // eye
+
+    // Stovepipe Silk Top Hat (y: 2..10) + Copper Aether-Goggles on hatband!
+    rect(ctx, 15, 9 + bob, 14, 2, '#11141a'); // wide curved brim
+    rect(ctx, 17, 2 + bob, 10, 7, '#1a2029'); // tall crown
+    rect(ctx, 18, 3 + bob, 4, 5, '#262f3d'); // silk sheen
+    rect(ctx, 17, 6 + bob, 10, 3, '#9e5c2b'); // copper goggle strap
+    // Twin luminous verdigris-cyan spectrometer lenses on hat front!
+    rect(ctx, 21, 6 + bob, 3, 3, '#7ef7e3');
+    rect(ctx, 25, 6 + bob, 3, 3, '#7ef7e3');
+    px(ctx, 22, 7 + bob, '#ffffff');
+    px(ctx, 26, 7 + bob, '#ffffff');
+
+    // 6. Extended Arm & Crackling Brass-Caged Leyden Spirit-Lantern!
+    if (isCast) {
+      // Dramatic dual-raised Cane & Leyden Lantern Séance Pose!
+      rect(ctx, 13, 11 + bob, 2, 16, '#291c14');
+      rect(ctx, 12, 9 + bob, 4, 3, '#ebfffb');
+      rect(ctx, 25, 15 + bob, 9, 4, '#232e3b');
+      rect(ctx, 33, 13 + bob, 3, 3, '#1f1815');
+      drawLeydenLantern(ctx, 32, 16 + bob, true);
+      // Crackling astral arc between cane and lantern!
+      px(ctx, 18, 4, '#7ef7e3');
+      px(ctx, 24, 2, '#ffe680');
+      px(ctx, 31, 5, '#ebfffb');
+    } else {
+      const sway = frame === 1 ? -1 : frame === 3 ? 1 : 0;
+      rect(ctx, 25, 21 + bob, 9, 4, '#232e3b');
+      rect(ctx, 33, 21 + bob, 3, 3, '#1f1815');
+      drawLeydenLantern(ctx, 32, 24 + bob + sway, false);
+      // Floating Astral Compass & Plasma Sparks!
+      px(ctx, 42, 22 + bob - wave * 2, '#7ef7e3');
+      px(ctx, 40, 17 + bob + sway, '#ffe680');
+      px(ctx, 43, 28 + bob + wave, '#ebfffb');
+    }
+  }
+
+  outline(canvas);
+  return canvas;
+}
+
+function drawSpiritCenser(ctx, x, y, intense) {
+  // Ornate pierced-brass paranormal thurible with cold ectoplasmic flame
+  rect(ctx, x + 2, y, 4, 2, '#deb04e');
+  rect(ctx, x, y + 2, 8, 3, '#cfa044');
+  rect(ctx, x + 1, y + 5, 6, 5, intense ? '#ebfffb' : '#5ef2dc');
+  rect(ctx, x + 2, y + 6, 4, 3, '#ffffff');
+  rect(ctx, x, y + 9, 8, 2, '#b8842e');
+  rect(ctx, x + 3, y + 11, 2, 2, '#ffe484');
+}
+
+function drawLeydenLantern(ctx, x, y, intense) {
+  // Brass-caged Victorian Leyden spirit-jar lantern
+  rect(ctx, x + 2, y, 5, 2, '#deb04e');
+  rect(ctx, x + 1, y + 2, 7, 9, '#b8842e');
+  rect(ctx, x + 2, y + 3, 5, 7, intense ? '#ebfffb' : '#4ce8d2');
+  rect(ctx, x + 3, y + 4, 3, 5, '#ffffff');
+  rect(ctx, x, y + 11, 9, 2, '#deb04e');
 }
 
 /* ============================================================================
@@ -161,8 +424,6 @@ function drawRoomBackdrop(style, restored) {
   const { canvas, ctx } = makeCanvas(128, 196);
 
   if (style === 'outdoor') {
-    // Transparent upper sky so parallax storm clouds & moon show through!
-    // Wrought-iron estate fence + gnarled Victorian yew silhouettes at bottom
     rect(ctx, 0, 152, 128, 44, restored ? '#203028' : '#121b1f');
     rect(ctx, 0, 150, 128, 3, restored ? '#576b5e' : '#2d3b40');
     for (let x = 8; x < 128; x += 16) {
@@ -170,7 +431,6 @@ function drawRoomBackdrop(style, restored) {
       px(ctx, x + 1, 116, restored ? '#e0b04f' : '#4a5861');
     }
     rect(ctx, 0, 126, 128, 2, '#1b2228');
-    // Gnarled tree silhouette
     rect(ctx, 88, 72, 10, 80, '#10171c');
     rect(ctx, 72, 54, 42, 24, restored ? '#1f3b2e' : '#132026');
     rect(ctx, 64, 66, 26, 16, restored ? '#264738' : '#16252b');
@@ -189,10 +449,9 @@ function drawRoomBackdrop(style, restored) {
   };
   const [wA, wB, dado] = palettes[style] || palettes.damask;
 
-  // Main upper wall
   rect(ctx, 0, 0, 128, 142, wA);
 
-  // Crown molding + overhead copper steam conduit!
+  // Crown molding + overhead copper steam conduit
   rect(ctx, 0, 0, 128, 8, '#1f150e');
   rect(ctx, 0, 10, 128, 4, restored ? '#cf9a3e' : '#4a463d');
   rect(ctx, 30, 8, 6, 8, restored ? '#e8bc64' : '#5c574c');
@@ -206,7 +465,6 @@ function drawRoomBackdrop(style, restored) {
       }
     }
   } else if (style === 'library') {
-    // Tall bookcase arches
     for (const bx of [8, 68]) {
       rect(ctx, bx, 24, 52, 116, '#1f1209');
       const cols = ['#8c2b2b', '#2b6b4f', '#cf9c3e', '#2e5075'];
@@ -222,7 +480,6 @@ function drawRoomBackdrop(style, restored) {
     for (let x = 0; x < 128; x += 32) rect(ctx, x, 16, 3, 128, '#263036');
     for (let y = 44; y < 140; y += 34) rect(ctx, 0, y, 128, 2, '#263036');
   } else {
-    // Wallpaper stripes + Tall Victorian Arched Window at center (x = 42..86)
     for (let x = 8; x < 128; x += 16) {
       rect(ctx, x, 20, 4, 120, wB);
     }
@@ -233,7 +490,6 @@ function drawRoomBackdrop(style, restored) {
       rect(ctx, 63, 32, 2, 88, '#1c130d');
       rect(ctx, 46, 72, 36, 2, '#1c130d');
     } else {
-      // Riveted iron bulkhead panels
       rect(ctx, 16, 32, 96, 92, wB);
       for (const rx of [20, 106]) {
         for (let ry = 36; ry <= 118; ry += 20) px(ctx, rx, ry, restored ? '#e0ad4c' : '#575c61');
@@ -241,18 +497,15 @@ function drawRoomBackdrop(style, restored) {
     }
   }
 
-  // Dado rail & carved wainscoting
   rect(ctx, 0, 140, 128, 4, restored ? '#deb054' : '#544e43');
   rect(ctx, 0, 144, 128, 52, dado);
   for (let x = 6; x < 128; x += 32) {
     rect(ctx, x, 152, 20, 34, restored ? '#5e3920' : '#29221e');
   }
 
-  // Haunted cobwebs in top corners when unrestored
   if (!restored) {
     dither(ctx, 0, 14, 18, 18, 'rgba(180,200,198,0.35)', 'rgba(0,0,0,0)');
   } else {
-    // Small lit wall gas sconce on every restored wall tile!
     rect(ctx, 16, 68, 4, 12, '#d4a043');
     rect(ctx, 14, 62, 8, 7, '#fff0ad');
   }
@@ -289,7 +542,6 @@ function drawMansardRoof() {
   for (let y = 10; y < 34; y += 6) {
     dither(ctx, 0, y, 64, 3, '#243240', '#17202a');
   }
-  // Ornate Victorian copper roof cresting
   rect(ctx, 0, 5, 64, 4, '#477a6e');
   for (let x = 4; x < 64; x += 12) {
     rect(ctx, x, 1, 3, 5, '#68b09e');
@@ -336,52 +588,6 @@ function drawStairArch() {
   return canvas;
 }
 
-/* ============================================================================
- * THE HEIR ON VICTORIAN BRASS VELOCIPEDE & ESTATE RETAINERS
- * ============================================================================ */
-function drawHeirVelocipede(frame, hasCrown) {
-  // Faces Right (+X) by default; 48x44
-  const { canvas, ctx } = makeCanvas(48, 44);
-  const bob = frame === 1 ? -1 : 0;
-
-  // Rear small brass wheel (center 11, 35, r=6) & Front tall penny-farthing wheel (center 33, 31, r=10)
-  drawPixelWheel(ctx, 11, 35, 6, frame);
-  drawPixelWheel(ctx, 33, 32, 10, frame);
-
-  // Curved brass frame & leather saddle
-  rect(ctx, 11, 28, 10, 2, '#d49d3d');
-  rect(ctx, 18, 21, 14, 3, '#e8b856');
-  rect(ctx, 31, 15, 3, 17, '#d49d3d');
-  rect(ctx, 17, 19, 8, 3, '#693618'); // saddle
-
-  // Rider (Victorian crimson-lined dark coat + flowing amber scarf!)
-  rect(ctx, 19, 11 + bob, 9, 9, '#2e2724');
-  rect(ctx, 13 - frame * 2, 12 + bob, 7, 3, '#b8353f'); // flowing scarf!
-  rect(ctx, 22, 13 + bob, 9, 3, '#3d3430'); // arm on handlebar
-  rect(ctx, 21, 20, 4, 8 + frame, '#1f1a18'); // pedaling leg
-
-  // Head & Heirloom Signet Crown / Top Hat
-  rect(ctx, 21, 5 + bob, 7, 6, '#ebc6a4');
-  px(ctx, 26, 7 + bob, '#17120e');
-  if (hasCrown) {
-    // Gleaming Brass-Gold Signet Crown atop Victorian riding hat!
-    rect(ctx, 19, 4 + bob, 11, 2, '#241e1b');
-    rect(ctx, 20, 1 + bob, 9, 3, '#ffd257');
-    px(ctx, 20, 0 + bob, '#fff5bf');
-    px(ctx, 24, 0 + bob, '#fff5bf');
-    px(ctx, 28, 0 + bob, '#fff5bf');
-  } else {
-    rect(ctx, 20, 3 + bob, 9, 2, '#3b322d');
-  }
-
-  // Calcium-Gas Brass Headlamp on front fork!
-  rect(ctx, 35, 16, 6, 6, '#e0ac48');
-  rect(ctx, 39, 17, 4, 4, '#fff7c2');
-
-  outline(canvas);
-  return canvas;
-}
-
 function drawPixelWheel(ctx, cx, cy, r, phase) {
   for (let a = 0; a < Math.PI * 2; a += 0.18) {
     px(ctx, Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), '#cf9636');
@@ -396,49 +602,59 @@ function drawPixelWheel(ctx, cx, cy, r, phase) {
   rect(ctx, cx - 1, cy - 1, 3, 3, '#ffe082');
 }
 
+/* ============================================================================
+ * MANOR STAFF, OCCULT WARDERS, ARTIFICERS & SHIVERING HOUSEFOLK (32x40)
+ * ============================================================================ */
 function drawFolk(role, frame) {
-  const { canvas, ctx } = makeCanvas(28, 34);
+  const { canvas, ctx } = makeCanvas(32, 40);
   const step = frame === 1 ? 2 : 0;
 
   // Boots
-  rect(ctx, 10 - step, 28, 4, 5, '#1c1613');
-  rect(ctx, 15 + step, 28, 4, 5, '#1c1613');
+  rect(ctx, 11 - step, 33, 4, 6, '#1c1613');
+  rect(ctx, 16 + step, 33, 4, 6, '#1c1613');
 
-  // Outfit by role
   const coatMap = {
-    vagrant: '#454a4a',
-    servant: '#54463b',
-    artificer: '#7a4b26',
-    warder: '#27454f',
-    steward: '#3b5c45',
+    housefolk: '#3c4347',
+    servant: '#4a3d35',
+    artificer: '#6e4221',
+    warder: '#203842',
+    steward: '#2f523b',
   };
-  rect(ctx, 9, 15, 10, 13, coatMap[role]);
+  rect(ctx, 10, 17, 11, 16, coatMap[role]);
 
   // Head
-  rect(ctx, 10, 8, 8, 7, '#e8c4a2');
-  px(ctx, 16, 10, '#1a120e');
+  rect(ctx, 11, 9, 8, 8, '#e8c4a2');
+  px(ctx, 17, 12, '#1a120e');
 
-  if (role === 'vagrant') {
-    rect(ctx, 9, 6, 9, 3, '#333838');
+  if (role === 'housefolk') {
+    // Shivering trapped Victorian maid/footman holding a flickering tallow candle!
+    rect(ctx, 10, 7, 9, 3, '#2d3336');
+    rect(ctx, 12, 18, 6, 4, '#d9d2c5'); // tattered collar
+    rect(ctx, 21, 18, 3, 5, '#f2ead8'); // candle stub
+    rect(ctx, 21, 15 + (frame % 2), 3, 3, '#ffe078'); // candle flame
   } else if (role === 'artificer') {
-    // Leather apron + heavy brass wrench over shoulder!
-    rect(ctx, 11, 16, 7, 11, '#a66b38');
-    rect(ctx, 9, 6, 10, 2, '#3d2a1b');
-    rect(ctx, 16, 4, 3, 15, '#e6b450');
-    rect(ctx, 14, 3, 7, 4, '#ffd978');
+    // Brass-riveted leather apron, cap & heavy steam-spanner!
+    rect(ctx, 12, 18, 8, 13, '#a66b38');
+    rect(ctx, 10, 7, 11, 3, '#3d2a1b');
+    rect(ctx, 18, 5, 3, 17, '#e6b450');
+    rect(ctx, 16, 4, 7, 4, '#ffd978');
   } else if (role === 'warder') {
-    // Bowler hat + glowing Calcium Limelight Lance!
-    rect(ctx, 9, 6, 10, 2, '#1f262b');
-    rect(ctx, 10, 4, 8, 3, '#2d373d');
-    rect(ctx, 19, 6, 2, 22, '#9e7030');
-    rect(ctx, 18, 3, 5, 6, '#ffe885');
-    rect(ctx, 19, 4, 3, 4, '#ffffff');
+    // Victorian Occult Warder: wide-brimmed exorcist hat + glowing Limelight Spirit-Lance!
+    rect(ctx, 8, 8, 14, 2, '#171e24');
+    rect(ctx, 11, 4, 8, 4, '#243038');
+    rect(ctx, 11, 7, 8, 1, '#5ef2dc'); // ward hatband
+    rect(ctx, 21, 7, 2, 25, '#9e7030');
+    rect(ctx, 19, 3, 6, 7, '#7ef7e3');
+    rect(ctx, 21, 4, 3, 5, '#ffffff');
   } else if (role === 'steward') {
-    // Crisp white apron + copper harvest basket
-    rect(ctx, 11, 17, 7, 10, '#ebe3d0');
-    rect(ctx, 17, 17, 7, 6, '#b87632');
+    // Crisp Victorian waistcoat/apron + copper Aether condenser tray
+    rect(ctx, 12, 19, 7, 12, '#ebe3d0');
+    rect(ctx, 19, 19, 7, 6, '#b87632');
+    rect(ctx, 21, 17, 3, 2, '#7ef7e3');
   } else {
-    rect(ctx, 10, 6, 8, 2, '#473425');
+    // Manor Staff (butler/parlor livery)
+    rect(ctx, 13, 18, 4, 8, '#f0e8d5');
+    rect(ctx, 11, 7, 8, 2, '#3b2b1e');
   }
 
   outline(canvas);
@@ -451,61 +667,64 @@ function drawMajordomo() {
   rect(ctx, 8, 16, 12, 15, '#211f24');
   rect(ctx, 12, 17, 4, 9, '#f2ead8');
   rect(ctx, 10, 9, 8, 7, '#ebd0b5');
-  px(ctx, 15, 11, '#ffd978'); // monocle!
-  // Tall silk top hat
+  px(ctx, 15, 11, '#ffd978');
   rect(ctx, 8, 7, 12, 2, '#171518');
   rect(ctx, 10, 1, 8, 6, '#262329');
   rect(ctx, 10, 6, 8, 1, '#d9a648');
-  // Brass ledger
   rect(ctx, 18, 19, 6, 7, '#cfa044');
   outline(canvas);
   return canvas;
 }
 
 /* ============================================================================
- * SPOOKY SPIRITS, WISPS & RIFT PORTALS
+ * APPARITIONS, RESIDUAL ECTOPLASM ORBS & SPECTRAL RIFTS
  * ============================================================================ */
-function drawWisp(alt) {
-  const { canvas, ctx } = makeCanvas(18, 18);
+function drawEctoOrb(alt) {
+  const { canvas, ctx } = makeCanvas(20, 20);
   const y = alt ? 4 : 6;
-  rect(ctx, 5, y, 8, 8, '#3d4a52');
-  rect(ctx, 6, y + 1, 6, 6, '#56707a');
-  px(ctx, 7, y + 3, '#8cf7e6');
-  px(ctx, 10, y + 3, '#8cf7e6');
-  outline(canvas);
+  rect(ctx, 6, y, 8, 8, '#285957');
+  rect(ctx, 7, y + 1, 6, 6, '#56d9c7');
+  rect(ctx, 8, y + 2, 4, 4, '#ebfffb');
+  px(ctx, 4, y + 7, '#8cf7e6');
+  px(ctx, 15, y + 2, '#ffe694');
+  outline(canvas, '#081716');
   return canvas;
 }
 
 function drawEnemy(kind, alt) {
   const s = alt ? 1 : 0;
-  if (kind === 'greed') {
-    const { canvas, ctx } = makeCanvas(28, 30);
-    rect(ctx, 7, 8 + s, 14, 15, '#315e59');
-    rect(ctx, 9, 6 + s, 11, 14, '#4d8f87');
-    rect(ctx, 6, 22, 4, 5 - s, '#254743');
-    rect(ctx, 12, 22, 4, 6, '#315e59');
-    rect(ctx, 18, 22, 4, 4 + s, '#254743');
-    rect(ctx, 15, 10 + s, 3, 3, '#fff6b3');
-    rect(ctx, 19, 14 + s, 5, 3, '#69c2b8'); // grabbing claws!
+  if (kind === 'specter') {
+    // Poltergeist Specter: tattered Victorian mourning shroud + trailing chains & lantern-eyes!
+    const { canvas, ctx } = makeCanvas(30, 34);
+    rect(ctx, 7, 7 + s, 14, 18, '#28524e');
+    rect(ctx, 9, 5 + s, 11, 16, '#478f87');
+    // Ragged floating coat-tatters instead of legs
+    rect(ctx, 6, 24, 4, 6 - s, '#1f403d');
+    rect(ctx, 12, 25, 4, 6, '#28524e');
+    rect(ctx, 18, 24, 4, 5 + s, '#1f403d');
+    // Spectral eyes & grasping ecto-claws
+    rect(ctx, 16, 10 + s, 3, 3, '#fff6b3');
+    rect(ctx, 20, 15 + s, 6, 3, '#7ef7e3');
     outline(canvas, '#081412');
     return canvas;
   }
   if (kind === 'phantom') {
-    const { canvas, ctx } = makeCanvas(30, 38);
-    rect(ctx, 9, 4 + s, 12, 26, '#3c6e78');
-    rect(ctx, 11, 6 + s, 9, 20, '#6bc2cf');
-    rect(ctx, 8, 29, 14, 6, '#2b5057');
-    rect(ctx, 15, 9 + s, 3, 2, '#ffffff');
+    // Weeping Banshee / Mourning Apparition in veiled Victorian gown
+    const { canvas, ctx } = makeCanvas(32, 40);
+    rect(ctx, 9, 4 + s, 13, 28, '#356670');
+    rect(ctx, 11, 6 + s, 10, 22, '#6bc2cf');
+    rect(ctx, 7, 30, 16, 6, '#25484f');
+    rect(ctx, 16, 10 + s, 3, 2, '#ffffff');
+    px(ctx, 17, 13 + s, '#9ef7e8'); // ectoplasmic tear
     outline(canvas, '#081417');
     return canvas;
   }
-  // Furnace Soot Brute (Blood-Storm Breacher!)
+  // Ironclad Boiler Revenant (Haunted Cast-Iron Furnace Hulk!)
   const { canvas, ctx } = makeCanvas(44, 48);
   rect(ctx, 8, 10 + s, 28, 30, '#262d33');
   rect(ctx, 12, 6 + s, 20, 28, '#38434d');
   rect(ctx, 10, 38, 8, 8 - s, '#1b2024');
   rect(ctx, 26, 38, 8, 6 + s, '#1b2024');
-  // Glowing furnace grate belly & eyes
   rect(ctx, 16, 20 + s, 14, 10, '#ed6b24');
   rect(ctx, 18, 22 + s, 10, 6, '#ffe070');
   rect(ctx, 22, 11 + s, 5, 3, '#7ef7e1');
@@ -516,7 +735,6 @@ function drawEnemy(kind, alt) {
 function drawRiftPortal(alt) {
   const { canvas, ctx } = makeCanvas(56, 88);
   const p = alt ? 2 : 0;
-  // Stone archway + swirling verdigris spectral tear
   rect(ctx, 6, 12, 44, 74, '#1b2429');
   rect(ctx, 12, 18, 32, 66, '#14383b');
   rect(ctx, 16 + p, 24, 24 - p, 54, '#2f8580');
@@ -527,26 +745,24 @@ function drawRiftPortal(alt) {
 }
 
 /* ============================================================================
- * STATIONS, BULKHEAD WALLS & ROOM CENTERPIECES
+ * STATIONS, WARD-BARRICADES, CANDLE VIGILS & ROOM CENTERPIECES
  * ============================================================================ */
 function drawFoyerHearth(tier) {
   const { canvas, ctx } = makeCanvas(68, 76);
   rect(ctx, 6, 18, 56, 56, '#4a2d19');
   rect(ctx, 2, 14, 64, 6, '#7a4b2a');
   rect(ctx, 18, 36, 32, 38, '#141210');
-  // Blazing hearth fire grows with tier!
   const fireH = 12 + tier * 6;
   rect(ctx, 22, 72 - fireH, 24, fireH, '#e86820');
   rect(ctx, 26, 74 - fireH, 16, fireH - 4, '#ffd966');
   if (tier >= 2) {
-    // Twin copper steam risers
     rect(ctx, 10, 2, 6, 14, '#cf6e3a');
     rect(ctx, 52, 2, 6, 14, '#cf6e3a');
   }
   if (tier >= 3) {
-    // Sovereign Golden Crest & Pressure Dial
+    // Astral Brass Orrery Crest above hearth
     rect(ctx, 26, 4, 16, 12, '#f2c45a');
-    rect(ctx, 30, 22, 8, 8, '#fff5cf');
+    rect(ctx, 30, 22, 8, 8, '#7ef7e3');
   }
   outline(canvas);
   return canvas;
@@ -564,9 +780,9 @@ function drawToolRack(kind) {
       rect(ctx, x - 1, 14, 5, 4, '#ffe280');
     }
   } else {
-    for (const x of [14, 24]) {
-      rect(ctx, x, 18, 5, 8, '#ffd463');
-      rect(ctx, x + 1, 20, 3, 4, '#fff9d6');
+    for (const x of [13, 24]) {
+      rect(ctx, x, 17, 6, 10, '#5ef2dc');
+      rect(ctx, x + 1, 19, 4, 6, '#ffffff');
     }
   }
   outline(canvas);
@@ -586,65 +802,76 @@ function drawSafeVault() {
 function drawBulkhead(level) {
   const { canvas, ctx } = makeCanvas(36, 78);
   if (level === 0) {
-    // Broken steam flange mound on floor
-    rect(ctx, 6, 66, 24, 10, '#473e36');
-    rect(ctx, 14, 56, 8, 12, '#695f52');
+    // Unwarded threshold stone & salt line
+    rect(ctx, 6, 68, 24, 8, '#473e36');
+    rect(ctx, 10, 66, 16, 2, '#dce8f2');
     outline(canvas);
     return canvas;
   }
   if (level === 1) {
-    // Timber & Brass Barricade
+    // Salt & Oak Ward-Barricade with brass ward-sigil
     rect(ctx, 8, 28, 20, 48, '#633e20');
     rect(ctx, 6, 36, 24, 6, '#87572f');
     rect(ctx, 6, 56, 24, 6, '#87572f');
+    rect(ctx, 15, 44, 6, 8, '#7ef7e3');
     for (const sx of [10, 18, 25]) rect(ctx, sx, 22, 3, 8, '#cfa044');
     outline(canvas);
     return canvas;
   }
   if (level === 2) {
-    // Riveted Cast-Iron Bulkhead
+    // Cold-Iron Ward Gate with consecrated lantern eye
     rect(ctx, 6, 14, 24, 62, '#2d353d');
     rect(ctx, 9, 18, 18, 54, '#414c57');
     rect(ctx, 6, 40, 24, 6, '#b88735');
-    rect(ctx, 14, 24, 8, 8, '#ffcf66');
+    rect(ctx, 14, 24, 8, 8, '#7ef7e3');
+    rect(ctx, 16, 26, 4, 4, '#ffffff');
     outline(canvas);
     return canvas;
   }
-  // Level 3: Sovereign Brass Steam Bastion with top Sconce Turret!
+  // Level 3: Galvanic Brass Sanctum Seal with top Limelight Sconce Turret!
   rect(ctx, 4, 8, 28, 68, '#8c6124');
   rect(ctx, 8, 12, 20, 60, '#cfa044');
   rect(ctx, 4, 38, 28, 8, '#363e47');
-  rect(ctx, 11, 2, 14, 9, '#ffe88a');
+  rect(ctx, 11, 2, 14, 9, '#7ef7e3');
   rect(ctx, 14, 4, 8, 5, '#ffffff');
   outline(canvas);
   return canvas;
 }
 
 function drawStrikeBanner() {
+  // Occult Rift-Banishment Bell Standard
   const { canvas, ctx } = makeCanvas(32, 52);
   rect(ctx, 14, 6, 3, 44, '#cfa044');
-  rect(ctx, 17, 10, 12, 18, '#9e2832');
-  rect(ctx, 19, 14, 8, 4, '#ffd966');
+  rect(ctx, 17, 10, 12, 18, '#6e1f2b');
+  rect(ctx, 19, 14, 8, 6, '#7ef7e3');
   rect(ctx, 13, 3, 5, 4, '#fff0ad');
   outline(canvas);
   return canvas;
 }
 
-function drawCampfire() {
-  const { canvas, ctx } = makeCanvas(32, 28);
-  rect(ctx, 8, 18, 16, 8, '#2b2f33');
-  rect(ctx, 11, 11, 10, 8, '#eb7126');
-  rect(ctx, 13, 13, 6, 5, '#ffe073');
+function drawCandleVigil() {
+  // 19th-Century Chalk Ward-Circle & Tallow Candle Candelabra (replaces outdoor campfires!)
+  const { canvas, ctx } = makeCanvas(36, 28);
+  // Chalk ward-ring on floorboards
+  rect(ctx, 4, 22, 28, 3, '#c8d6de');
+  rect(ctx, 8, 20, 20, 2, '#5ef2dc');
+  // Brass 3-branch floor candelabrum & dripping tallow candles
+  rect(ctx, 15, 16, 6, 8, '#b88735');
+  for (const [cx, h] of [[10, 7], [17, 10], [24, 6]]) {
+    rect(ctx, cx, 21 - h, 3, h, '#f2ead8');
+    rect(ctx, cx, 18 - h, 3, 3, '#ffe073');
+    px(ctx, cx + 1, 17 - h, '#ffffff');
+  }
   outline(canvas);
   return canvas;
 }
 
 function drawChest(open) {
   const { canvas, ctx } = makeCanvas(30, 24);
-  rect(ctx, 4, 10, 22, 12, '#694020');
-  rect(ctx, 4, open ? 4 : 8, 22, 5, '#8a552b');
-  rect(ctx, 13, 11, 4, 5, '#f0c259');
-  if (!open) px(ctx, 14, 12, '#fff7cc');
+  rect(ctx, 4, 10, 22, 12, '#54331b');
+  rect(ctx, 4, open ? 4 : 8, 22, 5, '#754826');
+  rect(ctx, 13, 11, 4, 5, '#dce8f2');
+  if (!open) px(ctx, 14, 12, '#7ef7e3');
   outline(canvas);
   return canvas;
 }
@@ -655,6 +882,7 @@ function drawCenterpiece(kind, restored) {
   const brass = restored ? '#deb04e' : '#575248';
   const copper = restored ? '#cf6a38' : '#4a3d38';
   const glow = restored ? '#ffe482' : '#354547';
+  const spiritGlow = restored ? '#7ef7e3' : '#2c3d40';
 
   if (kind === 'stove' || kind === 'coal_hopper') {
     rect(ctx, 8, 26, 40, 36, '#23282e');
@@ -667,7 +895,7 @@ function drawCenterpiece(kind, restored) {
       rect(ctx, 8, 20, 40, 24, '#297045');
       rect(ctx, 14, 12, 28, 18, '#46a165');
       rect(ctx, 18, 18, 5, 5, '#ffd45c');
-      rect(ctx, 33, 22, 5, 5, '#e84d5f');
+      rect(ctx, 33, 22, 5, 5, '#7ef7e3');
     } else {
       rect(ctx, 18, 30, 4, 14, '#4f4d44');
       rect(ctx, 34, 28, 4, 16, '#4f4d44');
@@ -677,7 +905,13 @@ function drawCenterpiece(kind, restored) {
     rect(ctx, 12, 12, 32, 38, copper);
     rect(ctx, 12, 22, 32, 4, brass);
     rect(ctx, 12, 36, 32, 4, brass);
-    rect(ctx, 22, 26, 12, 10, glow);
+    rect(ctx, 22, 26, 12, 10, kind === 'tesla' ? spiritGlow : glow);
+  } else if (kind === 'ward_altar') {
+    // Consecrated Séance Cloak & Ward-Boot Stand
+    rect(ctx, 12, 48, 32, 14, wood);
+    rect(ctx, 25, 10, 6, 38, brass);
+    rect(ctx, 16, 18, 24, 18, restored ? '#6e1f2b' : '#2d2628');
+    rect(ctx, 23, 12, 10, 6, spiritGlow);
   } else if (kind === 'organ') {
     for (let x = 12; x <= 40; x += 5) {
       rect(ctx, x, restored ? 6 : 8 + (x % 4), 4, 28, brass);
@@ -687,12 +921,11 @@ function drawCenterpiece(kind, restored) {
   } else if (kind === 'telescope') {
     rect(ctx, 24, 34, 8, 28, wood);
     rect(ctx, 12, 18, 34, 10, brass);
-    rect(ctx, 42, 14, 8, 14, glow);
+    rect(ctx, 42, 14, 8, 14, spiritGlow);
   } else if (kind === 'clock_gears') {
     drawPixelWheel(ctx, 28, 30, 18, restored ? 1 : 0);
     rect(ctx, 25, 30, 6, 30, brass);
   } else {
-    // Hearth / Chandelier / Bookshelf / Portraits / Lamps
     rect(ctx, 10, 16, 36, 46, wood);
     rect(ctx, 16, 22, 24, 28, brass);
     rect(ctx, 20, 28, 16, 18, glow);
@@ -702,30 +935,20 @@ function drawCenterpiece(kind, restored) {
 }
 
 /* ============================================================================
- * COINS, DIEGETIC COIN SLOTS & GLOWS
+ * CONSECRATED SILVER FLORINS, DIEGETIC SLOTS & GLOWS
  * ============================================================================ */
-function drawCoin(narrow) {
+function drawFlorin(narrow) {
   const { canvas, ctx } = makeCanvas(12, 12);
   if (narrow) {
-    rect(ctx, 4, 1, 4, 10, '#fad46b');
-    rect(ctx, 5, 2, 2, 8, '#fff6c4');
+    rect(ctx, 4, 1, 4, 10, '#c8daea');
+    rect(ctx, 5, 2, 2, 8, '#ffffff');
   } else {
-    rect(ctx, 3, 1, 6, 10, '#cf9634');
-    rect(ctx, 1, 3, 10, 6, '#cf9634');
-    rect(ctx, 3, 3, 6, 6, '#fad46b');
+    rect(ctx, 3, 1, 6, 10, '#7f93a8');
+    rect(ctx, 1, 3, 10, 6, '#7f93a8');
+    rect(ctx, 3, 3, 6, 6, '#e2eef7');
+    rect(ctx, 5, 4, 2, 4, '#5ef2dc');
     px(ctx, 4, 4, '#ffffff');
   }
-  outline(canvas);
-  return canvas;
-}
-
-function drawCrown() {
-  const { canvas, ctx } = makeCanvas(16, 14);
-  rect(ctx, 2, 5, 12, 7, '#ebba49');
-  rect(ctx, 2, 2, 3, 4, '#ffe882');
-  rect(ctx, 7, 1, 3, 5, '#fff4b8');
-  rect(ctx, 11, 2, 3, 4, '#ffe882');
-  px(ctx, 7, 8, '#cf3848');
   outline(canvas);
   return canvas;
 }
@@ -733,15 +956,16 @@ function drawCrown() {
 function drawCoinSlot(filled) {
   const { canvas, ctx } = makeCanvas(14, 14);
   if (!filled) {
-    rect(ctx, 4, 1, 6, 12, 'rgba(255,242,204,0.85)');
-    rect(ctx, 1, 4, 12, 6, 'rgba(255,242,204,0.85)');
+    rect(ctx, 4, 1, 6, 12, 'rgba(224,240,248,0.85)');
+    rect(ctx, 1, 4, 12, 6, 'rgba(224,240,248,0.85)');
     ctx.clearRect(4, 4, 6, 6);
-    rect(ctx, 4, 4, 6, 6, 'rgba(15,12,10,0.68)');
+    rect(ctx, 4, 4, 6, 6, 'rgba(12,15,18,0.72)');
   } else {
-    rect(ctx, 3, 1, 8, 12, '#cf9634');
-    rect(ctx, 1, 3, 12, 8, '#cf9634');
-    rect(ctx, 3, 3, 8, 8, '#ffe078');
-    rect(ctx, 5, 4, 3, 3, '#ffffff');
+    rect(ctx, 3, 1, 8, 12, '#7f93a8');
+    rect(ctx, 1, 3, 12, 8, '#7f93a8');
+    rect(ctx, 3, 3, 8, 8, '#e6f2fa');
+    rect(ctx, 5, 5, 4, 4, '#5ef2dc');
+    px(ctx, 5, 4, '#ffffff');
   }
   return canvas;
 }

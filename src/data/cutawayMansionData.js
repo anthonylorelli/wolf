@@ -17,35 +17,50 @@ export const FLOOR_Y = {
   '-1': 1070,
 };
 
+export const INVESTIGATORS = {
+  female: {
+    id: 'female',
+    name: 'Mina Vesper',
+    title: 'Esoteric Medium & Aether Researcher',
+    desc: 'Wields a swinging brass Spirit-Censer & astral monocle to banish specters and chart haunted wings.',
+  },
+  male: {
+    id: 'male',
+    name: 'Dr. Julian Vesper',
+    title: 'Psychical Antiquarian & Occultist',
+    desc: 'Bears a crackling Leyden Spirit-Lantern, silver cane & aether-goggles to purge apparitions.',
+  },
+};
+
 export const ESTATE_TIERS = [
   {
     tier: 1,
-    name: 'Tarnished Camp',
+    name: 'Flickering Vigil',
     upgradeCost: 5,
-    nextLabel: 'Kindle Grand Boiler Hearth (Tier II)',
-    unlockDesc: 'Unlocks Iron Bulkheads, Majordomo Safe & Cellar Lift',
+    nextLabel: 'Kindle Séance Boiler Hearth (Tier II)',
+    unlockDesc: 'Unlocks Cold-Iron Ward Gates, Majordomo Safe & Cellar/Spire Lift',
   },
   {
     tier: 2,
-    name: 'Gaslit Manor Hall',
+    name: 'Sanctified Manor Hall',
     upgradeCost: 9,
-    nextLabel: 'Pressurize Sovereign Core (Tier III)',
-    unlockDesc: 'Unlocks Brass Bastions, Strike Squad Banners & Spire Lift',
+    nextLabel: 'Awaken Astral Condenser Core (Tier III)',
+    unlockDesc: 'Unlocks Galvanic Sanctum Seals & Rift-Banishment Standards',
   },
   {
     tier: 3,
-    name: 'Sovereign Steam Estate',
+    name: 'Luminous Aether Estate',
     upgradeCost: 0,
-    nextLabel: 'Peak Estate Pressure',
-    unlockDesc: 'All fortifications, turrets & Rift Assault Banners unlocked',
+    nextLabel: 'Peak Astral Resonance',
+    unlockDesc: 'All Sanctum Seals, Limelight Sconces & Banishment Circles active',
   },
 ];
 
 export const BULKHEAD_TIERS = [
-  { level: 0, name: 'Ruptured Doorframe', cost: 2, maxHp: 0, nextName: 'Build Timber Barricade' },
-  { level: 1, name: 'Timber Barricade', cost: 4, maxHp: 90, nextName: 'Reinforce to Iron Bulkhead', reqEstateTier: 2 },
-  { level: 2, name: 'Riveted Iron Bulkhead', cost: 6, maxHp: 190, nextName: 'Forge Brass Steam Bastion', reqEstateTier: 3 },
-  { level: 3, name: 'Brass Steam Bastion', cost: 0, maxHp: 320, nextName: 'Max Fortification' },
+  { level: 0, name: 'Unwarded Threshold', cost: 2, maxHp: 0, nextName: 'Erect Salt & Oak Barricade' },
+  { level: 1, name: 'Salt & Oak Barricade', cost: 4, maxHp: 95, nextName: 'Forge Cold-Iron Ward Gate', reqEstateTier: 2 },
+  { level: 2, name: 'Cold-Iron Ward Gate', cost: 6, maxHp: 195, nextName: 'Raise Galvanic Sanctum Seal', reqEstateTier: 3 },
+  { level: 3, name: 'Galvanic Sanctum Seal', cost: 0, maxHp: 330, nextName: 'Max Ward Integrity' },
 ];
 
 /**
@@ -61,11 +76,11 @@ export const CUTAWAY_ROOMS = [
     w: 420,
     style: 'brick',
     restoreCost: 5,
-    perk: 'Artificers build & repair 40% faster across the estate!',
+    perk: 'Artificers build & restore 40% faster across all four stories!',
     perkId: 'fast_builders',
     dawnCoins: 1,
     fixtureKind: 'clock_gears',
-    fixtureLabel: 'Restore Master Pendulum',
+    fixtureLabel: 'Restore Astral Pendulum',
   },
   {
     id: 'skybridge',
@@ -76,7 +91,7 @@ export const CUTAWAY_ROOMS = [
     style: 'glass',
     outdoorRoof: true,
     restoreCost: 3,
-    perk: 'High-altitude storm beacons light the Spire.',
+    perk: 'High-altitude storm arc-lamps ward the Spire.',
     dawnCoins: 1,
     fixtureKind: 'sky_sconce',
     fixtureLabel: 'Ignite Storm Arc-Lamps',
@@ -89,10 +104,10 @@ export const CUTAWAY_ROOMS = [
     w: 680,
     style: 'lab',
     restoreCost: 6,
-    perk: 'Kelvin Refractors online — generates +3 Sovereigns at Dawn!',
+    perk: 'Kelvin Refractors online — condenses +3 Silver Florins every Dawn!',
     dawnCoins: 3,
     fixtureKind: 'telescope',
-    fixtureLabel: 'Align Brass Refractor',
+    fixtureLabel: 'Align Brass Aether-Refractor',
   },
 
   // ================= FLOOR 1: UPPER GRAND GALLERY (x: 1120 .. 4120) =================
@@ -105,23 +120,23 @@ export const CUTAWAY_ROOMS = [
     style: 'outdoor',
     outdoor: true,
     restoreCost: 3,
-    perk: 'Watchtower Brazier reveals incoming night wave sizes.',
+    perk: 'Consecrated Brazier wards the upper western parapet.',
     dawnCoins: 1,
     fixtureKind: 'brazier',
-    fixtureLabel: 'Light Watchtower Brazier',
+    fixtureLabel: 'Consecrate Gargoyle Brazier',
   },
   {
     id: 'library',
-    name: 'Two-Tier Mahogany Library',
+    name: 'Two-Tier Esoteric Library',
     floor: 1,
     x: 1520,
     w: 540,
     style: 'library',
     restoreCost: 5,
-    perk: 'Scholarly Royalties mint +3 Brass Sovereigns every Dawn!',
+    perk: 'Psychical Society stipends grant +3 Silver Florins every Dawn!',
     dawnCoins: 3,
     fixtureKind: 'bookshelf',
-    fixtureLabel: 'Restore Engineering Archives',
+    fixtureLabel: 'Restore Occult Archives',
   },
   {
     id: 'portrait_gallery',
@@ -131,10 +146,10 @@ export const CUTAWAY_ROOMS = [
     w: 360,
     style: 'damask',
     restoreCost: 4,
-    perk: 'Ancestral blessing calms portrait spirits (+2 Dawn Sovereigns).',
+    perk: 'Quieted ancestral portraits bestow +2 Silver Florins at Dawn.',
     dawnCoins: 2,
     fixtureKind: 'portraits',
-    fixtureLabel: 'Cleanse Ancestral Portraits',
+    fixtureLabel: 'Cleanse Weeping Portraits',
   },
   {
     id: 'ballroom',
@@ -144,20 +159,20 @@ export const CUTAWAY_ROOMS = [
     w: 620,
     style: 'damask',
     restoreCost: 5,
-    perk: 'Orchestral Pipe Organ inspires all Warders (+2 Dawn Sovereigns)!',
+    perk: 'Harmonic Pipe Organ resonates across the gallery (+2 Dawn Florins)!',
     dawnCoins: 2,
     fixtureKind: 'organ',
-    fixtureLabel: 'Restore Orchestral Organ',
+    fixtureLabel: 'Tune Harmonic Pipe Organ',
   },
   {
     id: 'telegraph_room',
-    name: 'Pneumatic Dispatch Hub',
+    name: 'Pneumatic Spirit-Telegraph Hub',
     floor: 1,
     x: 3040,
     w: 440,
     style: 'lab',
     restoreCost: 4,
-    perk: 'Pneumatic tubes boost Majordomo vault interest!',
+    perk: 'Pneumatic ledger tubes boost Majordomo safe interest!',
     perkId: 'high_interest',
     dawnCoins: 2,
     fixtureKind: 'dynamo',
@@ -165,17 +180,17 @@ export const CUTAWAY_ROOMS = [
   },
   {
     id: 'alchemy_lab',
-    name: 'Galvanic & Aether Lab',
+    name: 'Galvanic & Ectoplasm Lab',
     floor: 1,
     x: 3480,
     w: 640,
     style: 'lab',
     restoreCost: 6,
-    perk: 'Galvanic Coils supercharge all Limelight bolts (+40% damage)!',
+    perk: 'Leyden Coils supercharge all Warder bolts & Séance Pulses (+40% power)!',
     perkId: 'galvanic_bolts',
     dawnCoins: 2,
     fixtureKind: 'tesla',
-    fixtureLabel: 'Energize Galvanic Coils',
+    fixtureLabel: 'Energize Leyden Coils',
   },
 
   // ================= FLOOR 0: GROUND WING & OUTDOOR APPROACHES (x: 240 .. 4960) =================
@@ -188,51 +203,51 @@ export const CUTAWAY_ROOMS = [
     style: 'outdoor',
     outdoor: true,
     restoreCost: 3,
-    perk: 'Gatehouse gaslamps push back the moorland fog.',
+    perk: 'Warded gatehouse gaslamps push back the moorland fog.',
     dawnCoins: 1,
     fixtureKind: 'gate_lamp',
     fixtureLabel: 'Relight Moor Gatehouse',
   },
   {
     id: 'carriage_portico',
-    name: 'Carriage Portico & Stables',
+    name: 'Séance Vestibule & Cloakroom',
     floor: 0,
     x: 860,
     w: 440,
     style: 'brick',
     restoreCost: 4,
-    perk: 'Steam-Flywheel Velocipede: +30% gallop speed & faster stamina!',
-    perkId: 'fast_steed',
+    perk: 'Quicksilver Ward-Boots: +30% sprint speed & faster Astral Focus!',
+    perkId: 'fast_stride',
     dawnCoins: 1,
-    fixtureKind: 'velocipede_dock',
-    fixtureLabel: 'Overhaul Velocipede Flywheel',
+    fixtureKind: 'ward_altar',
+    fixtureLabel: 'Consecrate Ward-Cloak Stand',
   },
   {
     id: 'scullery',
-    name: 'Cast-Iron Scullery Kitchen',
+    name: 'Cast-Iron Scullery & Alembic Kitchen',
     floor: 0,
     x: 1300,
     w: 520,
     style: 'brick',
     restoreCost: 4,
-    perk: 'Roasting Range & Copper Kettles yield +4 Sovereigns every Dawn!',
+    perk: 'Copper Stills & Salt Hearths refine +4 Silver Florins every Dawn!',
     dawnCoins: 4,
     isFarm: true,
     fixtureKind: 'stove',
-    fixtureLabel: 'Kindle Cast-Iron Range',
+    fixtureLabel: 'Kindle Cast-Iron Stills',
   },
   {
     id: 'banquet_hall',
-    name: 'State Banquet Hall',
+    name: 'State Banquet & Séance Hall',
     floor: 0,
     x: 1820,
     w: 500,
     style: 'damask',
     restoreCost: 4,
-    perk: 'Warm Banquet Inglenook yields +2 Sovereigns every Dawn.',
+    perk: 'Lit crystal gasolier yields +2 Silver Florins every Dawn.',
     dawnCoins: 2,
     fixtureKind: 'chandelier',
-    fixtureLabel: 'Hoist Crystal Chandelier',
+    fixtureLabel: 'Hoist Crystal Gasolier',
   },
   {
     id: 'grand_foyer',
@@ -243,10 +258,10 @@ export const CUTAWAY_ROOMS = [
     style: 'marble',
     startRestored: true,
     restoreCost: 0,
-    perk: 'The gaslit sanctuary of Vesper Manor: Wrench Rack, Lantern Rack & Safe.',
+    perk: 'Sanctified heart of Vesper Manor: Artificer Rack, Occult Lectern & Safe.',
     dawnCoins: 2,
     fixtureKind: 'foyer_hearth',
-    fixtureLabel: 'Master Boiler Hearth',
+    fixtureLabel: 'Séance Boiler Hearth',
   },
   {
     id: 'emerald_parlor',
@@ -256,39 +271,39 @@ export const CUTAWAY_ROOMS = [
     w: 480,
     style: 'emerald',
     restoreCost: 4,
-    perk: 'Warm parlor hearth draws more stranded Vagrants each day (+2 Dawn Coins).',
-    perkId: 'extra_vagrants',
+    perk: 'Warm parlor hearth shelters more trapped Housefolk each day (+2 Dawn Florins).',
+    perkId: 'extra_housefolk',
     dawnCoins: 2,
     fixtureKind: 'hearth',
     fixtureLabel: 'Restore Marble Parlor Hearth',
   },
   {
     id: 'billiard_lounge',
-    name: 'Billiard & Cigar Lounge',
+    name: 'Smoking & Divination Lounge',
     floor: 0,
     x: 3360,
     w: 460,
     style: 'emerald',
     restoreCost: 4,
-    perk: 'Precision optics extend Lamplighter Warder firing range (+2 Dawn Coins).',
+    perk: 'Crystal spirit-lenses extend Occult Warder firing range (+2 Dawn Florins).',
     perkId: 'long_range',
     dawnCoins: 2,
     fixtureKind: 'billiard',
-    fixtureLabel: 'Refelt Championship Table',
+    fixtureLabel: 'Restore Spirit-Table',
   },
   {
     id: 'wintergarden',
-    name: 'Glass Wintergarden Pavilion',
+    name: 'Nightshade Glass Wintergarden',
     floor: 0,
     x: 3820,
     w: 540,
     style: 'glass',
     restoreCost: 5,
-    perk: 'Botanical Steam Planters harvest +5 Brass Sovereigns every Dawn!',
+    perk: 'Wardian Aether-Herbs distill +5 Silver Florins every Dawn!',
     dawnCoins: 5,
     isFarm: true,
     fixtureKind: 'fern_bed',
-    fixtureLabel: 'Irrigate Wardian Planters',
+    fixtureLabel: 'Irrigate Wardian Conservatory',
   },
   {
     id: 'east_woods',
@@ -299,7 +314,7 @@ export const CUTAWAY_ROOMS = [
     style: 'outdoor',
     outdoor: true,
     restoreCost: 3,
-    perk: 'Sanctified Mausoleum Lantern wards the eastern treeline.',
+    perk: 'Sanctified Mausoleum Lantern wards the eastern churchyard.',
     dawnCoins: 1,
     fixtureKind: 'gate_lamp',
     fixtureLabel: 'Sanctify Crypt Lantern',
@@ -314,48 +329,48 @@ export const CUTAWAY_ROOMS = [
     w: 680,
     style: 'iron',
     restoreCost: 6,
-    perk: 'Auto-Turrets! Every Lv.2+ Bulkhead fires pressurized steam bolts!',
+    perk: 'Ward Sconces! Every Lv.2+ Ward Gate fires automated Limelight bolts!',
     perkId: 'bulkhead_turrets',
     dawnCoins: 3,
     fixtureKind: 'boiler',
-    fixtureLabel: 'Ignite Twin Sovereign Boilers',
+    fixtureLabel: 'Ignite Twin Copper Boilers',
   },
   {
     id: 'coal_bunker',
-    name: 'Sub-Cellar Coal Bunker',
+    name: 'Sub-Cellar Salt & Coal Bunker',
     floor: -1,
     x: 1660,
     w: 580,
     style: 'iron',
     restoreCost: 4,
-    perk: 'Anthracite Hoppers mint +3 Brass Sovereigns every Dawn!',
+    perk: 'Rock-Salt & Anthracite Hoppers yield +3 Silver Florins every Dawn!',
     dawnCoins: 3,
     isFarm: true,
     fixtureKind: 'coal_hopper',
-    fixtureLabel: 'Repair Anthracite Hopper',
+    fixtureLabel: 'Repair Salt-Coal Hopper',
   },
   {
     id: 'wine_vault',
-    name: 'Ancestral Wine & Silver Vault',
+    name: 'Ancestral Silver & Cask Vault',
     floor: -1,
     x: 2240,
     w: 640,
     style: 'brick',
     restoreCost: 4,
-    perk: 'Polished silver cellar yields +3 Brass Sovereigns every Dawn.',
+    perk: 'Consecrated heirloom silver yields +3 Silver Florins every Dawn.',
     dawnCoins: 3,
     fixtureKind: 'hearth',
-    fixtureLabel: 'Restore Cellar Cask Brazier',
+    fixtureLabel: 'Relight Cellar Brazier',
   },
   {
     id: 'catacomb_cistern',
-    name: 'Flooded Cistern Arch',
+    name: 'Flooded Catacomb Cistern',
     floor: -1,
     x: 2880,
     w: 440,
     style: 'iron',
     restoreCost: 4,
-    perk: 'Subterranean Steam Pump steadies all bulkhead walls (+30% Wall HP)!',
+    perk: 'Blessed Cistern Steam Pump reinforces all Ward Gates (+30% Gate HP)!',
     perkId: 'tough_walls',
     dawnCoins: 2,
     fixtureKind: 'dynamo',
@@ -367,71 +382,63 @@ export const CUTAWAY_ROOMS = [
  * Staircases & The Central 4-Story Brass Cage Lift
  */
 export const VERTICAL_LINKS = [
-  // Central Brass Cage Lift (connects all 4 floors at x = 2825!)
   { id: 'lift_foyer_up1', x: 2825, fromFloor: 0, toFloor: 1, kind: 'lift', label: 'Brass Lift → Ballroom (Up)' },
   { id: 'lift_ballroom_down0', x: 2825, fromFloor: 1, toFloor: 0, kind: 'lift', label: 'Brass Lift → Foyer (Down)' },
-  { id: 'lift_foyer_down_cellar', x: 2825, fromFloor: 0, toFloor: -1, kind: 'lift', reqTier: 2, label: 'Brass Lift → Wine Vault (Cellar)' },
+  { id: 'lift_foyer_down_cellar', x: 2825, fromFloor: 0, toFloor: -1, kind: 'lift', reqTier: 2, label: 'Brass Lift → Silver Vault (Cellar)' },
   { id: 'lift_cellar_up0', x: 2825, fromFloor: -1, toFloor: 0, kind: 'lift', label: 'Brass Lift → Foyer (Up)' },
   { id: 'lift_ballroom_up2', x: 2825, fromFloor: 1, toFloor: 2, kind: 'lift', reqTier: 2, label: 'Brass Lift → Skybridge (Spire)' },
   { id: 'lift_spire_down1', x: 2825, fromFloor: 2, toFloor: 1, kind: 'lift', label: 'Brass Lift → Ballroom (Down)' },
 
-  // Sweeping Grand Staircases & Cellar Steps (always open!)
   { id: 'stair_foyer_gallery', x: 2375, fromFloor: 0, toFloor: 1, kind: 'stairs', label: 'Grand Staircase → Upper Gallery' },
   { id: 'stair_gallery_foyer', x: 2375, fromFloor: 1, toFloor: 0, kind: 'stairs', label: 'Grand Staircase → Foyer' },
 
-  { id: 'stair_scullery_cellar', x: 1735, fromFloor: 0, toFloor: -1, kind: 'stairs', label: 'Cellar Steps → Coal Bunker' },
+  { id: 'stair_scullery_cellar', x: 1735, fromFloor: 0, toFloor: -1, kind: 'stairs', label: 'Cellar Steps → Salt Bunker' },
   { id: 'stair_cellar_scullery', x: 1735, fromFloor: -1, toFloor: 0, kind: 'stairs', label: 'Cellar Steps → Scullery' },
 
   { id: 'stair_lounge_telegraph', x: 3425, fromFloor: 0, toFloor: 1, kind: 'stairs', label: 'Spiral Stair → Telegraph Hub' },
-  { id: 'stair_telegraph_lounge', x: 3425, fromFloor: 1, toFloor: 0, kind: 'stairs', label: 'Spiral Stair → Billiard Lounge' },
+  { id: 'stair_telegraph_lounge', x: 3425, fromFloor: 1, toFloor: 0, kind: 'stairs', label: 'Spiral Stair → Divination Lounge' },
 
   { id: 'stair_ballroom_bellfry', x: 2510, fromFloor: 1, toFloor: 2, kind: 'stairs', label: 'Bellfry Stair → Clocktower' },
   { id: 'stair_bellfry_ballroom', x: 2510, fromFloor: 2, toFloor: 1, kind: 'stairs', label: 'Bellfry Stair → Ballroom' },
 ];
 
 /**
- * Frontier Bulkhead Mounds (Defensive Walls!)
- * side: 'west' (blocks enemies coming from left) | 'east' (blocks enemies coming from right)
+ * Threshold Ward-Barricades & Sanctum Seals
  */
 export const BULKHEAD_SPOTS = [
-  // Ground Floor Frontier (West of Foyer)
   { id: 'bh_g_w1', floor: 0, x: 2295, side: 'west', startLevel: 1 },
   { id: 'bh_g_w2', floor: 0, x: 1810, side: 'west', startLevel: 0 },
   { id: 'bh_g_w3', floor: 0, x: 1290, side: 'west', startLevel: 0 },
   { id: 'bh_g_w4', floor: 0, x: 855, side: 'west', startLevel: 0 },
 
-  // Ground Floor Frontier (East of Foyer)
   { id: 'bh_g_e1', floor: 0, x: 2905, side: 'east', startLevel: 1 },
   { id: 'bh_g_e2', floor: 0, x: 3365, side: 'east', startLevel: 0 },
   { id: 'bh_g_e3', floor: 0, x: 3825, side: 'east', startLevel: 0 },
   { id: 'bh_g_e4', floor: 0, x: 4365, side: 'east', startLevel: 0 },
 
-  // Upper Floor 1 Frontier (protects Ballroom/Gallery toward East Lab Rift)
   { id: 'bh_u_e1', floor: 1, x: 3045, side: 'east', startLevel: 0 },
   { id: 'bh_u_e2', floor: 1, x: 3485, side: 'east', startLevel: 0 },
 
-  // Sub-Cellar Floor -1 Frontier (protects Wine Vault & Bunker toward West Boiler Rift)
   { id: 'bh_c_w1', floor: -1, x: 2235, side: 'west', startLevel: 0 },
   { id: 'bh_c_w2', floor: -1, x: 1655, side: 'west', startLevel: 0 },
 
-  // Spire Floor 2 Frontier (protects Skybridge toward East Observatory Master Rift)
   { id: 'bh_s_e1', floor: 2, x: 3155, side: 'east', startLevel: 0 },
 ];
 
 /**
- * Stranded Servant / Vagrant Campfires (Recruitable for 1 Coin!)
+ * Candlelight Ward-Vigils where shivering Manor Housefolk shelter in the dark (1 Florin to rally!)
  */
-export const VAGRANT_CAMPS = [
-  { id: 'camp_banquet', floor: 0, x: 2040 },
-  { id: 'camp_parlor', floor: 0, x: 3120 },
-  { id: 'camp_moor', floor: 0, x: 690 },
-  { id: 'camp_woods', floor: 0, x: 4510 },
-  { id: 'camp_library', floor: 1, x: 1790 },
-  { id: 'camp_cellar', floor: -1, x: 2490 },
+export const HOUSEFOLK_VIGILS = [
+  { id: 'vigil_banquet', floor: 0, x: 2040 },
+  { id: 'vigil_parlor', floor: 0, x: 3120 },
+  { id: 'vigil_moor', floor: 0, x: 690 },
+  { id: 'vigil_woods', floor: 0, x: 4510 },
+  { id: 'vigil_library', floor: 1, x: 1790 },
+  { id: 'vigil_cellar', floor: -1, x: 2490 },
 ];
 
 /**
- * Hidden Heirloom Salvage Chests (Walk over to pop open 5–7 Brass Sovereigns!)
+ * Hidden Reliquary & Silver Coffers (Walk over to unseal 5–7 Consecrated Florins!)
  */
 export const SALVAGE_CHESTS = [
   { id: 'chest_portico', floor: 0, x: 1020, coins: 5 },
@@ -442,7 +449,7 @@ export const SALVAGE_CHESTS = [
 ];
 
 /**
- * The 4 Cursed Spectral Rifts (Destroy all 4 with Lantern Strike Squads or reclaim rooms to win!)
+ * The 4 Cursed Spectral Rifts
  */
 export const SPECTRAL_RIFTS = [
   {
@@ -450,7 +457,7 @@ export const SPECTRAL_RIFTS = [
     name: 'Moorland Gate Rift',
     floor: 0,
     x: 330,
-    marchDir: 1, // enemies march Right (+X) toward Foyer
+    marchDir: 1,
     hp: 220,
     activeFromDay: 1,
     rewardCoins: 8,
@@ -460,7 +467,7 @@ export const SPECTRAL_RIFTS = [
     name: 'Weeping Crypt Rift',
     floor: 0,
     x: 4870,
-    marchDir: -1, // enemies march Left (-X) toward Foyer
+    marchDir: -1,
     hp: 240,
     activeFromDay: 1,
     rewardCoins: 8,
@@ -470,7 +477,7 @@ export const SPECTRAL_RIFTS = [
     name: 'Subterranean Furnace Rift',
     floor: -1,
     x: 1060,
-    marchDir: 1, // marches Right (+X) along Floor -1 (ascends stairs if unblocked)
+    marchDir: 1,
     hp: 280,
     activeFromDay: 3,
     rewardCoins: 10,
@@ -480,7 +487,7 @@ export const SPECTRAL_RIFTS = [
     name: 'Apex Observatory Master Rift',
     floor: 2,
     x: 3750,
-    marchDir: -1, // marches Left (-X) along Spire / Ballroom
+    marchDir: -1,
     hp: 350,
     activeFromDay: 4,
     isMaster: true,

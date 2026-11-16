@@ -2,6 +2,7 @@ import './style.css';
 import Phaser from 'phaser';
 import { paintHudCoinIcon } from './art/cutawaySprites.js';
 import { SoundEngine } from './audio/soundEngine.js';
+import { INVESTIGATORS } from './data/cutawayMansionData.js';
 import { CutawayMansionScene } from './scenes/CutawayMansionScene.js';
 import { EstateHud } from './ui/estateHud.js';
 
@@ -12,10 +13,15 @@ const mansionScene = new CutawayMansionScene();
 mansionScene.soundEngine = sound;
 
 const hud = new EstateHud({
-  onStartGame() {
+  onSelectGender(gender) {
+    mansionScene.setInvestigatorGender(gender);
+  },
+  onStartGame(gender) {
+    mansionScene.setInvestigatorGender(gender);
     mansionScene.startGame();
+    const inv = INVESTIGATORS[gender] || INVESTIGATORS.female;
     hud.showToast(
-      'Ride left or right to recruit Vagrants (1 Coin), stock the Wrench & Lantern Racks, and fortify Bulkheads before Dusk!'
+      `${inv.name}: Stride left or right to rally Housefolk (1 Florin), arm Artificers & Warders, and exorcise apparitions!`
     );
   },
   onJoy(jx, jy) {
@@ -25,7 +31,7 @@ const hud = new EstateHud({
     mansionScene.setTouchPay(held);
   },
   onFlare() {
-    mansionScene.triggerBellFlare();
+    mansionScene.triggerSeancePulse();
   },
   onClimb(dir) {
     mansionScene.tryTakeVerticalLink(dir);
@@ -67,9 +73,10 @@ function syncHudLoop() {
 }
 requestAnimationFrame(syncHudLoop);
 
-// Allow Enter or Space on the Title Screen to mount immediately on Desktop
+// Allow Enter or Space on the Title Screen to enter the manor on Desktop
 window.addEventListener('keydown', (e) => {
   if (!mansionScene.gameStarted && (e.code === 'Enter' || e.code === 'Space')) {
+    e.preventDefault();
     document.getElementById('btn-enter-manor')?.click();
   }
 });

@@ -1,20 +1,21 @@
-# Vesper Manor — 2D Side-Scrolling Mansion Reclamation (Phaser)
+# Vesper Manor — 19th-Century Paranormal Cutaway Adventure (Phaser)
 
-A mobile- and desktop-friendly **2D pixel-art side-scroller & resource-management game** built with **Phaser 4**, set across **22 asymmetric rooms & grounds** in a **4-story cutaway 19th-century Victorian steampunk mansion**.
+A mobile- and desktop-friendly **2D pixel-art occult side-scroller & mansion-reclamation game** built with **Phaser 4**, set across **22 asymmetric rooms & grounds** in a **4-story cutaway 1889 Victorian steampunk mansion**.
 
 ## Highlights
 
-- **4-Story Cutaway Mansion Architecture**: Ride across an asymmetric 22-wing Victorian cross-section spanning misty moorland gates, the gaslit **Grand Entrance Foyer**, a jutting **Glass Wintergarden**, subterranean **Copper Boiler & Wine Vaults**, a two-tier **Mahogany Library & Galvanic Lab**, a rain-lashed **Glass Skybridge**, and the apex **Celestial Observatory Spire**—linked by sweeping staircases and a 4-floor **Central Brass Cage Lift**.
-- **Diegetic Sovereign Coin Slots (`○ ○ ○` → `● ● ○`)**: Ride your **1889 Brass Velocipede** across polished floors with real-time reflections. Hold `S` / `Down` / `E` (or **COIN** on iPhone) beside any rack, broken fixture, bulkhead, campfire, or banner to feed **Brass Sovereigns** one-by-one into floating world slots, or tap away from slots to toss loose coins onto the floor.
-- **Autonomous Estate Retainers & Economy**: Recruit stranded **Vagrants** (`1 Coin`), stock the **Wrench Rack** (**Artificers** who build/repair Bulkheads & restore haunted rooms across all 4 stories) and **Lantern Rack** (**Lamplighter Warders** who hunt daytime *Soot Wisps* for coins and defend outermost walls at night), staff restored income wings (**House Stewards**), and bank surplus Sovereigns with the **Majordomo** for compound Dawn interest.
-- **Nightly Spectral Waves & Rift Expeditions**: Fortify 13 **Frontier Bulkhead Walls** (Timber → Riveted Iron → Brass Steam Bastion with auto-turrets) against *Greed Shades*, *Weeping Phantoms*, and *Furnace Soot Brutes*—and protect your **Signet Crown**! Muster **Lantern Strike Squads** at `Strike Banners` and ring your **Harmonic Bell Flare** to shatter all **4 Spectral Rifts**.
+- **Choose Your 19th-Century Paranormal Investigator**: Select on the Start Screen between two expressive on-foot Victorian occultists:
+  - **Mina Vesper** (*Esoteric Medium & Aether Researcher*) — Wears a Victorian chignon with a brass crescent-star hair comb, verdigris astral spirit-monocle, oxblood-and-slate bustle greatcoat, billowing ward-stole, hip grimoire, and a **swinging chain Brass Spirit-Censer (Thurible)**.
+  - **Dr. Julian Vesper** (*Psychical Antiquarian & Occultist*) — Wears a silk stovepipe top hat fitted with twin glowing Aether-Spectrometer goggles, sweeping claret-lined Inverness cape, Leyden phial bandolier, copper ectoplasm condenser, silver cane, and a **crackling brass-caged Leyden Spirit-Lantern**.
+- **Active Séance Exorcisms & Consecrated Silver Florins**: Press `SPACE` (or **EXORCISE** on iPhone) to channel a dual-ring occult shockwave that blasts nearby apparitions with direct astral damage, condenses floating *Ectoplasm Orbs* into **Silver Florins**, and empowers Manor staff. Drop consecrated Florins on floorboards as silver ward-traps that **scorch & repel Poltergeist Specters**, while three **Spirit-Lantern Ward Flames (`✦ ✦ ✦`)** guard your soul and rekindle inside warm restored wings.
+- **4-Story Cutaway Mansion & Autonomous Staff**: Stride and Astral-Sprint across 22 asymmetric rooms—from subterranean **Copper Boiler & Wine Vaults** to the **Grand Entrance Foyer**, **Glass Wintergarden**, **Mahogany Library**, **Galvanic Lab**, and apex **Celestial Observatory Spire**—linked by staircases and a 4-floor **Central Brass Cage Lift**. Rally shivering **Housefolk** (`1 Florin`) at Candlelight Vigils and arm **Artificers** & **Lamplighter Warders** to raise **Cold-Iron Ward Gates**, **Galvanic Sanctum Seals**, and **Rift-Banishment Squads** against all **4 Spectral Rifts**.
 
 ## Controls (iPhone / Touch & Desktop)
 
-| Platform | Ride / Steam-Gallop | Feed Coin Slots / Drop Coin | Stairs & Brass Cage Lift | Harmonic Bell Flare | 4-Story Cutaway Overview |
+| Platform | Stride / Astral-Sprint | Consecrate Slots / Ward Florin | Stairs & Brass Cage Lift | Séance Exorcism | 4-Story Cutaway Overview |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **iPhone / Touch** | Left Brass Stick *(full tilt = Gallop)* | Hold **COIN** *(tap away = Drop 1)* | Tap **↑ UP / ↓ DN** *(or flick Stick)* | Tap **FLARE** | Tap **Overview** / Cutaway Map |
-| **Desktop** | `A`/`D` or `←`/`→` (`SHIFT` Gallop) | Hold `S` / `↓` / `E` *(tap = Drop 1)* | `W`/`↑` (Up) & `S`/`↓` (Down) | `SPACE` | `M` (Overview) / `V` (Audio) / `?` (Guide) |
+| **iPhone / Touch** | Left Brass Stick *(full tilt = Sprint)* | Hold **FLORIN** *(tap away = Ward 1)* | Tap **↑ UP / ↓ DN** *(or flick Stick)* | Tap **EXORCISE** | Tap **Overview** / Cutaway Map |
+| **Desktop** | `A`/`D` or `←`/`→` (`SHIFT` Sprint) | Hold `S` / `↓` / `E` *(tap = Ward 1)* | `W`/`↑` (Up) & `S`/`↓` (Down) | `SPACE` | `M` (Overview) / `V` (Audio) / `?` (Ledger) |
 
 ## Build & Run
 
