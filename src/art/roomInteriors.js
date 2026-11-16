@@ -1,1103 +1,1468 @@
 import { ROOM_H } from '../data/cutawayMansionData.js';
+import {
+  makeCanvas,
+  px,
+  rect,
+  shadeHex,
+  lerpHex,
+  makeRamp,
+  selout,
+  pixelLine,
+  fillCircle,
+  fillEllipse,
+  strokeCirclePx,
+  drawShadedSphere,
+  drawCylinderV,
+  drawCylinderH,
+  drawBeveledPanel,
+  drawRivetRow,
+  drawGear,
+  drawPressureGauge,
+  drawFramedPortrait,
+  drawBookcaseBay,
+  drawArchedWindow,
+  drawLightShaft,
+  drawFloorRug,
+  drawVelvetDrapes,
+  drawChandelier,
+  drawVictorianFireplace,
+  drawCobweb,
+} from './pixelArtKit.js';
 
-function makeCanvas(w, h) {
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  return { canvas, ctx };
+/* ============================================================================
+ * HIGH-DETAIL VICTORIAN FURNITURE & ARCHITECTURAL SUB-PROPS (2X PIXEL DENSITY)
+ * ============================================================================ */
+
+function drawGrandfatherClockHD(ctx, x, fy, powered) {
+  const woodHex = powered ? '#5e351a' : '#261d18';
+  const brass = powered ? '#e8b94f' : '#575145';
+  const wRamp = makeRamp(woodHex);
+
+  // Plinth base
+  drawBeveledPanel(ctx, x - 4, fy - 16, 48, 16, woodHex, false);
+  // Tall waisted pendulum case
+  drawBeveledPanel(ctx, x, fy - 124, 40, 108, woodHex, false);
+  rect(ctx, x + 8, fy - 110, 24, 78, '#0f141a'); // beveled glass pendulum window
+  // Brass weights & pendulum inside case!
+  drawCylinderV(ctx, x + 13, fy - 104, 4, 24, brass, true);
+  drawCylinderV(ctx, x + 23, fy - 96, 4, 24, brass, true);
+  rect(ctx, x + 19, fy - 108, 2, 52, brass);
+  drawShadedSphere(ctx, x + 20 + (powered ? 3 : 0), fy - 52, 6, brass);
+
+  // Hood & Swan-Neck Carved Pediment + Brass Finials
+  drawBeveledPanel(ctx, x - 3, fy - 164, 46, 40, woodHex, false);
+  fillCircle(ctx, x + 8, fy - 168, 9, wRamp[2]);
+  fillCircle(ctx, x + 32, fy - 168, 9, wRamp[2]);
+  drawShadedSphere(ctx, x + 20, fy - 174, 4, brass);
+
+  // Illuminated Moon-Phase & Roman Dial
+  fillCircle(ctx, x + 20, fy - 144, 14, brass);
+  fillCircle(ctx, x + 20, fy - 144, 12, powered ? '#fff6dc' : '#737a7d');
+  for (let a = 0; a < 12; a++) {
+    const ang = (a / 12) * Math.PI * 2;
+    px(ctx, x + 20 + Math.cos(ang) * 9, fy - 144 + Math.sin(ang) * 9, '#1a1410');
+  }
+  pixelLine(ctx, x + 20, fy - 144, x + 20, fy - 152, '#140f0c', 2);
+  pixelLine(ctx, x + 20, fy - 144, x + 27, fy - 142, '#140f0c', 2);
 }
 
-function px(ctx, x, y, c) {
-  ctx.fillStyle = c;
-  ctx.fillRect(x | 0, y | 0, 1, 1);
-}
+function drawTuftedSofaHD(ctx, x, fy, w, fabricHex, powered) {
+  const wood = powered ? '#593219' : '#261c17';
+  const fabBase = powered ? fabricHex : shadeHex(fabricHex, 0.42);
+  const fRamp = makeRamp(fabBase);
+  const gold = powered ? '#e0b048' : '#575247';
 
-function rect(ctx, x, y, w, h, c) {
-  ctx.fillStyle = c;
-  ctx.fillRect(x | 0, y | 0, w | 0, h | 0);
-}
+  // Carved cabriole legs
+  for (const lx of [x + 6, x + Math.round(w / 2) - 3, x + w - 12]) {
+    rect(ctx, lx, fy - 10, 6, 10, wood);
+    px(ctx, lx + 1, fy - 8, shadeHex(wood, 1.3));
+  }
 
-function dither(ctx, x, y, w, h, c1, c2) {
-  for (let iy = y | 0; iy < (y + h) | 0; iy++) {
-    for (let ix = x | 0; ix < (x + w) | 0; ix++) {
-      ctx.fillStyle = ((ix + iy) & 1) === 0 ? c1 : c2;
-      ctx.fillRect(ix, iy, 1, 1);
+  // Carved wooden crest rail along top of backrest
+  rect(ctx, x + 6, fy - 58, w - 12, 5, wood);
+  rect(ctx, x + 8, fy - 59, w - 16, 2, shadeHex(wood, 1.35));
+
+  // Diamond-button-tufted Chesterfield backrest!
+  rect(ctx, x + 8, fy - 53, w - 16, 30, fRamp[2]);
+  for (let ty = fy - 48; ty <= fy - 30; ty += 9) {
+    for (let tx = x + 16; tx < x + w - 16; tx += 14) {
+      const ox = tx + (((ty - fy) & 1) ? 7 : 0);
+      // Diamond fold highlight + deep button dimple!
+      rect(ctx, ox - 3, ty - 2, 6, 4, fRamp[3]);
+      rect(ctx, ox - 1, ty, 2, 2, fRamp[0]);
+      px(ctx, ox, ty - 1, gold);
     }
   }
-}
 
-function circle(ctx, cx, cy, r, c) {
-  ctx.fillStyle = c;
-  const r2 = r * r;
-  for (let dy = -r; dy <= r; dy++) {
-    for (let dx = -r; dx <= r; dx++) {
-      if (dx * dx + dy * dy <= r2) {
-        ctx.fillRect((cx + dx) | 0, (cy + dy) | 0, 1, 1);
-      }
-    }
+  // Plush seat cushions + gold piping
+  rect(ctx, x + 8, fy - 24, w - 16, 14, fRamp[1]);
+  const cushW = Math.floor((w - 20) / 3);
+  for (let i = 0; i < 3; i++) {
+    const cx0 = x + 10 + i * (cushW + 1);
+    drawBeveledPanel(ctx, cx0, fy - 25, cushW, 11, fabBase, false);
+  }
+  rect(ctx, x + 4, fy - 13, w - 8, 4, wood);
+
+  // Rolled Scroll Bolster Arms (left & right)
+  for (const ax of [x, x + w - 16]) {
+    fillCircle(ctx, ax + 8, fy - 34, 9, fRamp[2]);
+    fillCircle(ctx, ax + 8, fy - 35, 6, fRamp[3]);
+    strokeCirclePx(ctx, ax + 8, fy - 34, 4, 1, gold);
+    rect(ctx, ax + 2, fy - 34, 12, 22, fRamp[1]);
   }
 }
 
-function ring(ctx, cx, cy, r, thickness, c) {
-  ctx.fillStyle = c;
-  const rOut2 = r * r;
-  const rIn2 = Math.max(0, r - thickness) * Math.max(0, r - thickness);
-  for (let dy = -r; dy <= r; dy++) {
-    for (let dx = -r; dx <= r; dx++) {
-      const d2 = dx * dx + dy * dy;
-      if (d2 <= rOut2 && d2 >= rIn2) {
-        ctx.fillRect((cx + dx) | 0, (cy + dy) | 0, 1, 1);
-      }
-    }
+function drawWingbackChairHD(ctx, x, fy, fabricHex, powered, faceRight = true) {
+  const wood = powered ? '#593219' : '#261c17';
+  const fab = makeRamp(powered ? fabricHex : shadeHex(fabricHex, 0.42));
+  rect(ctx, x + 4, fy - 10, 5, 10, wood);
+  rect(ctx, x + 31, fy - 10, 5, 10, wood);
+  const backX = faceRight ? x + 2 : x + 24;
+  // Tall contoured wingback + ear wing
+  rect(ctx, backX, fy - 66, 14, 54, fab[2]);
+  fillEllipse(ctx, backX + 7, fy - 56, 9, 10, fab[3]);
+  // Seat & scroll arm
+  rect(ctx, x + 4, fy - 26, 32, 16, fab[1]);
+  rect(ctx, x + 6, fy - 28, 28, 7, fab[3]);
+  fillCircle(ctx, faceRight ? x + 32 : x + 8, fy - 31, 6, fab[2]);
+  rect(ctx, x + 3, fy - 13, 34, 4, wood);
+}
+
+function drawMarbleBustPlinthHD(ctx, cx, fy, powered) {
+  const stone = powered ? '#d8d2c5' : '#656e75';
+  const sRamp = makeRamp(stone);
+  // Stepped pedestal & fluted column shaft
+  drawBeveledPanel(ctx, cx - 16, fy - 10, 32, 10, stone, false);
+  drawCylinderV(ctx, cx - 11, fy - 54, 22, 44, stone, false);
+  for (let fx = cx - 7; fx <= cx + 7; fx += 4) {
+    rect(ctx, fx, fy - 50, 2, 36, sRamp[0]); // classical vertical flutes!
+  }
+  drawBeveledPanel(ctx, cx - 15, fy - 60, 30, 6, stone, false);
+
+  // Classical Draped Bust on Top!
+  fillEllipse(ctx, cx, fy - 66, 12, 6, sRamp[2]); // draped shoulders
+  rect(ctx, cx - 3, fy - 75, 6, 6, sRamp[1]);
+  fillEllipse(ctx, cx, fy - 83, 7, 9, sRamp[2]);
+  rect(ctx, cx - 4, fy - 88, 5, 8, sRamp[4]); // lit brow & nose
+  if (!powered) {
+    // Haunted cyan eye-glint on classical statue!
+    px(ctx, cx - 2, fy - 84, '#7ef7e3');
+    px(ctx, cx + 2, fy - 84, '#7ef7e3');
   }
 }
 
-function outlineLayer(canvas, hex = '#0c0907') {
-  const w = canvas.width;
-  const h = canvas.height;
-  const ctx = canvas.getContext('2d');
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const alpha = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : d[(y * w + x) * 4 + 3]);
+function drawGnarledTreeHD(ctx, rootX, fy, trunkH, dir, withLantern, powered) {
+  const bark = makeRamp('#1c2026');
+  // Organic tapering gnarled trunk with root buttresses
+  for (let dy = 0; dy < trunkH; dy++) {
+    const t = dy / trunkH;
+    const bend = Math.round(Math.sin(t * 2.8) * 14 * dir + t * 10 * dir);
+    const halfW = Math.max(3, Math.round((1 - t * 0.72) * 16));
+    const y = fy - dy;
+    rect(ctx, rootX + bend - halfW, y, halfW * 2, 1, bark[1]);
+    rect(ctx, rootX + bend - halfW, y, Math.max(2, Math.round(halfW * 0.5)), 1, bark[2]);
+    if (dy % 7 === 0) px(ctx, rootX + bend, y, bark[0]); // bark fissure
+  }
+  const topX = rootX + Math.round(Math.sin(2.8) * 14 * dir + 10 * dir);
+  const topY = fy - trunkH;
 
-  const targets = [];
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (alpha(x, y) === 0) {
-        if (
-          alpha(x - 1, y) > 140 ||
-          alpha(x + 1, y) > 140 ||
-          alpha(x, y - 1) > 140 ||
-          alpha(x, y + 1) > 140
-        ) {
-          targets.push((y * w + x) * 4);
-        }
-      }
+  // Spreading skeletal branches + hanging Spanish moss!
+  const branches = [
+    [-48, -42],
+    [-22, -62],
+    [28, -56],
+    [56, -34],
+  ];
+  for (const [bx, by] of branches) {
+    const endX = topX + bx;
+    const endY = topY + by;
+    pixelLine(ctx, topX, topY + 12, endX, endY, bark[1], 5);
+    pixelLine(ctx, endX, endY, endX + Math.sign(bx) * 18, endY - 14, bark[2], 2);
+    // Hanging weeping moss tendrils
+    for (let mx = 0; mx < 3; mx++) {
+      const hx = Math.round((topX + endX) / 2) + mx * 9;
+      const hy = Math.round((topY + 12 + endY) / 2);
+      rect(ctx, hx, hy, 2, 16 + mx * 5, powered ? '#304a42' : '#1b2b2e');
     }
   }
-  for (const idx of targets) {
-    d[idx] = r;
-    d[idx + 1] = g;
-    d[idx + 2] = b;
-    d[idx + 3] = 255;
+
+  // Perched Raven Silhouette on upper bough!
+  const rx = topX - 20;
+  const ry = topY - 62;
+  fillEllipse(ctx, rx, ry - 4, 5, 3, '#0b0e14');
+  fillCircle(ctx, rx + 4, ry - 7, 3, '#0b0e14');
+  rect(ctx, rx + 6, ry - 7, 4, 2, '#2d3640'); // beak
+  px(ctx, rx + 5, ry - 8, '#7ef7e3');
+
+  if (withLantern) {
+    const lx = topX + 54;
+    const ly = topY - 32;
+    rect(ctx, lx, ly, 2, 22, '#2a333d');
+    rect(ctx, lx - 5, ly + 22, 12, 16, powered ? '#ffe680' : '#263840');
+    if (powered) rect(ctx, lx - 3, ly + 25, 8, 10, '#ffffff');
   }
-  ctx.putImageData(img, 0, 0);
+}
+
+function drawWardianCaseHD(ctx, x, fy, w, h, powered) {
+  const wood = powered ? '#5c351b' : '#261d18';
+  const brass = powered ? '#e3b44c' : '#524e45';
+  const glassBg = powered ? 'rgba(42, 112, 104, 0.36)' : 'rgba(18, 34, 40, 0.45)';
+
+  // Turned mahogany table stand
+  drawBeveledPanel(ctx, x, fy - 34, w, 10, wood, false);
+  rect(ctx, x + 6, fy - 24, 7, 24, wood);
+  rect(ctx, x + w - 13, fy - 24, 7, 24, wood);
+
+  // Glass terrarium housing + pitched conservatory roof
+  const boxTop = fy - 34 - h;
+  rect(ctx, x + 4, boxTop, w - 8, h, glassBg);
+  // Pitched glass gables
+  for (let dy = 0; dy < 18; dy++) {
+    const inset = Math.round((dy / 18) * (w * 0.28));
+    rect(ctx, x + 4 + inset, boxTop - dy, w - 8 - inset * 2, 1, glassBg);
+  }
+
+  // Lush Botanical Ferns & Bioluminescent Nightshade Blossoms inside!
+  const leafCol = powered ? '#349e78' : '#23453d';
+  const leafHi = powered ? '#6be3a8' : '#325c52';
+  const cx = Math.round(x + w / 2);
+  for (const ang of [-1.1, -0.65, -0.2, 0.25, 0.7, 1.15]) {
+    const tipX = cx + Math.sin(ang) * (w * 0.34);
+    const tipY = fy - 40 - Math.cos(ang * 0.7) * (h * 0.72);
+    pixelLine(ctx, cx, fy - 36, tipX, tipY, leafCol, 3);
+    pixelLine(ctx, cx, fy - 36, tipX, tipY, leafHi, 1);
+    if (powered) {
+      fillCircle(ctx, tipX, tipY, 4, '#7ef7e3');
+      px(ctx, tipX, tipY, '#ffffff');
+    }
+  }
+
+  // Brass corner mullions & roof ridge
+  rect(ctx, x + 3, boxTop, 3, h, brass);
+  rect(ctx, x + w - 6, boxTop, 3, h, brass);
+  rect(ctx, x + Math.round(w / 2) - 1, boxTop - 18, 3, h + 18, brass);
+  rect(ctx, x + 3, boxTop, w - 6, 3, brass);
 }
 
 /* ============================================================================
- * REUSABLE VICTORIAN PROP HELPERS
+ * MAIN 2X HIGH-DENSITY ROOM DIORAMA GENERATOR (ALL 22 NAMED ROOMS!)
+ * Canvas: (def.w * 2) x (ROOM_H * 2) -> displayed at setScale(0.5)
  * ============================================================================ */
-function drawRug(ctx, x, w, mainCol, trimCol, powered) {
-  const y = ROOM_H - 4;
-  rect(ctx, x, y, w, 4, powered ? mainCol : '#262326');
-  rect(ctx, x + 4, y + 1, w - 8, 2, powered ? trimCol : '#3b373b');
-  for (let fx = x - 2; fx <= x + w; fx += 4) {
-    px(ctx, fx, y + 2, powered ? '#e8cf8c' : '#4a4648');
-  }
-}
-
-function drawCobwebCorner(ctx, x, y, flipX = false) {
-  const dir = flipX ? -1 : 1;
-  const web = 'rgba(188, 208, 212, 0.36)';
-  for (let i = 0; i < 24; i += 2) {
-    px(ctx, x + dir * i, y + 2, web);
-    px(ctx, x + dir * 2, y + i, web);
-    px(ctx, x + dir * Math.round(i * 0.72), y + Math.round(i * 0.72), web);
-    if (i > 6 && i % 6 === 0) {
-      for (let t = 0; t <= i; t += 2) {
-        px(ctx, x + dir * (i - t), y + t, web);
-      }
-    }
-  }
-}
-
-function drawCrystalChandelier(ctx, cx, topY, powered, scale = 1) {
-  const brass = powered ? '#e0b048' : '#524d43';
-  const bulb = powered ? '#fff3a6' : '#334247';
-  const drop = powered ? '#9ef7eb' : '#475459';
-  rect(ctx, cx - 1, topY, 2, 16, brass);
-  const span = Math.round(22 * scale);
-  rect(ctx, cx - span, topY + 16, span * 2, 3, brass);
-  rect(ctx, cx - Math.round(span * 0.65), topY + 21, Math.round(span * 1.3), 2, brass);
-  for (let ox = -span + 2; ox <= span - 2; ox += 6) {
-    rect(ctx, cx + ox - 1, topY + 12, 3, 4, bulb);
-    px(ctx, cx + ox, topY + 20, drop);
-    px(ctx, cx + ox, topY + 23, drop);
-  }
-  rect(ctx, cx - 3, topY + 24, 6, 4, bulb);
-}
-
-function drawWindowDrapes(ctx, wx, wy, h, colA, colB, powered) {
-  const c1 = powered ? colA : '#262126';
-  const c2 = powered ? colB : '#362f36';
-  // Left curtain swag + tieback
-  rect(ctx, wx - 4, wy, 9, h, c1);
-  rect(ctx, wx - 2, wy + 4, 4, h - 8, c2);
-  rect(ctx, wx - 5, wy + Math.round(h * 0.62), 10, 3, powered ? '#e0b048' : '#575046');
-  // Right curtain swag + tieback
-  rect(ctx, wx + 39, wy, 9, h, c1);
-  rect(ctx, wx + 41, wy + 4, 4, h - 8, c2);
-  rect(ctx, wx + 39, wy + Math.round(h * 0.62), 10, 3, powered ? '#e0b048' : '#575046');
-  // Top valance
-  rect(ctx, wx - 5, wy - 3, 54, 6, c2);
-  rect(ctx, wx - 5, wy + 2, 54, 2, powered ? '#e0b048' : '#4f483e');
-}
-
-function drawGrandfatherClock(ctx, x, fy, powered) {
-  const wood = powered ? '#593219' : '#2b201b';
-  const woodHi = powered ? '#7a4726' : '#3b2d26';
-  const brass = powered ? '#e8b94f' : '#595347';
-  rect(ctx, x, fy - 76, 20, 76, wood);
-  rect(ctx, x + 2, fy - 72, 16, 68, woodHi);
-  rect(ctx, x - 2, fy - 80, 24, 5, wood);
-  rect(ctx, x - 2, fy - 6, 24, 6, wood);
-  // Clock dial
-  rect(ctx, x + 4, fy - 68, 12, 12, powered ? '#f7efd9' : '#7b8280');
-  px(ctx, x + 10, fy - 62, '#14100d');
-  rect(ctx, x + 10, fy - 66, 1, 5, '#14100d');
-  rect(ctx, x + 10, fy - 62, 4, 1, '#14100d');
-  // Glass pendulum case
-  rect(ctx, x + 5, fy - 50, 10, 36, '#14191f');
-  rect(ctx, x + 9, fy - 48, 2, 24, brass);
-  circle(ctx, x + 10 + (powered ? 1 : 0), fy - 24, 3, brass);
-}
-
-function drawArmchair(ctx, x, fy, fabricCol, powered, facingRight = true) {
-  const wood = powered ? '#57321a' : '#291f1a';
-  const fab = powered ? fabricCol : '#2e3438';
-  const fabHi = powered ? '#438f73' : '#3d454a';
-  const backX = facingRight ? x : x + 14;
-  rect(ctx, x + 2, fy - 6, 3, 6, wood);
-  rect(ctx, x + 19, fy - 6, 3, 6, wood);
-  rect(ctx, backX, fy - 34, 10, 28, fab);
-  rect(ctx, backX + 2, fy - 32, 6, 22, fabricCol === '#7d2230' && powered ? '#a33142' : fabHi);
-  rect(ctx, x, fy - 16, 24, 10, fab);
-  rect(ctx, x + 2, fy - 20, 20, 5, wood);
-}
-
-function drawBookcaseUnit(ctx, x, topY, w, h, powered) {
-  const wood = powered ? '#4f2d17' : '#241a14';
-  const trim = powered ? '#784726' : '#362820';
-  rect(ctx, x, topY, w, h, wood);
-  rect(ctx, x - 2, topY, w + 4, 4, trim);
-  const bookCols = ['#9e2b2b', '#286e53', '#cf9c38', '#2c547d', '#7a4424', '#467a73'];
-  for (let sy = topY + 8; sy < topY + h - 8; sy += 18) {
-    rect(ctx, x + 2, sy + 13, w - 4, 3, trim);
-    for (let bx = x + 4; bx < x + w - 6; bx += 4) {
-      const bh = 9 + ((bx + sy) % 4);
-      const col = powered ? bookCols[(bx * 3 + sy) % bookCols.length] : '#3a3836';
-      rect(ctx, bx, sy + 13 - bh, 3, bh, col);
-    }
-  }
-}
-
-/* ============================================================================
- * BESPOKE FULL-ROOM INTERIOR GENERATOR FOR ALL 22 NAMED WINGS
- * ============================================================================ */
-export function drawRoomInteriorCanvas(def, powered) {
-  const w = def.w;
-  const h = ROOM_H;
-  const { canvas, ctx } = makeCanvas(w, h);
-  const fy = h;
+export function drawRoomInterior(def, powered) {
+  const W = def.w * 2;
+  const H = ROOM_H * 2; // 392 px!
+  const { canvas, ctx } = makeCanvas(W, H);
+  const fy = H;
 
   switch (def.id) {
     /* ----------------------------------------------------------------------
-     * 1. GRAND ENTRANCE FOYER (w = 560)
+     * 1. GRAND ENTRANCE FOYER (w = 560 -> W = 1120)
      * ---------------------------------------------------------------------- */
     case 'grand_foyer': {
-      drawRug(ctx, 36, w - 72, '#7d202b', '#e0b048', true);
-      // Twin Gothic Stained-Glass Lancets flanking the Central Hearth
-      for (const lx of [92, 434]) {
-        rect(ctx, lx, 34, 34, 86, '#1c120c');
-        rect(ctx, lx + 4, 38, 26, 78, '#23495d');
-        dither(ctx, lx + 6, 40, 22, 36, '#ffe082', '#3d857b');
-        dither(ctx, lx + 6, 78, 22, 34, '#b83744', '#e0a943');
-        rect(ctx, lx + 16, 38, 2, 78, '#1c120c');
-        rect(ctx, lx + 4, 76, 26, 2, '#1c120c');
+      drawFloorRug(ctx, 72, fy, W - 144, '#7d1f2d', '#e6b84c', true);
+
+      // Four Fluted Carrara Marble Corinthian Pilasters framing the Foyer!
+      for (const colX of [36, 356, 736, W - 64]) {
+        drawBeveledPanel(ctx, colX - 4, fy - 18, 36, 18, '#dcd4c4', false);
+        drawCylinderV(ctx, colX, 52, 28, fy - 70, '#e6dfd1', false);
+        for (let fx = colX + 5; fx <= colX + 21; fx += 5) {
+          rect(ctx, fx, 60, 2, fy - 84, '#aba293');
+        }
+        // Gilded Corinthian capital
+        drawBeveledPanel(ctx, colX - 6, 38, 40, 14, '#e0b048', false);
       }
-      // Ancestral Vesper Coat-of-Arms Tapestry above Central Hearth (cx = 280)
-      rect(ctx, 254, 28, 52, 54, '#6e1d28');
-      rect(ctx, 258, 32, 44, 44, '#8f2836');
-      rect(ctx, 272, 42, 16, 20, '#e6b84c');
-      rect(ctx, 276, 46, 8, 12, '#5ef2dc');
-      // Twin Crystal-Brass Gasoliers
-      drawCrystalChandelier(ctx, 182, 12, true, 0.9);
-      drawCrystalChandelier(ctx, 378, 12, true, 0.9);
-      // Tall Grandfather Clock beside the Hearth
-      drawGrandfatherClock(ctx, 342, fy, true);
-      // Twin Stone Lion-Griffin Guard Plinths at West & East Thresholds
-      for (const gx of [16, w - 40]) {
-        rect(ctx, gx, fy - 24, 24, 24, '#47423c');
-        rect(ctx, gx + 4, fy - 44, 16, 20, '#6e665c');
-        rect(ctx, gx + 8, fy - 50, 8, 8, '#877d70');
-        px(ctx, gx + 13, fy - 48, '#7ef7e3');
+
+      // Twin Tall Gothic Stained-Glass Windows + Warm Volumetric Sunbeams!
+      for (const lx of [208, 912]) {
+        drawArchedWindow(ctx, lx, 62, 68, 178, true, 'amber');
+        drawLightShaft(ctx, lx - 28, 96, 56, lx + 18, fy - 8, 96, 'rgba(255, 224, 132, 0.09)');
+      }
+
+      // Embroidered Crimson & Gold Vesper Coat-of-Arms Tapestry + Crossed Halberds above Central Dynamo (x = 560)!
+      pixelLine(ctx, 512, 134, 608, 48, '#a8b8c4', 3);
+      pixelLine(ctx, 608, 134, 512, 48, '#a8b8c4', 3);
+      rect(ctx, 504, 48, 112, 6, '#e6b84c');
+      drawBeveledPanel(ctx, 512, 54, 96, 102, '#781c2b', false);
+      // Swallowtail bottom + gold shield crest
+      drawBeveledPanel(ctx, 538, 74, 44, 52, '#e6b84c', false);
+      drawShadedSphere(ctx, 560, 100, 11, '#5ef2dc', true);
+
+      // Twin Tiered Crystal-and-Brass Chandeliers!
+      drawChandelier(ctx, 312, 24, 92, 2, true, 'electric');
+      drawChandelier(ctx, 808, 24, 92, 2, true, 'electric');
+
+      // Carved Grandfather Clock beside the Dynamo
+      drawGrandfatherClockHD(ctx, 668, fy, true);
+
+      // Twin Sculpted Stone Griffin Guardian Plinths at West & East Doorways
+      for (const gx of [84, W - 128]) {
+        drawBeveledPanel(ctx, gx, fy - 38, 44, 38, '#59524a', false);
+        fillEllipse(ctx, gx + 22, fy - 54, 14, 18, '#857c70');
+        fillCircle(ctx, gx + 22, fy - 74, 9, '#9c9284');
+        pixelLine(ctx, gx + 10, fy - 56, gx + 2, fy - 82, '#736b60', 4); // carved griffin wing!
+        px(ctx, gx + 25, fy - 76, '#7ef7e3');
       }
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 2. STATE BANQUET & SÉANCE HALL (w = 500)
+     * 2. STATE BANQUET & SÉANCE HALL (w = 500 -> W = 1000)
      * ---------------------------------------------------------------------- */
     case 'banquet_hall': {
-      drawRug(ctx, 48, w - 96, '#6e1d2a', '#d9a441', powered);
-      // Velvet window draperies across upper wall
-      for (const wx of [76, 204, 332]) {
-        drawWindowDrapes(ctx, wx, 30, 96, '#5c1824', '#852435', powered);
-      }
-      // Twin Grand Crystal Electro-Chandeliers
-      drawCrystalChandelier(ctx, 155, 12, powered, 1.15);
-      drawCrystalChandelier(ctx, 345, 12, powered, 1.15);
+      drawFloorRug(ctx, 88, fy, W - 176, '#6e1d2b', '#deb04b', powered);
 
-      // Carved Mahogany Sideboard Buffet with Silver Cloche & Tureen (left)
-      const wood = powered ? '#5e3419' : '#2b1f19';
-      const silver = powered ? '#dce8f2' : '#565e63';
-      rect(ctx, 42, fy - 38, 66, 38, wood);
-      rect(ctx, 40, fy - 41, 70, 4, powered ? '#824b26' : '#3a2b22');
-      // Silver dome cloche + candelabra on buffet
-      circle(ctx, 62, fy - 44, 8, silver);
-      rect(ctx, 52, fy - 43, 20, 3, silver);
-      rect(ctx, 88, fy - 54, 10, 13, powered ? '#e6b84c' : '#575248');
+      // Three Tall Arched Windows framed in Pleated Crimson Velvet Draperies!
+      for (const wx of [180, 500, 820]) {
+        drawArchedWindow(ctx, wx, 58, 66, 176, powered, 'warm');
+        drawVelvetDrapes(ctx, wx - 48, 52, 96, 206, '#781d2c', powered);
+      }
 
-      // Long 190px State Banquet & Séance Table (center-right) flanked by 6 High-Back Chairs!
-      const tx = 160;
-      const tw = 196;
-      for (let cx = tx + 12; cx <= tx + tw - 28; cx += 34) {
-        rect(ctx, cx, fy - 44, 14, 44, wood);
-        rect(ctx, cx + 2, fy - 41, 10, 18, powered ? '#8a2433' : '#362a30');
+      // Twin Tiered Crystal Electro-Chandeliers
+      drawChandelier(ctx, 336, 24, 96, 2, powered, 'electric');
+      drawChandelier(ctx, 664, 24, 96, 2, powered, 'electric');
+
+      // Carved Mahogany Sideboard Buffet & Gilded Pastoral Oil Landscape (left, x = 84)
+      drawBeveledPanel(ctx, 76, fy - 68, 124, 68, powered ? '#593219' : '#261d18', false);
+      drawFramedPortrait(ctx, 96, 134, 84, 72, 2, powered);
+      // Silver punch bowl & decanters on sideboard
+      drawShadedSphere(ctx, 138, fy - 80, 12, powered ? '#e3eff7' : '#5e6b73');
+
+      // Grand 480px Mahogany Banquet & Séance Table (x = 264 .. 744)!
+      const wood = powered ? '#5e3419' : '#261d17';
+      // 8 High-backed crimson velvet dining chairs tucked behind table!
+      for (let cx = 292; cx <= 704; cx += 58) {
+        drawBeveledPanel(ctx, cx, fy - 88, 30, 52, powered ? '#751f2d' : '#2b2226', false);
+        rect(ctx, cx + 3, fy - 92, 24, 5, wood);
       }
-      // Table legs & velvet tablecloth
-      rect(ctx, tx + 10, fy - 26, 6, 26, wood);
-      rect(ctx, tx + tw - 16, fy - 26, 6, 26, wood);
-      rect(ctx, tx, fy - 28, tw, 8, powered ? '#7a1f2d' : '#2e2329');
-      rect(ctx, tx + 6, fy - 24, tw - 12, 8, powered ? '#f2ead8' : '#595754');
-      // Séance Crystal Ball, Tarot Cards & Twin Silver Candelabras on the Banquet Table!
-      circle(ctx, tx + tw / 2, fy - 35, 7, powered ? '#7ef7e3' : '#354f52');
-      if (powered) {
-        circle(ctx, tx + tw / 2 - 1, fy - 36, 3, '#ffffff');
-        // Levitating tarot cards & planchette!
-        rect(ctx, tx + tw / 2 - 18, fy - 48, 5, 7, '#ffe680');
-        rect(ctx, tx + tw / 2 + 14, fy - 51, 5, 7, '#9ef7e8');
+      // Heavy turned banquet table legs
+      for (const lx of [288, 432, 576, 712]) {
+        drawCylinderV(ctx, lx, fy - 48, 14, 48, wood, false);
       }
-      for (const candX of [tx + 34, tx + tw - 40]) {
-        rect(ctx, candX, fy - 40, 8, 12, silver);
-        if (powered) {
-          rect(ctx, candX, fy - 44, 2, 4, '#ffe27a');
-          rect(ctx, candX + 6, fy - 44, 2, 4, '#ffe27a');
+      // Tabletop + scalloped White Damask Lace Tablecloth & Crimson Runner!
+      rect(ctx, 260, fy - 54, 488, 10, wood);
+      rect(ctx, 268, fy - 53, 472, 16, powered ? '#f2ece1' : '#70787d');
+      for (let sx = 272; sx < 732; sx += 24) {
+        fillCircle(ctx, sx + 12, fy - 37, 8, powered ? '#e6ded0' : '#60686d');
+      }
+      rect(ctx, 276, fy - 54, 456, 4, powered ? '#8c2233' : '#36262b');
+
+      // Silver Candelabras, Roast Cloches & Levitating Séance Crystal Ball!
+      for (const bx of [332, 676]) {
+        drawCylinderV(ctx, bx - 3, fy - 82, 6, 28, powered ? '#e2eef7' : '#5b6670', true);
+        pixelLine(ctx, bx - 16, fy - 76, bx + 16, fy - 76, powered ? '#e2eef7' : '#5b6670', 3);
+        for (const ox of [-16, 0, 16]) {
+          rect(ctx, bx + ox - 2, fy - 88, 4, 12, '#f5eedc');
+          if (powered) fillCircle(ctx, bx + ox, fy - 92, 4, '#ffd966');
         }
       }
+      // Silver domed roast cloches
+      fillEllipse(ctx, 412, fy - 56, 22, 14, powered ? '#d8e6f0' : '#525c63');
+      fillEllipse(ctx, 596, fy - 56, 22, 14, powered ? '#d8e6f0' : '#525c63');
 
-      // Tall China Hutch Cabinet on far right
-      rect(ctx, 396, fy - 78, 54, 78, wood);
-      rect(ctx, 402, fy - 72, 42, 40, powered ? '#2a4654' : '#182229');
-      for (const pxOff of [410, 424, 436]) {
-        circle(ctx, pxOff, fy - 58, 4, silver);
-        circle(ctx, pxOff, fy - 42, 4, silver);
+      // Central Medium's Scrying Crystal Sphere & Levitating Astral Ring!
+      const floatOff = powered ? -10 : 0;
+      rect(ctx, 492, fy - 60, 24, 6, '#d9a843');
+      drawShadedSphere(ctx, 504, fy - 72 + floatOff, 13, powered ? '#7ef7e3' : '#2e4d52', true);
+      if (powered) {
+        strokeCirclePx(ctx, 504, fy - 72 + floatOff, 21, 2, '#ffe680');
       }
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 3. CAST-IRON SCULLERY & ALEMBIC KITCHEN (w = 520)
+     * 3. CAST-IRON SCULLERY & ALEMBIC KITCHEN (w = 520 -> W = 1040)
      * ---------------------------------------------------------------------- */
     case 'scullery': {
-      // Overhead Hanging Copper Pot, Skillet & Cleaver Rack
-      const copper = powered ? '#d97238' : '#4f3f38';
-      const iron = '#22272e';
-      rect(ctx, 90, 28, 140, 4, iron);
-      rect(ctx, 108, 12, 3, 16, iron);
-      rect(ctx, 210, 12, 3, 16, iron);
-      for (const hx of [102, 128, 156, 184, 212]) {
-        rect(ctx, hx, 32, 2, 8, '#857d73');
-        circle(ctx, hx + 1, 46, 7, copper);
+      // Note: Cellar Staircase Arch sits at local x = 435 -> 2x = 870!
+      const copper = powered ? '#d97238' : '#52403a';
+      const brass = powered ? '#e6b84c' : '#575247';
+
+      // Overhead Hanging Copper Pot, Skillet & Ladle Rack (x = 96 .. 344)
+      rect(ctx, 88, 68, 256, 6, '#262f38');
+      pixelLine(ctx, 112, 24, 112, 68, '#262f38', 3);
+      pixelLine(ctx, 320, 24, 320, 68, '#262f38', 3);
+      for (const [pxX, pr] of [
+        [124, 15],
+        [168, 19],
+        [218, 14],
+        [264, 18],
+        [308, 13],
+      ]) {
+        rect(ctx, pxX - 2, 74, 4, 22, '#343e47');
+        drawShadedSphere(ctx, pxX, 108, pr, copper, true);
       }
 
-      // Stone Belfast Scullery Sink & Brass Hand-Pump (left)
-      rect(ctx, 38, fy - 34, 52, 16, '#8c9499');
-      rect(ctx, 42, fy - 18, 44, 18, '#4a301d');
-      rect(ctx, 76, fy - 50, 6, 16, powered ? '#deb04e' : '#575248');
-      rect(ctx, 70, fy - 48, 10, 3, powered ? '#deb04e' : '#575248');
+      // Heavy Butcher-Block Prep Table with Ceramic Crocks, Bread Loaves & Cleaver (left, x = 92)
+      rect(ctx, 88, fy - 64, 216, 12, powered ? '#9e6b43' : '#423328');
+      for (const lx of [102, 280]) {
+        drawCylinderV(ctx, lx, fy - 52, 12, 52, powered ? '#6e4528' : '#2e221b', false);
+      }
+      // Stoneware crocks + embedded iron meat cleaver!
+      drawCylinderV(ctx, 116, fy - 92, 24, 28, powered ? '#d9cdb8' : '#5e6366', false);
+      drawCylinderV(ctx, 148, fy - 86, 20, 22, powered ? '#a85a32' : '#473934', false);
+      rect(ctx, 228, fy - 82, 26, 16, '#8fa3b0'); // cleaver blade!
+      rect(ctx, 254, fy - 80, 12, 5, '#4a2b16');
 
-      // Massive Victorian Twin-Oven Cast-Iron Range & Chimney Flue!
-      rect(ctx, 138, 12, 22, fy - 62, '#1c2026');
-      rect(ctx, 114, fy - 52, 74, 52, '#1f242b');
-      rect(ctx, 110, fy - 55, 82, 5, '#343c47');
-      // Firebox grates (blazing orange when steam-powered!)
-      for (const ox of [122, 156]) {
-        rect(ctx, ox, fy - 38, 24, 22, powered ? '#ff7b1c' : '#121519');
+      // Massive Recessed Cast-Iron Victorian Coal/Steam Cooking Range & Copper Flue Hood (center, x = 368 .. 588)!
+      drawCylinderV(ctx, 452, 26, 52, 92, '#242c36', true); // chimney flue
+      // Riveted Copper Range Hood
+      for (let dy = 0; dy < 44; dy++) {
+        const expand = Math.round((dy / 44) * 56);
+        drawCylinderH(ctx, 424 - expand, 110 + dy, 108 + expand * 2, 2, copper, true);
+      }
+      drawRivetRow(ctx, 372, 150, 584, 150, 14, brass);
+
+      // Cast-iron range body with 4 firebox grates!
+      drawBeveledPanel(ctx, 368, fy - 108, 220, 108, '#1d242c', false);
+      rect(ctx, 362, fy - 112, 232, 8, brass);
+      for (const fxBox of [386, 488]) {
+        rect(ctx, fxBox, fy - 84, 78, 56, '#0c0f14');
         if (powered) {
-          rect(ctx, ox + 4, fy - 34, 16, 14, '#ffe678');
+          fillEllipse(ctx, fxBox + 39, fy - 46, 32, 18, '#e8521c');
+          fillEllipse(ctx, fxBox + 39, fy - 44, 22, 12, '#ff9c2b');
+          fillEllipse(ctx, fxBox + 39, fy - 42, 12, 7, '#fff3a8');
+        }
+        // Iron firebox grate bars
+        for (let gx = fxBox + 8; gx < fxBox + 74; gx += 10) {
+          rect(ctx, gx, fy - 62, 3, 34, '#2c3642');
         }
       }
-      // Kettles steaming on range top
-      rect(ctx, 126, fy - 65, 14, 10, copper);
-      rect(ctx, 162, fy - 67, 16, 12, copper);
 
-      // Butcher's Oak Chopping Block & Cleaver (center)
-      rect(ctx, 214, fy - 32, 48, 14, powered ? '#9c6b3e' : '#4a3b30');
-      rect(ctx, 220, fy - 18, 6, 18, '#4f301a');
-      rect(ctx, 250, fy - 18, 6, 18, '#4f301a');
-      rect(ctx, 232, fy - 40, 12, 8, '#cfdbe3'); // cleaver blade
-
-      // Twin Copper Alembic Distillation Stills + Coiled Worm Condensers & Glowing Carboys!
-      for (const sx of [292, 362]) {
-        rect(ctx, sx, fy - 22, 38, 22, '#3b2618');
-        circle(ctx, sx + 19, fy - 36, 14, copper);
-        rect(ctx, sx + 14, fy - 56, 10, 14, copper);
-        // Swan-neck vapour tube into glass condenser carboy
-        rect(ctx, sx + 22, fy - 56, 22, 4, powered ? '#e8b54d' : '#5c564b');
-        rect(ctx, sx + 40, fy - 54, 4, 20, powered ? '#e8b54d' : '#5c564b');
-        rect(ctx, sx + 35, fy - 34, 14, 20, powered ? '#6bf7e2' : '#263c40');
-        if (powered) rect(ctx, sx + 38, fy - 30, 8, 12, '#ebfffb');
-      }
-
-      // Stacked Oak Provision Barrels & Salt Sacks (far right, clear of 1735 stairs at x=435)
-      for (const bx of [458, 484]) {
-        rect(ctx, bx, fy - 28, 22, 28, powered ? '#6e4221' : '#33241b');
-        rect(ctx, bx, fy - 22, 22, 3, '#2b3138');
-        rect(ctx, bx, fy - 10, 22, 3, '#2b3138');
+      // Twin Pressurized Copper Alembic Distillation Stills with Helical Worm Coils (x = 628 .. 786)!
+      for (const sx of [632, 718]) {
+        drawBeveledPanel(ctx, sx, fy - 28, 64, 28, '#28313b', false);
+        drawCylinderV(ctx, sx + 8, fy - 112, 48, 84, copper, true);
+        drawShadedSphere(ctx, sx + 32, fy - 116, 22, copper, true); // onion alembic dome!
+        // Swan-neck vapor pipe curving into condenser coil!
+        pixelLine(ctx, sx + 32, fy - 138, sx + 58, fy - 152, brass, 5);
+        pixelLine(ctx, sx + 58, fy - 152, sx + 64, fy - 84, brass, 4);
+        drawPressureGauge(ctx, sx + 32, fy - 76, 8, brass, powered ? '#fff6dc' : '#636b70', 0.4);
+        // Glowing distilled Aether-Florin receiver flask!
+        fillCircle(ctx, sx + 64, fy - 74, 10, powered ? '#7ef7e3' : '#263a40');
+        if (powered) fillCircle(ctx, sx + 62, fy - 76, 4, '#ffffff');
       }
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 4. SÉANCE VESTIBULE & CLOAKROOM (w = 440)
+     * 4. SÉANCE VESTIBULE & CLOAKROOM (w = 440 -> W = 880)
      * ---------------------------------------------------------------------- */
     case 'carriage_portico': {
-      drawRug(ctx, 36, w - 72, '#284a47', '#deb04e', powered);
-      // Heavy Iron-Strapped Gothic Carriage Doors (left)
-      rect(ctx, 36, fy - 112, 68, 112, powered ? '#4a2b17' : '#211814');
-      rect(ctx, 42, fy - 106, 26, 102, powered ? '#5e371e' : '#2b1f1a');
-      rect(ctx, 72, fy - 106, 26, 102, powered ? '#5e371e' : '#2b1f1a');
-      for (const hy of [fy - 90, fy - 56, fy - 22]) {
-        rect(ctx, 38, hy, 22, 4, '#1b2026');
-        rect(ctx, 80, hy, 22, 4, '#1b2026');
+      // Note: Reliquary Chest at local x = 160 -> 2x = 320!
+      drawFloorRug(ctx, 84, fy, W - 168, '#1e4a47', '#deb04b', powered);
+      const wood = powered ? '#593319' : '#261d17';
+      const brass = powered ? '#e6b84c' : '#575247';
+
+      // Tall Gilded Beveled Oval Pier-Glass Mirror (left, x = 116)
+      drawBeveledPanel(ctx, 86, fy - 188, 76, 162, wood, false);
+      fillEllipse(ctx, 124, fy - 112, 26, 62, powered ? '#67cfc2' : '#1f3038');
+      fillEllipse(ctx, 120, fy - 118, 16, 44, powered ? '#c4fff7' : '#2d434d');
+      pixelLine(ctx, 108, fy - 152, 138, fy - 82, '#ffffff', 2); // mirror specular glint!
+
+      // Victorian Bentwood Coat & Hat Tree Draped with Inverness Cloaks & Top Hats (x = 228)
+      drawCylinderV(ctx, 224, fy - 156, 10, 156, wood, false);
+      pixelLine(ctx, 202, fy, 228, fy - 22, wood, 5);
+      pixelLine(ctx, 256, fy, 228, fy - 22, wood, 5);
+      pixelLine(ctx, 198, fy - 144, 258, fy - 144, brass, 3);
+      // Hanging top hat & crimson/slate traveling cloak
+      rect(ctx, 200, fy - 164, 22, 16, '#171c24');
+      rect(ctx, 194, fy - 149, 34, 4, '#242c38');
+      for (let dy = 0; dy < 72; dy++) {
+        rect(ctx, 232 - Math.round(dy * 0.1), fy - 136 + dy, 18 + Math.round(dy * 0.25), 1, powered ? '#661d2b' : '#292026');
       }
 
-      // Tall Victorian Hall-Tree Cloak, Top-Hat & Cane Stand!
-      const wood = powered ? '#63391d' : '#2b1f18';
-      rect(ctx, 138, fy - 82, 36, 82, wood);
-      rect(ctx, 144, fy - 76, 24, 30, powered ? '#8cded4' : '#243336'); // hall mirror
-      // Hanging Inverness cloak & silk top hat
-      rect(ctx, 128, fy - 56, 14, 38, powered ? '#263442' : '#1b2026');
-      rect(ctx, 130, fy - 76, 12, 9, '#161a21');
-      rect(ctx, 128, fy - 68, 16, 2, '#161a21');
-
-      // Consecrated Séance Ward-Altar & Quicksilver Ward-Boots Vitrine (center)
-      rect(ctx, 206, fy - 34, 68, 34, powered ? '#5c1a26' : '#291e22');
-      rect(ctx, 202, fy - 38, 76, 5, powered ? '#e0b048' : '#575045');
-      // Glass vitrine housing glowing Quicksilver Ward-Boots!
-      rect(ctx, 222, fy - 64, 36, 26, powered ? '#264d4a' : '#1a2426');
-      rect(ctx, 228, fy - 52, 9, 12, powered ? '#7ef7e3' : '#3c4a4d');
-      rect(ctx, 242, fy - 52, 9, 12, powered ? '#7ef7e3' : '#3c4a4d');
-
-      // Stacked Leather Steamer Trunks, Brass Buckles & Hatboxes (right)
-      rect(ctx, 312, fy - 28, 62, 28, powered ? '#6e3d1e' : '#2e221b');
-      rect(ctx, 320, fy - 50, 46, 22, powered ? '#854c27' : '#382a21');
-      rect(ctx, 332, fy - 64, 22, 14, powered ? '#9c2c38' : '#362428'); // round hatbox
-      for (const bx of [324, 358]) {
-        rect(ctx, bx, fy - 28, 4, 28, powered ? '#e0b048' : '#575248');
-        rect(ctx, bx + 4, fy - 50, 3, 22, powered ? '#e0b048' : '#575248');
+      // Illuminated Quicksilver Aether-Boot Rack & Bench (x = 424 .. 636 — grants +30% Sprint!)
+      drawBeveledPanel(ctx, 424, fy - 96, 212, 96, wood, false);
+      rect(ctx, 434, fy - 86, 192, 34, '#121920');
+      rect(ctx, 434, fy - 42, 192, 32, '#121920');
+      for (const bx of [452, 508, 564]) {
+        // Gleaming winged Quicksilver Boots!
+        rect(ctx, bx, fy - 76, 14, 22, '#232c38');
+        rect(ctx, bx, fy - 58, 26, 6, '#181e26');
+        pixelLine(ctx, bx + 2, fy - 70, bx - 8, fy - 78, powered ? '#7ef7e3' : '#43585e', 3); // astral winglet!
+        if (powered) rect(ctx, bx, fy - 53, 26, 2, '#9ef7eb');
       }
+
+      // Stacked Brass-Bound Leather Steamer Trunks & Umbrella Stand (right, x = 678)
+      drawBeveledPanel(ctx, 676, fy - 52, 112, 52, powered ? '#5e361c' : '#291f19', false);
+      rect(ctx, 696, fy - 52, 8, 52, brass);
+      rect(ctx, 760, fy - 52, 8, 52, brass);
+      drawBeveledPanel(ctx, 692, fy - 94, 82, 42, powered ? '#784624' : '#332720', false);
+      rect(ctx, 708, fy - 94, 6, 42, brass);
+      rect(ctx, 752, fy - 94, 6, 42, brass);
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 5. MISTY MOORLAND & IRON GATE (w = 620, Outdoor)
+     * 5. MISTY MOORLAND & IRON GATE (w = 620 -> W = 1240, Outdoor)
      * ---------------------------------------------------------------------- */
     case 'west_moor': {
-      // Towering Wrought-Iron Gatehouse Stone Pillars + Galvanic Storm Arc-Lamps
-      for (const pxX of [190, 490]) {
-        rect(ctx, pxX, fy - 98, 28, 98, '#28323b');
-        rect(ctx, pxX - 3, fy - 103, 34, 6, '#3c4a57');
-        rect(ctx, pxX + 6, fy - 122, 16, 19, powered ? '#e0b048' : '#4a5259');
-        rect(ctx, pxX + 9, fy - 118, 10, 12, powered ? '#fff6a8' : '#26353d');
+      // Note: Rift at local x = 90 (2x = 180), Shield at 230 (2x = 460), Vigil at 450 (2x = 900)
+      // Towering Ashlar Stone Gatehouse Pillars with Carved Gargoyles & Wrought-Iron Arch!
+      for (const pxX of [396, 516]) {
+        drawBeveledPanel(ctx, pxX, fy - 246, 48, 246, powered ? '#46525e' : '#242c36', false);
+        drawBeveledPanel(ctx, pxX - 6, fy - 258, 60, 14, powered ? '#5c6b7a' : '#303b47', false);
+        // Glowing Galvanic Gatehouse Lantern Crown!
+        rect(ctx, pxX + 12, fy - 288, 24, 30, powered ? '#e6b84c' : '#4a5057');
+        rect(ctx, pxX + 16, fy - 282, 16, 18, powered ? '#fff6a8' : '#243640');
+        if (powered) rect(ctx, pxX + 20, fy - 278, 8, 10, '#ffffff');
       }
-      // Gnarled Wind-Swept Moorland Hawthorn Tree
-      rect(ctx, 326, fy - 76, 12, 76, '#182026');
-      rect(ctx, 304, fy - 92, 28, 18, powered ? '#264236' : '#142024');
-      rect(ctx, 330, fy - 104, 38, 22, powered ? '#2c4f40' : '#17262b');
-      // Crumbling Celtic Standing Stones & Milepost
-      rect(ctx, 258, fy - 46, 16, 46, '#36434d');
-      rect(ctx, 262, fy - 38, 8, 8, powered ? '#7ef7e3' : '#243338');
-      rect(ctx, 418, fy - 30, 14, 30, '#46545e');
+      // Curved wrought-iron estate arch cresting over the gate threshold!
+      for (let gx = 444; gx <= 516; gx += 4) {
+        const archLift = Math.round(Math.sin(((gx - 444) / 72) * Math.PI) * 32);
+        rect(ctx, gx, fy - 224 - archLift, 3, 18, '#1a222b');
+        px(ctx, gx + 1, fy - 228 - archLift, powered ? '#ffe680' : '#4b5966');
+      }
+
+      // Ancient Gnarled Moorland Dead Oak + Perched Raven + Hanging Cage Lantern (x = 720)!
+      drawGnarledTreeHD(ctx, 720, fy - 18, 178, 1, true, powered);
+
+      // Mossy Victorian Celtic Cross & Tilted Headstones + Galvanic Streetlamp (x = 1020 .. 1150)
+      for (const [hx, hh] of [
+        [284, 54],
+        [632, 48],
+        [1028, 64],
+      ]) {
+        fillCircle(ctx, hx + 16, fy - 18 - hh, 16, '#38444f');
+        drawBeveledPanel(ctx, hx, fy - 18 - hh, 32, hh, '#38444f', false);
+      }
+      // Tall Cast-Iron Victorian Moorland Arc-Streetlamp (x = 1112)
+      drawCylinderV(ctx, 1108, fy - 208, 10, 190, '#232c36', true);
+      rect(ctx, 1098, fy - 238, 30, 30, powered ? '#e6b84c' : '#474f57');
+      rect(ctx, 1103, fy - 232, 20, 20, powered ? '#fff5a8' : '#22333d');
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 6. EMERALD VELVET PARLOR (w = 480)
+     * 6. EMERALD VELVET PARLOR (w = 480 -> W = 960)
      * ---------------------------------------------------------------------- */
     case 'emerald_parlor': {
-      drawRug(ctx, 34, w - 68, '#1f5944', '#deb04e', powered);
-      drawCrystalChandelier(ctx, 240, 12, powered, 1.0);
+      // Note: Vigil at local x = 240 -> 2x = 480
+      drawFloorRug(ctx, 76, fy, W - 152, '#1b5245', '#e3b44c', powered);
 
-      // Mahogany Upright Salon Piano & Piano Stool (left)
-      const wood = powered ? '#5c3318' : '#291e18';
-      rect(ctx, 40, fy - 62, 62, 62, wood);
-      rect(ctx, 44, fy - 34, 54, 6, powered ? '#f7f2e4' : '#6e7370'); // ivory keys!
-      rect(ctx, 62, fy - 46, 18, 10, powered ? '#f2e8cf' : '#575957'); // sheet music
-      rect(ctx, 60, fy - 18, 22, 18, powered ? '#22664d' : '#26302e'); // piano bench
+      // Carved Carrara Marble Fireplace + Roaring Hearth + Gilded Overmantel Mirror (x = 280)!
+      drawVictorianFireplace(ctx, 280, fy, 136, 118, powered ? '#ded6c6' : '#575e63', powered);
+      // Rococo Gilded Overmantel Mirror + Mantel Ormolu Clock!
+      drawBeveledPanel(ctx, 224, 58, 112, 138, powered ? '#e0b048' : '#575043', false);
+      rect(ctx, 236, 70, 88, 114, powered ? '#3b8c82' : '#18282e');
+      pixelLine(ctx, 248, 84, 308, 164, powered ? '#b8fff5' : '#2d454d', 3);
+      drawShadedSphere(ctx, 280, fy - 126, 9, powered ? '#e8b94f' : '#595347');
 
-      // Carved Carrara Marble Steam-Mantel Hearth + Gilded Rococo Overmantel Mirror (center)
-      rect(ctx, 198, fy - 58, 76, 58, powered ? '#ded9ce' : '#595e61');
-      rect(ctx, 192, fy - 63, 88, 6, powered ? '#f0ece1' : '#6b7073');
-      rect(ctx, 216, fy - 38, 40, 38, '#16181c');
-      if (powered) {
-        rect(ctx, 222, fy - 26, 28, 22, '#ff8524');
-        rect(ctx, 228, fy - 20, 16, 14, '#ffe885');
+      // Tufted Chesterfield Emerald Velvet Sofa & Wingback Armchair (x = 532 .. 776)!
+      drawTuftedSofaHD(ctx, 536, fy, 168, '#1e6e5c', powered);
+      drawWingbackChairHD(ctx, 728, fy, '#1e6e5c', powered, false);
+
+      // Carved Concert Pedal Harp with Golden Strings (left of sofa, x = 388)!
+      const gold = powered ? '#ecc054' : '#595346';
+      drawBeveledPanel(ctx, 376, fy - 14, 44, 14, '#593319', false);
+      drawCylinderV(ctx, 380, fy - 134, 8, 120, gold, true); // fluted forepillar
+      pixelLine(ctx, 414, fy - 14, 384, fy - 134, '#6e3d1e', 7); // diagonal soundboard
+      pixelLine(ctx, 382, fy - 134, 422, fy - 116, gold, 5); // harmonic curve neck
+      for (let sx = 390; sx <= 414; sx += 4) {
+        rect(ctx, sx, fy - 124 + Math.round((sx - 390) * 0.5), 1, 96 - (sx - 390) * 2, powered ? '#fff3b0' : '#5e6669');
       }
-      // Overmantel Gilded Mirror
-      rect(ctx, 208, fy - 114, 56, 50, powered ? '#deb04e' : '#544e43');
-      rect(ctx, 214, fy - 108, 44, 38, powered ? '#4c7b8a' : '#1e2c33');
 
-      // Tufted Emerald Velvet Wingback Armchairs + Silver Tea Service Table
-      drawArmchair(ctx, 142, fy, '#1f6e53', powered, true);
-      drawArmchair(ctx, 296, fy, '#1f6e53', powered, false);
-      rect(ctx, 330, fy - 24, 30, 24, wood);
-      rect(ctx, 338, fy - 32, 12, 8, powered ? '#e6f0f7' : '#576066'); // silver teapot
-
-      // Victorian Brass-Horn Gramophone on Pedestal (right)
-      rect(ctx, 392, fy - 32, 26, 32, wood);
-      rect(ctx, 396, fy - 38, 18, 6, '#362417');
-      // Flared golden gramophone horn!
-      rect(ctx, 404, fy - 52, 8, 14, powered ? '#ebb849' : '#5c5548');
-      circle(ctx, 416, fy - 54, 10, powered ? '#ffd96b' : '#696152');
-      circle(ctx, 418, fy - 54, 5, '#1f1710');
+      // Twin Cast-Iron Victorian Floral Steam Radiators (x = 132 & x = 844)!
+      for (const rx of [124, 836]) {
+        for (let cx = 0; cx < 56; cx += 9) {
+          drawCylinderV(ctx, rx + cx, fy - 56, 7, 54, powered ? '#cf7838' : '#3d454d', true);
+        }
+        drawPressureGauge(ctx, rx + 58, fy - 46, 5, gold, powered ? '#fff6dc' : '#636b70', 0.2);
+      }
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 7. SMOKING & DIVINATION LOUNGE (w = 460)
+     * 7. SMOKING & DIVINATION LOUNGE (w = 460 -> W = 920)
      * ---------------------------------------------------------------------- */
     case 'billiard_lounge': {
-      drawRug(ctx, 38, w - 76, '#5c1f28', '#cfa042', powered);
+      // Note: Spiral Stair at local x = 65 -> 2x = 130!
+      drawFloorRug(ctx, 196, fy, W - 264, '#5e1d2b', '#deb04b', powered);
+      const mahogany = powered ? '#5e3218' : '#261c17';
+      const brass = powered ? '#e6b84c' : '#575247';
 
-      // Twin Green-Glass Bankers' Billiard Shade Lamps over center table!
-      for (const lx of [190, 262]) {
-        rect(ctx, lx, 12, 2, 42, powered ? '#d9a644' : '#4f4a40');
-        rect(ctx, lx - 12, 54, 26, 8, powered ? '#26855c' : '#1f332e');
-        if (powered) rect(ctx, lx - 8, 62, 18, 4, '#fff4a3');
+      // Wall Cue Rack & Bead Billiard Scoreboard (x = 248 .. 364)
+      drawBeveledPanel(ctx, 248, 84, 112, 136, mahogany, false);
+      for (let qx = 262; qx <= 346; qx += 14) {
+        rect(ctx, qx, 92, 3, 120, powered ? '#d9b07c' : '#59524a');
+        px(ctx, qx + 1, 92, '#5ef2dc'); // chalked cue tip!
       }
 
-      // Wall-Mounted Billiard Cue & Crystal Divination Lens Rack (left, clear of 3425 stair at x=65)
-      const wood = powered ? '#593118' : '#291e17';
-      rect(ctx, 104, fy - 98, 38, 56, wood);
-      for (let cx = 110; cx <= 136; cx += 6) {
-        rect(ctx, cx, fy - 94, 2, 48, powered ? '#d9a86c' : '#595047');
+      //Overhead Stained-Glass Tiffany Billiard Shade Lamp (x = 496)!
+      rect(ctx, 494, 24, 4, 58, brass);
+      for (let dy = 0; dy < 32; dy++) {
+        const span = 18 + Math.round(dy * 1.45);
+        const col = !powered
+          ? '#1e3036'
+          : dy < 12
+            ? '#ffe680'
+            : dy < 24
+              ? '#36bfa8'
+              : '#c94a38';
+        rect(ctx, 496 - span, 82 + dy, span * 2, 1, col);
+      }
+      for (let gx = 436; gx <= 556; gx += 16) {
+        rect(ctx, gx, 102, 2, 12, '#1a1412');
       }
 
-      // Full-Size Slate-Bed Emerald Baize Billiard & Spirit-Board Table!
-      const bx = 162;
-      const bw = 128;
-      for (const lx of [bx + 8, bx + 58, bx + bw - 16]) {
-        rect(ctx, lx, fy - 24, 8, 24, wood);
+      // Ornate Carved Mahogany Billiard Table with Slate-Emerald Baize & Leather Pockets (x = 376 .. 624)!
+      for (const lx of [392, 492, 592]) {
+        drawCylinderV(ctx, lx, fy - 48, 16, 48, mahogany, false);
       }
-      rect(ctx, bx, fy - 32, bw, 10, wood);
-      rect(ctx, bx + 4, fy - 36, bw - 8, 5, powered ? '#1e8759' : '#1d3830');
-      // Ivory & crimson billiard balls + glowing crystal pendulum
-      px(ctx, bx + 32, fy - 37, '#ffffff');
-      px(ctx, bx + 36, fy - 37, '#d93838');
-      px(ctx, bx + 78, fy - 37, '#ffe066');
-      if (powered) px(ctx, bx + 62, fy - 38, '#7ef7e3');
+      drawBeveledPanel(ctx, 376, fy - 68, 248, 22, mahogany, false);
+      rect(ctx, 388, fy - 73, 224, 6, powered ? '#1ca378' : '#183b35'); // emerald baize!
+      // Brass corner pocket plates & ivory/crimson billiard balls!
+      for (const pxX of [380, 496, 612]) {
+        fillCircle(ctx, pxX, fy - 69, 5, brass);
+      }
+      fillCircle(ctx, 446, fy - 75, 4, '#ffffff');
+      fillCircle(ctx, 512, fy - 75, 4, '#d93829');
+      fillCircle(ctx, 526, fy - 75, 4, '#f5eedc');
 
-      // Oxblood Leather Club Armchair, Humidor/Hookah Stand & Brass Celestial Floor Globe (right)
-      drawArmchair(ctx, 314, fy, '#7d2230', powered, false);
-      // Standing Brass Meridian Floor Globe
-      rect(ctx, 366, fy - 20, 16, 20, wood);
-      ring(ctx, 374, fy - 34, 13, 2, powered ? '#e0b048' : '#575247');
-      circle(ctx, 374, fy - 34, 10, powered ? '#3b758c' : '#22333b');
-      if (powered) rect(ctx, 370, fy - 37, 7, 5, '#78b872');
-      // Mounted Stag / Gargoyle Trophy Plaque on upper right wall
-      rect(ctx, 358, 42, 28, 28, wood);
-      circle(ctx, 372, 56, 8, powered ? '#9e7b56' : '#453e38');
-      rect(ctx, 360, 38, 6, 12, '#d9d2c5');
-      rect(ctx, 378, 38, 6, 12, '#d9d2c5');
+      // Terrestrial Liquor Globe Bar & Divination Scrying Pedestal Table (right, x = 684 .. 836)
+      drawShadedSphere(ctx, 706, fy - 54, 22, powered ? '#c9974c' : '#4a463f', false);
+      strokeCirclePx(ctx, 706, fy - 54, 25, 3, mahogany);
+      rect(ctx, 702, fy - 28, 8, 28, mahogany);
+
+      // Divination Tarot & Spirit-Lens Table
+      drawCylinderV(ctx, 796, fy - 54, 12, 54, mahogany, false);
+      rect(ctx, 762, fy - 60, 80, 8, mahogany);
+      drawShadedSphere(ctx, 802, fy - 74, 12, powered ? '#7ef7e3' : '#2a4247', true);
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 8. NIGHTSHADE GLASS WINTERGARDEN (w = 540)
+     * 8. NIGHTSHADE GLASS WINTERGARDEN (w = 540 -> W = 1080)
      * ---------------------------------------------------------------------- */
     case 'wintergarden': {
-      // Hanging Wrought-Iron Fern Baskets from Glass Conservatory Ribs
-      const leafDark = powered ? '#1e5c3a' : '#1d2b28';
-      const leafBright = powered ? '#3da868' : '#2c3d38';
-      for (const hx of [110, 270, 430]) {
-        rect(ctx, hx, 14, 2, 22, '#2d383d');
-        rect(ctx, hx - 12, 36, 26, 10, leafDark);
-        rect(ctx, hx - 8, 32, 18, 10, leafBright);
-        if (powered) px(ctx, hx, 34, '#7ef7e3');
+      // Vaulted Victorian Wrought-Iron Conservatory Roof Ribs!
+      for (let rx = 96; rx < W - 64; rx += 160) {
+        rect(ctx, rx, 28, 6, fy - 28, '#1e3033');
+        pixelLine(ctx, rx + 3, 96, rx + 64, 34, '#294245', 3);
+        pixelLine(ctx, rx + 3, 96, rx - 64, 34, '#294245', 3);
+        strokeCirclePx(ctx, rx + 22, 52, 8, 2, powered ? '#d9a843' : '#3d4f52');
       }
 
-      // Left Cast-Iron Conservatory Plant Bench crammed with Belladonna & Moonflowers
-      rect(ctx, 44, fy - 28, 108, 4, '#2c363d');
-      rect(ctx, 50, fy - 24, 4, 24, '#2c363d');
-      rect(ctx, 142, fy - 24, 4, 24, '#2c363d');
-      for (let pxX = 52; pxX <= 136; pxX += 20) {
-        rect(ctx, pxX, fy - 38, 12, 10, powered ? '#9e4e2b' : '#40342e'); // terracotta pot
-        circle(ctx, pxX + 6, fy - 46, 9, leafDark);
-        circle(ctx, pxX + 6, fy - 48, 6, leafBright);
-        if (powered) {
-          rect(ctx, pxX + 4, fy - 52, 4, 4, pxX % 40 === 12 ? '#ffd866' : '#7ef7e3');
+      // Twin Glass Wardian Botanical Terrarium Cases (left x = 112 & right x = 816)!
+      drawWardianCaseHD(ctx, 112, fy, 148, 92, powered);
+      drawWardianCaseHD(ctx, 816, fy, 148, 92, powered);
+
+      // Central Tiered Stone Lion-Head Conservatory Fountain (x = 540)!
+      const stone = powered ? '#9daba6' : '#475254';
+      drawBeveledPanel(ctx, 456, fy - 32, 168, 32, stone, false);
+      rect(ctx, 468, fy - 30, 144, 8, powered ? '#3fd9c9' : '#183238'); // fountain basin water!
+      drawCylinderV(ctx, 524, fy - 92, 32, 60, stone, false);
+      fillEllipse(ctx, 540, fy - 94, 46, 10, stone);
+      drawCylinderV(ctx, 532, fy - 134, 16, 40, stone, false);
+      drawShadedSphere(ctx, 540, fy - 140, 10, powered ? '#7ef7e3' : '#364d52', true);
+      if (powered) {
+        // Cascading water arcs from upper bowl!
+        pixelLine(ctx, 502, fy - 92, 486, fy - 32, '#9ef7eb', 2);
+        pixelLine(ctx, 578, fy - 92, 594, fy - 32, '#9ef7eb', 2);
+      }
+
+      // Giant Terracotta Urns with Palm Fronds & Bioluminescent Nightshade Pods (x = 324 & x = 708)!
+      for (const ux of [324, 708]) {
+        drawCylinderV(ctx, ux, fy - 48, 44, 48, powered ? '#a85232' : '#47332d', false);
+        rect(ctx, ux - 4, fy - 54, 52, 8, powered ? '#c4633e' : '#573f38');
+        for (const [ox, oy] of [
+          [-26, -118],
+          [0, -142],
+          [28, -114],
+        ]) {
+          pixelLine(ctx, ux + 22, fy - 54, ux + 22 + ox, fy + oy, powered ? '#298c68' : '#1e3d36', 4);
+          drawShadedSphere(ctx, ux + 22 + ox, fy + oy, 9, powered ? '#6cf7de' : '#29494d', true);
         }
       }
-
-      // Central Tiered Stone Conservatory Fountain!
-      rect(ctx, 224, fy - 18, 84, 18, '#546066');
-      rect(ctx, 256, fy - 48, 20, 30, '#68767d');
-      rect(ctx, 240, fy - 52, 52, 6, '#7a8a91');
-      rect(ctx, 262, fy - 66, 8, 14, '#7a8a91');
-      if (powered) {
-        // Sparkling warm steam-fed water jets!
-        rect(ctx, 232, fy - 16, 68, 5, '#5ef2dc');
-        rect(ctx, 264, fy - 80, 4, 14, '#d9fff9');
-        rect(ctx, 246, fy - 50, 4, 32, '#8cf7e6');
-        rect(ctx, 282, fy - 50, 4, 32, '#8cf7e6');
-      }
-
-      // Giant Domed Glass Wardian Terrarium Case & Towering Potted Palm (right)
-      rect(ctx, 344, fy - 24, 68, 24, powered ? '#59361c' : '#29211c');
-      rect(ctx, 348, fy - 66, 60, 42, powered ? '#294f59' : '#19262b');
-      rect(ctx, 352, fy - 62, 52, 38, powered ? '#38756e' : '#203036');
-      circle(ctx, 378, fy - 40, 14, leafBright);
-      if (powered) {
-        circle(ctx, 372, fy - 46, 4, '#ffe073');
-        circle(ctx, 386, fy - 42, 4, '#7ef7e3');
-      }
-      // Towering Tropical Palm / Pitcher Plant in Brass Planter
-      rect(ctx, 444, fy - 26, 28, 26, powered ? '#d49e3d' : '#4f4a40');
-      rect(ctx, 455, fy - 76, 6, 50, '#3d2b1c');
-      circle(ctx, 458, fy - 84, 20, leafDark);
-      circle(ctx, 458, fy - 88, 13, leafBright);
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 9. WEEPING CRYPT WOODS (w = 600, Outdoor)
+     * 9. WEEPING CRYPT WOODS (w = 600 -> W = 1200, Outdoor)
      * ---------------------------------------------------------------------- */
     case 'east_woods': {
-      // Gothic Stone Family Mausoleum Facade
-      rect(ctx, 110, fy - 104, 96, 104, '#2a343d');
-      rect(ctx, 102, fy - 112, 112, 10, '#3a4752');
-      rect(ctx, 138, fy - 76, 40, 76, '#12181f');
-      for (let gx = 144; gx <= 172; gx += 7) {
-        rect(ctx, gx, fy - 74, 2, 74, '#36424a');
+      // Note: Vigil at local x = 150 (2x = 300), Chest at 260 (2x = 520), Shield at 380 (2x = 760), Rift at 510 (2x = 1020)
+      drawGnarledTreeHD(ctx, 168, fy - 18, 174, 1, false, powered);
+      drawGnarledTreeHD(ctx, 884, fy - 18, 182, -1, true, powered);
+
+      // Carved Gothic Limestone Vesper Family Mausoleum (x = 564 .. 732)!
+      const stone = powered ? '#566473' : '#28323d';
+      // Pitched stone gable pediment + cross finial
+      for (let dy = 0; dy < 48; dy++) {
+        const inset = Math.round((dy / 48) * 92);
+        rect(ctx, 556 + inset, fy - 216 - dy, 184 - inset * 2, 1, stone);
       }
-      if (powered) {
-        rect(ctx, 152, fy - 96, 12, 12, '#7ef7e3');
+      rect(ctx, 645, fy - 282, 6, 20, stone);
+      rect(ctx, 639, fy - 276, 18, 5, stone);
+      drawBeveledPanel(ctx, 564, fy - 216, 168, 198, stone, false);
+      // Rose-window tympanum & Wrought-Iron Crypt Portcullis!
+      strokeCirclePx(ctx, 648, fy - 184, 18, 3, powered ? '#7ef7e3' : '#18222b');
+      rect(ctx, 612, fy - 144, 72, 126, '#0c1017');
+      for (let gx = 620; gx <= 676; gx += 11) {
+        rect(ctx, gx, fy - 144, 3, 126, '#26303b');
       }
-      // Weeping Willow Silhouette & Tilted Headstones
-      rect(ctx, 276, fy - 88, 14, 88, '#161e24');
-      for (let bx = 244; bx <= 316; bx += 8) {
-        rect(ctx, bx, fy - 106 + Math.abs(bx - 280) * 0.3, 4, 52, powered ? '#264d42' : '#152429');
-      }
-      for (const hx of [72, 232, 348]) {
-        rect(ctx, hx, fy - 30, 18, 30, '#414f59');
-        rect(ctx, hx + 3, fy - 34, 12, 4, '#414f59');
+
+      // Twin Sanctified Aetheric Mausoleum Ward-Obelisks (x = 416 & x = 796)!
+      for (const ox of [416, 796]) {
+        drawBeveledPanel(ctx, ox, fy - 118, 28, 100, stone, false);
+        drawShadedSphere(ctx, ox + 14, fy - 128, 9, powered ? '#7ef7e3' : '#2e454a', true);
       }
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 10. GRAND MEZZANINE BALLROOM (w = 620)
+     * 10. GARGOYLE WEST BALCONY (w = 400 -> W = 800, Outdoor Floor 1)
      * ---------------------------------------------------------------------- */
-    case 'ballroom': {
-      // Note: Bellfry stair at local x=90 (2510), Central Lift at local x=405 (2825)
-      drawRug(ctx, 134, 240, '#781f2c', '#f0c259', powered);
-
-      // Crimson Velvet Ceiling Swags across Ballroom Cornice
-      for (let sx = 20; sx < w - 60; sx += 76) {
-        circle(ctx, sx + 38, 14, 24, powered ? '#7a1f2d' : '#2e2228');
-        circle(ctx, sx + 38, 10, 18, powered ? '#9c293a' : '#3b2c33');
+    case 'west_terrace': {
+      // Note: Chest at local x = 120 -> 2x = 240
+      const stone = powered ? '#586675' : '#2a3440';
+      // Carved Gothic Quatrefoil Stone Balustrade across Balcony Edge!
+      rect(ctx, 24, fy - 68, W - 48, 10, shadeHex(stone, 1.25));
+      rect(ctx, 24, fy - 24, W - 48, 8, stone);
+      for (let bx = 42; bx < W - 48; bx += 28) {
+        drawCylinderV(ctx, bx, fy - 58, 12, 34, stone, false);
       }
-      // Colossal 3-Crown Ballroom Chandelier (center, x = 250)
-      drawCrystalChandelier(ctx, 250, 10, powered, 1.45);
 
-      // Towering Cathedral-Scale Brass Pipe Organ (x = 142..224, 108px tall!)
-      const wood = powered ? '#593017' : '#291d17';
-      const brass = powered ? '#ebb849' : '#575146';
-      for (let pxX = 148; pxX <= 216; pxX += 6) {
-        const pipeH = 58 - Math.abs(pxX - 182) * 0.85;
-        rect(ctx, pxX, fy - 44 - pipeH, 4, pipeH, brass);
+      // Winged Stone Gargoyle Perched on Western Corner Plinth Clutching Blazing Aether-Brazier (x = 76)!
+      drawBeveledPanel(ctx, 56, fy - 116, 68, 98, stone, false);
+      fillEllipse(ctx, 90, fy - 138, 22, 24, shadeHex(stone, 1.15)); // gargoyle torso
+      fillCircle(ctx, 78, fy - 162, 12, shadeHex(stone, 1.2)); // horned gargoyle head
+      pixelLine(ctx, 102, fy - 142, 142, fy - 188, stone, 7); // swept stone wing!
+      pixelLine(ctx, 108, fy - 132, 138, fy - 162, shadeHex(stone, 0.75), 5);
+      px(ctx, 73, fy - 164, powered ? '#7ef7e3' : '#ff6b57');
+      // Hanging Aether Brazier Bowl
+      fillEllipse(ctx, 56, fy - 136, 16, 8, '#cfa042');
+      if (powered) {
+        fillCircle(ctx, 56, fy - 148, 11, '#5ef2dc');
+        fillCircle(ctx, 56, fy - 148, 6, '#ffffff');
       }
-      rect(ctx, 142, fy - 46, 82, 46, wood);
-      rect(ctx, 154, fy - 28, 58, 5, powered ? '#faf2de' : '#6e7370'); // dual manuals!
-      rect(ctx, 166, fy - 16, 34, 16, '#3d2110');
 
-      // String Quartet Cello on Stand & Brass Music Lecterns (x = 278..348)
-      rect(ctx, 286, fy - 34, 2, 34, brass);
-      rect(ctx, 280, fy - 42, 14, 10, powered ? '#f2ead8' : '#5e615e');
-      // Resting Mahogany Cello
-      circle(ctx, 318, fy - 18, 11, powered ? '#8c3f19' : '#3b261c');
-      circle(ctx, 318, fy - 31, 8, powered ? '#a34b1f' : '#472f22');
-      rect(ctx, 317, fy - 50, 3, 22, '#26170e');
-
-      // Champagne Punch Fountain Table & Gilded Pier Mirror (far right, x = 468..576)
-      rect(ctx, 474, fy - 28, 72, 28, powered ? '#f2ead8' : '#525452');
-      rect(ctx, 474, fy - 28, 72, 6, powered ? '#8c2433' : '#36282e');
-      circle(ctx, 510, fy - 38, 10, powered ? '#9ef7e8' : '#3b4d52');
-      rect(ctx, 500, fy - 34, 20, 6, powered ? '#e0b048' : '#595348');
+      // Brass Astronomical Spyglass on Mahogany Tripod (x = 468)!
+      const brass = powered ? '#e8b94f' : '#575247';
+      pixelLine(ctx, 468, fy - 86, 442, fy - 18, '#593319', 4);
+      pixelLine(ctx, 468, fy - 86, 494, fy - 18, '#593319', 4);
+      rect(ctx, 466, fy - 86, 4, 68, '#3d2210');
+      pixelLine(ctx, 498, fy - 76, 424, fy - 108, brass, 8);
+      pixelLine(ctx, 498, fy - 77, 424, fy - 109, shadeHex(brass, 1.35), 2);
+      fillCircle(ctx, 422, fy - 109, 6, powered ? '#9ef7eb' : '#2d444a');
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 11. WEEPING PORTRAIT COLONNADE (w = 360)
+     * 11. TWO-TIER ESOTERIC LIBRARY (w = 540 -> W = 1080)
+     * ---------------------------------------------------------------------- */
+    case 'library': {
+      // Note: Vigil at local x = 270 -> 2x = 540
+      drawFloorRug(ctx, 76, fy, W - 152, '#691e2b', '#deb04b', powered);
+      const oak = powered ? '#4f2d17' : '#221915';
+      const brass = powered ? '#e6b84c' : '#575247';
+
+      // Six Towering Floor-to-Ceiling Antiquarian Bookcase Bays!
+      const bayPositions = [64, 212, 360, 608, 756, 904];
+      bayPositions.forEach((bx, i) => {
+        drawBookcaseBay(ctx, bx, 48, 124, fy - 52, oak, powered, i + 1);
+      });
+
+      // Upper Mezzanine Wrought-Iron Catwalk & Brass Railing spanning entire Library (`y = 188`)!
+      rect(ctx, 48, 192, W - 96, 10, oak);
+      rect(ctx, 48, 192, W - 96, 2, brass);
+      rect(ctx, 48, 154, W - 96, 3, brass); // upper brass handrail
+      for (let rx = 64; rx < W - 64; rx += 22) {
+        rect(ctx, rx, 157, 2, 35, '#242d36');
+        if (rx % 66 === 64 % 66) strokeCirclePx(ctx, rx + 11, 174, 7, 1, brass);
+      }
+
+      // Rolling Brass Library Ladder Hooked onto Mezzanine Rail (x = 328)!
+      pixelLine(ctx, 344, 156, 308, fy - 4, brass, 3);
+      pixelLine(ctx, 366, 156, 330, fy - 4, brass, 3);
+      for (let step = 0; step < 10; step++) {
+        const t = step / 10;
+        const lx = Math.round(344 - 36 * t);
+        const ly = Math.round(170 + (fy - 180) * t);
+        rect(ctx, lx, ly, 22, 2, brass);
+      }
+
+      // Monumental Brass Celestial Armillary Globe (x = 468)!
+      drawBeveledPanel(ctx, 444, fy - 42, 48, 42, oak, false);
+      strokeCirclePx(ctx, 468, fy - 86, 36, 4, brass);
+      drawShadedSphere(ctx, 468, fy - 86, 28, powered ? '#348c84' : '#243a40', false);
+      pixelLine(ctx, 434, fy - 74, 502, fy - 98, brass, 3); // ecliptic zodiac band!
+
+      // Scholar's Partner Desk + Green-Glass Banker's Lamp + Illuminated Grimoire (x = 696)!
+      drawBeveledPanel(ctx, 668, fy - 58, 148, 58, oak, false);
+      // Open illuminated parchment folio + quill feather
+      rect(ctx, 704, fy - 64, 42, 6, powered ? '#f7efda' : '#73787a');
+      pixelLine(ctx, 738, fy - 64, 752, fy - 86, '#ffffff', 2);
+      // Classic Emerald-Glass Brass Banker's Lamp!
+      rect(ctx, 772, fy - 78, 4, 20, brass);
+      fillEllipse(ctx, 774, fy - 82, 14, 7, powered ? '#2ec98a' : '#1f4238');
+      if (powered) rect(ctx, 764, fy - 76, 20, 3, '#fff7b8');
+      break;
+    }
+
+    /* ----------------------------------------------------------------------
+     * 12. WEEPING PORTRAIT COLONNADE (w = 360 -> W = 720)
      * ---------------------------------------------------------------------- */
     case 'portrait_gallery': {
-      // Note: Grand Staircase arrives at local x = 315 (2375)
-      drawRug(ctx, 24, 260, '#6b1e2b', '#deb04e', powered);
+      // Note: Grand Staircase Arch at local x = 315 -> 2x = 630!
+      drawFloorRug(ctx, 56, fy, 516, '#751d2b', '#e6b84c', powered);
 
-      // 4 Distinct Ornate Gilded Ancestral Portraits along Colonnade Wall!
-      // Haunted: glowing cyan weeping eyes + ectoplasm tear streaks!
-      // Powered: lit brass picture-lamps & calm warm oil portraits!
+      // Four Detailed Gilded Oil Portraits of Vesper Ancestors (weeping ectoplasm when haunted!)
       const portraits = [
-        { x: 34, coat: '#782230', hair: '#d9d4cc' }, // Dowager Matriarch
-        { x: 96, coat: '#203d59', hair: '#3b281c' }, // Sea Admiral
-        { x: 158, coat: '#245242', hair: '#1f1a18' }, // Occult Alchemist
-        { x: 220, coat: '#59381f', hair: '#8c4a27' }, // Twins / General
+        { x: 64, y: 78, w: 86, h: 112, v: 0 },
+        { x: 184, y: 68, w: 94, h: 124, v: 1 },
+        { x: 316, y: 78, w: 86, h: 112, v: 2 },
+        { x: 436, y: 72, w: 90, h: 118, v: 3 },
       ];
-      for (const p of portraits) {
-        // Picture lamp above frame
-        rect(ctx, p.x + 14, 30, 18, 4, powered ? '#e8b94f' : '#4f4a40');
-        if (powered) rect(ctx, p.x + 16, 34, 14, 3, '#fff3a1');
-        // Heavy gilded frame
-        rect(ctx, p.x, 40, 46, 62, powered ? '#deb04e' : '#575043');
-        rect(ctx, p.x + 4, 44, 38, 54, powered ? '#2b211d' : '#131b1f');
-        // Bust silhouette
-        rect(ctx, p.x + 11, 72, 24, 26, powered ? p.coat : '#202e33');
-        rect(ctx, p.x + 16, 54, 14, 16, powered ? '#ebd0b7' : '#8ea8ad');
-        rect(ctx, p.x + 15, 50, 16, 6, p.hair);
-        if (!powered) {
-          // Eerie weeping ectoplasm eyes & tear tracks!
-          px(ctx, p.x + 19, 60, '#7ef7e3');
-          px(ctx, p.x + 26, 60, '#7ef7e3');
-          rect(ctx, p.x + 19, 62, 1, 14, '#5ef2dc');
-          rect(ctx, p.x + 26, 62, 1, 16, '#5ef2dc');
-        } else {
-          px(ctx, p.x + 19, 60, '#1c1410');
-          px(ctx, p.x + 26, 60, '#1c1410');
+      for (const pt of portraits) {
+        drawFramedPortrait(ctx, pt.x, pt.y, pt.w, pt.h, pt.v, powered);
+      }
+
+      // Classical Draped Marble Busts on Fluted Plinths & Velvet Gallery Rope Stanchions!
+      drawMarbleBustPlinthHD(ctx, 168, fy, powered);
+      drawMarbleBustPlinthHD(ctx, 420, fy, powered);
+
+      const brass = powered ? '#e6b84c' : '#575247';
+      const rope = powered ? '#9e2436' : '#38262b';
+      for (const sx of [78, 258, 344, 512]) {
+        drawCylinderV(ctx, sx, fy - 42, 6, 42, brass, true);
+        drawShadedSphere(ctx, sx + 3, fy - 45, 4, brass);
+      }
+      // Catenary velvet gallery ropes
+      for (const [x1, x2] of [
+        [82, 152],
+        [262, 344],
+        [438, 512],
+      ]) {
+        for (let rx = x1; rx <= x2; rx++) {
+          const u = (rx - x1) / (x2 - x1);
+          const sag = Math.round(Math.sin(u * Math.PI) * 10);
+          rect(ctx, rx, fy - 36 + sag, 1, 3, rope);
+        }
+      }
+      break;
+    }
+
+    /* ----------------------------------------------------------------------
+     * 13. GRAND MEZZANINE BALLROOM (w = 620 -> W = 1240)
+     * ---------------------------------------------------------------------- */
+    case 'ballroom': {
+      // Note: Bellfry Stair at local x = 90 (2x = 180), Brass Lift at local x = 405 (2x = 810)!
+      drawFloorRug(ctx, 256, fy, 496, '#701d2b', '#e6b84c', powered);
+      const brass = powered ? '#ecc054' : '#595346';
+      const darkWood = powered ? '#4d2a16' : '#241a15';
+
+      // Three Tiered Crystal Basket Chandeliers across Ballroom Ceiling!
+      drawChandelier(ctx, 348, 22, 96, 2, powered, 'electric');
+      drawChandelier(ctx, 692, 22, 96, 2, powered, 'electric');
+      drawChandelier(ctx, 1048, 22, 88, 2, powered, 'electric');
+
+      // Arched Ballroom Windows with Crimson Silk Draperies (right wing, x = 948 & 1108)
+      for (const wx of [956, 1112]) {
+        drawArchedWindow(ctx, wx, 64, 64, 174, powered, 'warm');
+        drawVelvetDrapes(ctx, wx - 44, 58, 88, 198, '#7d1e2e', powered);
+      }
+
+      // Monumental 24-Pipe Cathedral Electro-Pneumatic Pipe Organ (center, x = 404 .. 636)!
+      drawBeveledPanel(ctx, 404, fy - 96, 232, 96, darkWood, false);
+      // Symmetric cathedral pipe ranks rising up to 248px tall!
+      for (let i = 0; i < 19; i++) {
+        const distFromMid = Math.abs(i - 9) / 9;
+        const pipeH = Math.round(218 - distFromMid * 96 + (i % 2) * 12);
+        const pxX = 414 + i * 11;
+        drawCylinderV(ctx, pxX, fy - 96 - pipeH, 9, pipeH, i % 3 === 0 ? '#dce8f2' : brass, true);
+        // Gothic pipe mouth notch!
+        rect(ctx, pxX + 2, fy - 112, 5, 6, '#14100d');
+      }
+      // Carved Gothic wood crown crosspiece + Triple Ivory Keyboard Manuals!
+      rect(ctx, 398, fy - 188, 244, 10, darkWood);
+      rect(ctx, 464, fy - 62, 112, 6, '#f7f4eb');
+      rect(ctx, 468, fy - 54, 104, 6, '#f7f4eb');
+      for (let kx = 468; kx < 568; kx += 6) {
+        px(ctx, kx, fy - 62, '#141210');
+        px(ctx, kx, fy - 54, '#141210');
+      }
+
+      // Polished Ebony Concert Grand Piano with Raised Lid & Brass Harp (x = 924 .. 1108)!
+      for (const lx of [938, 1012, 1078]) {
+        drawCylinderV(ctx, lx, fy - 46, 10, 46, '#181c24', true);
+        rect(ctx, lx + 2, fy - 6, 6, 6, brass); // brass casters!
+      }
+      // Piano rim body + white ivory keyboard
+      drawBeveledPanel(ctx, 924, fy - 74, 172, 28, '#161a22', false);
+      rect(ctx, 912, fy - 64, 28, 8, '#f7f5ed');
+      // Raised diagonal concert lid + gold harp frame inside!
+      pixelLine(ctx, 944, fy - 74, 1084, fy - 138, '#1b202b', 7);
+      pixelLine(ctx, 956, fy - 74, 1068, fy - 126, brass, 3);
+      pixelLine(ctx, 1048, fy - 74, 1064, fy - 126, brass, 2); // lid prop stick
+      // Pianist velvet bench
+      drawBeveledPanel(ctx, 876, fy - 36, 30, 36, darkWood, false);
+      rect(ctx, 874, fy - 38, 34, 6, '#7a1f2c');
+      break;
+    }
+
+    /* ----------------------------------------------------------------------
+     * 14. PNEUMATIC SPIRIT-TELEGRAPH HUB (w = 440 -> W = 880)
+     * ---------------------------------------------------------------------- */
+    case 'telegraph_room': {
+      // Note: Spiral Stair at local x = 385 -> 2x = 770!
+      const brass = powered ? '#e6b84c' : '#575247';
+      const copper = powered ? '#d66e36' : '#4a3d38';
+
+      // Overhead Manifold of 6 Curving Brass Pneumatic Carrier Tubes with Glass Sight-Chambers!
+      for (const tx of [92, 148, 204, 556, 612]) {
+        drawCylinderV(ctx, tx, 28, 16, 212, copper, true);
+        rect(ctx, tx - 3, 94, 22, 7, brass);
+        rect(ctx, tx - 3, 176, 22, 7, brass);
+        // Sight-glass window showing glowing brass message capsule!
+        rect(ctx, tx + 3, 118, 10, 36, powered ? '#7ef7e3' : '#24363b');
+        if (powered) drawCylinderV(ctx, tx + 4, 126 + (tx % 14), 8, 16, brass, true);
+      }
+
+      // Illuminated Brass-Framed Cutaway Estate Network Dispatch Map (x = 272 .. 524)!
+      drawBeveledPanel(ctx, 264, 58, 268, 138, brass, false);
+      rect(ctx, 276, 70, 244, 114, '#0f1a22');
+      // Blueprint schematic floors & glowing node LEDs!
+      const lineCol = powered ? '#46bfb0' : '#284047';
+      for (const my of [96, 122, 148, 168]) {
+        rect(ctx, 302, my, 192, 2, lineCol);
+      }
+      rect(ctx, 398, 86, 3, 88, powered ? '#ffe680' : '#3a464d');
+      if (powered) {
+        for (const [nx, ny] of [
+          [328, 148],
+          [399, 148],
+          [464, 122],
+          [354, 96],
+          [448, 168],
+        ]) {
+          fillCircle(ctx, nx, ny, 5, '#7ef7e3');
+          px(ctx, nx, ny, '#ffffff');
         }
       }
 
-      // Suit of Gothic Plate Armor on Plinth & Velvet Gallery Bench + Rope Stanchions
-      rect(ctx, 28, fy - 14, 22, 14, '#3d2718');
-      rect(ctx, 32, fy - 58, 14, 44, powered ? '#b8c7d4' : '#4a545c');
-      rect(ctx, 34, fy - 68, 10, 10, powered ? '#dce8f2' : '#59656e');
-      // Tufted Velvet Gallery Viewing Bench
-      rect(ctx, 118, fy - 18, 72, 8, powered ? '#8a2433' : '#33262b');
-      rect(ctx, 122, fy - 10, 6, 10, '#4a2b17');
-      rect(ctx, 180, fy - 10, 6, 10, '#4a2b17');
-      // Brass Rope Stanchions
-      for (const sx of [76, 214, 264]) {
-        rect(ctx, sx, fy - 24, 3, 24, powered ? '#e0b048' : '#544f44');
+      // Mahogany Plug-Cord Switchboard Console + Pigeonhole Sorting Desk (x = 276 .. 520)!
+      drawBeveledPanel(ctx, 276, fy - 124, 244, 124, powered ? '#593319' : '#261d17', false);
+      rect(ctx, 294, fy - 112, 112, 54, '#141d24'); // jack-plug matrix!
+      for (let jx = 306; jx <= 394; jx += 14) {
+        for (let jy = fy - 102; jy <= fy - 68; jy += 11) {
+          rect(ctx, jx, jy, 4, 4, powered ? '#ffe680' : '#434d54');
+        }
       }
-      rect(ctx, 78, fy - 18, 188, 2, powered ? '#9c2636' : '#382a30');
-      break;
-    }
-
-    /* ----------------------------------------------------------------------
-     * 12. TWO-TIER ESOTERIC LIBRARY (w = 540)
-     * ---------------------------------------------------------------------- */
-    case 'library': {
-      // Note: Vigil at local x = 270 (1790)
-      drawRug(ctx, 40, w - 80, '#234f46', '#d9a441', powered);
-
-      // Towering Floor-to-Ceiling Bookcases + Upper Mezzanine Iron Catwalk & Rolling Brass Ladder!
-      for (const bx of [36, 128, 344, 434]) {
-        drawBookcaseUnit(ctx, bx, 26, 68, fy - 26, powered);
-      }
-      // Upper Iron Mezzanine Catwalk Railing spanning the whole Library!
-      rect(ctx, 24, 92, w - 48, 4, powered ? '#6e4020' : '#2d241e');
-      rect(ctx, 24, 78, w - 48, 2, powered ? '#cfa042' : '#4f4b42');
-      for (let rx = 30; rx < w - 30; rx += 14) {
-        rect(ctx, rx, 80, 2, 12, '#242b33');
-      }
-      // Rolling Diagonal Brass Library Ladder!
-      for (let s = 0; s < 96; s += 3) {
-        rect(ctx, 152 + Math.round(s * 0.22), 88 + s, 4, 3, powered ? '#e0b048' : '#5c564a');
-      }
-
-      // Hanging Brass Celestial Armillary Sphere Chandelier
-      ring(ctx, 270, 44, 18, 2, powered ? '#ebb849' : '#544f43');
-      ring(ctx, 270, 44, 11, 2, powered ? '#7ef7e3' : '#35484a');
-
-      // Scholar's Mahogany Reading Desk with Green Lamp, Grimoires & Skull (left-center)
-      const wood = powered ? '#5e3419' : '#2b1e17';
-      rect(ctx, 186, fy - 28, 64, 28, wood);
-      rect(ctx, 196, fy - 38, 14, 6, powered ? '#288a5e' : '#20362f'); // banker lamp
-      if (powered) rect(ctx, 198, fy - 32, 10, 4, '#fff4a3');
-      rect(ctx, 224, fy - 35, 10, 7, '#ded8c8'); // human skull on grimoire!
-
-      // Chained Esoteric Codex Lectern & Giant Floor Globe (right-center)
-      rect(ctx, 314, fy - 40, 14, 40, wood);
-      rect(ctx, 308, fy - 46, 26, 8, powered ? '#8c2633' : '#38282d');
-      if (powered) rect(ctx, 312, fy - 50, 18, 4, '#7ef7e3');
-      ring(ctx, 418, fy - 32, 14, 2, powered ? '#e0b048' : '#544f44');
-      circle(ctx, 418, fy - 32, 10, powered ? '#2f6880' : '#1f2e36');
-      break;
-    }
-
-    /* ----------------------------------------------------------------------
-     * 13. GARGOYLE WEST BALCONY (w = 400, Outdoor)
-     * ---------------------------------------------------------------------- */
-    case 'west_terrace': {
-      // Carved Stone Parapet Balustrade
-      rect(ctx, 16, fy - 32, w - 32, 5, '#4b5963');
-      for (let bx = 24; bx < w - 28; bx += 18) {
-        rect(ctx, bx, fy - 27, 6, 27, '#38434d');
-      }
-      // Two Winged Stone Gargoyles Perched on Plinths!
-      for (const gx of [46, 318]) {
-        rect(ctx, gx, fy - 36, 28, 36, '#3d4954');
-        rect(ctx, gx + 4, fy - 60, 20, 24, '#52616e');
-        rect(ctx, gx - 4, fy - 66, 10, 16, '#44515c'); // stone wing
-        rect(ctx, gx + 22, fy - 66, 10, 16, '#44515c');
-        if (powered) px(ctx, gx + 16, fy - 55, '#7ef7e3');
-      }
-      // Consecrated Tripod Aether-Brazier & Brass Stargazing Spyglass!
-      rect(ctx, 186, fy - 36, 28, 10, powered ? '#cfa042' : '#4a4e52');
-      rect(ctx, 192, fy - 26, 4, 26, '#262d33');
-      rect(ctx, 204, fy - 26, 4, 26, '#262d33');
       if (powered) {
-        circle(ctx, 200, fy - 44, 10, '#5ef2dc');
-        circle(ctx, 200, fy - 42, 6, '#ebfffb');
+        // Draped copper patch cords across switchboard!
+        pixelLine(ctx, 308, fy - 100, 364, fy - 68, '#d94838', 2);
+        pixelLine(ctx, 336, fy - 90, 392, fy - 79, '#5ef2dc', 2);
       }
-      // Brass Spyglass on Tripod
-      rect(ctx, 266, fy - 44, 28, 6, powered ? '#e0b048' : '#525457');
-      rect(ctx, 276, fy - 38, 4, 38, '#4a301c');
-      break;
-    }
-
-    /* ----------------------------------------------------------------------
-     * 14. PNEUMATIC SPIRIT-TELEGRAPH HUB (w = 440)
-     * ---------------------------------------------------------------------- */
-    case 'telegraph_room': {
-      // Note: Spiral Stair at local x = 385 (3425)
-      const brass = powered ? '#e0b048' : '#545047';
-      const copper = powered ? '#cf6e38' : '#4a3d38';
-
-      // Labyrinth of Brass Pneumatic Carrier Tubes curving into Ceiling Manifold!
-      for (const tx of [54, 86, 118, 284, 316]) {
-        rect(ctx, tx, 14, 8, 96, copper);
-        rect(ctx, tx - 2, 46, 12, 4, brass);
-        rect(ctx, tx - 2, 82, 12, 4, brass);
+      // Pigeonholes stuffed with ivory dispatch letters (right half of desk)
+      for (let py = fy - 110; py <= fy - 74; py += 18) {
+        for (let px0 = 418; px0 <= 494; px0 += 24) {
+          rect(ctx, px0, py, 20, 14, '#1b120c');
+          rect(ctx, px0 + 3, py + 5, 14, 7, powered ? '#f2ead8' : '#6b7073');
+        }
       }
 
-      // Illuminated Mansion Network Dispatch Map Board (center wall)
-      rect(ctx, 150, 34, 116, 62, '#162129');
-      rect(ctx, 146, 30, 124, 4, brass);
-      rect(ctx, 146, 96, 124, 4, brass);
-      if (powered) {
-        rect(ctx, 164, 52, 88, 2, '#ffe478');
-        rect(ctx, 178, 68, 64, 2, '#7ef7e3');
-        rect(ctx, 206, 42, 2, 44, '#ffbe66');
-        for (const dx of [170, 206, 238]) circle(ctx, dx, 68, 3, '#7ef7e3');
-      }
-
-      // Central Plug-Cord Switchboard Console & Pigeonhole Sorting Desk!
-      rect(ctx, 152, fy - 62, 112, 62, powered ? '#4d2d18' : '#241c18');
-      rect(ctx, 160, fy - 56, 96, 24, '#1b242b');
-      for (let jx = 168; jx <= 248; jx += 12) {
-        px(ctx, jx, fy - 48, powered ? '#ffe678' : '#465057');
-        px(ctx, jx, fy - 40, powered ? '#7ef7e3' : '#465057');
-      }
-      // Glass-Domed Stock/Spirit Ticker-Tape Pedestals
-      for (const kx of [66, 294]) {
-        rect(ctx, kx, fy - 34, 22, 34, powered ? '#59341b' : '#291f1a');
-        rect(ctx, kx + 4, fy - 50, 14, 16, powered ? '#9ef7e8' : '#2c3c40');
+      // Twin Glass-Domed Edison Spirit-Ticker Tape Pedestals (x = 128 & x = 648)!
+      for (const kx of [128, 648]) {
+        drawCylinderV(ctx, kx + 8, fy - 68, 28, 68, powered ? '#593319' : '#261d17', false);
+        drawGear(ctx, kx + 22, fy - 84, 11, 8, brass, 0.2);
+        fillCircle(ctx, kx + 22, fy - 88, 18, 'rgba(158, 247, 235, 0.28)');
+        strokeCirclePx(ctx, kx + 22, fy - 88, 18, 2, powered ? '#9ef7eb' : '#3d4f54');
+        // Unreeling paper ticker tape!
+        pixelLine(ctx, kx + 32, fy - 72, kx + 48, fy - 34, '#f5eedc', 3);
       }
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 15. GALVANIC & ECTOPLASM LAB (w = 640)
+     * 15. GALVANIC & ECTOPLASM LAB (w = 640 -> W = 1280)
      * ---------------------------------------------------------------------- */
     case 'alchemy_lab': {
       const copper = powered ? '#d97238' : '#4a3d38';
       const brass = powered ? '#e8b94f' : '#575248';
 
-      // Wall Chalkboard Scrawled with Maxwell / Aether Wave Equations (left)
-      rect(ctx, 48, 38, 112, 58, '#152421');
-      rect(ctx, 44, 34, 120, 4, '#59341b');
-      rect(ctx, 44, 96, 120, 4, '#59341b');
-      for (let ly = 48; ly <= 82; ly += 10) {
-        rect(ctx, 58, ly, 42 + ((ly * 7) % 38), 2, powered ? '#d9f2ec' : '#4d635e');
+      // Framed Slate Chalkboard Scrawled with Maxwell / Aether Wave Diagrams (left, x = 84 .. 348)!
+      drawBeveledPanel(ctx, 80, 64, 268, 134, '#59341b', false);
+      rect(ctx, 92, 76, 244, 110, '#11211e');
+      const chalk = powered ? '#dff5ef' : '#4b635d';
+      // Pixel sine wave + occult geometric diagram + equations!
+      for (let sx = 108; sx < 220; sx++) {
+        const sy = 114 + Math.round(Math.sin((sx - 108) * 0.14) * 16);
+        rect(ctx, sx, sy, 2, 2, powered ? '#7ef7e3' : chalk);
+      }
+      strokeCirclePx(ctx, 284, 128, 28, 2, chalk);
+      pixelLine(ctx, 260, 144, 308, 144, chalk, 1);
+      pixelLine(ctx, 284, 100, 260, 144, chalk, 1);
+      pixelLine(ctx, 284, 100, 308, 144, chalk, 1);
+      for (const ly of [154, 168]) {
+        rect(ctx, 112, ly, 116, 2, chalk);
       }
 
-      // Long Slate Laboratory Bench with Bunsen Burners, Retorts & Leyden Jar Bank!
-      rect(ctx, 44, fy - 32, 152, 6, '#38444f');
-      rect(ctx, 52, fy - 26, 8, 26, '#232a30');
-      rect(ctx, 180, fy - 26, 8, 26, '#232a30');
-      for (const rx of [64, 98, 134, 164]) {
-        rect(ctx, rx, fy - 48, 12, 16, powered ? '#6bf7e2' : '#293b40');
-        if (powered) rect(ctx, rx + 3, fy - 44, 6, 9, '#ffffff');
+      // Long Soapstone Laboratory Bench with Bunsen Burners, Liebig Condensers & Reagent Flasks (x = 76 .. 412)!
+      rect(ctx, 76, fy - 68, 336, 12, '#3a4754');
+      drawBeveledPanel(ctx, 92, fy - 56, 304, 56, '#26303a', false);
+      // Glass flasks, coiled tubing & Bunsen burners!
+      for (const [fx, col] of [
+        [118, '#5ef2dc'],
+        [182, '#ffd966'],
+        [252, '#ff7d59'],
+        [324, '#7ef7e3'],
+      ]) {
+        // Round-bottom Florence flask on iron ring stand
+        rect(ctx, fx - 12, fy - 118, 3, 50, '#232b33');
+        fillCircle(ctx, fx + 4, fy - 92, 14, powered ? col : '#2a3b40');
+        if (powered) fillCircle(ctx, fx, fy - 96, 5, '#ffffff');
+        rect(ctx, fx + 1, fy - 116, 7, 14, powered ? '#c8f7f0' : '#3a4d52');
+        if (powered) fillCircle(ctx, fx + 4, fy - 74, 4, '#5ef2dc'); // Bunsen flame!
       }
+      pixelLine(ctx, 125, fy - 116, 185, fy - 116, brass, 3);
+      pixelLine(ctx, 255, fy - 116, 327, fy - 116, brass, 3);
 
-      // Twin Glowing Ectoplasm Specimen Containment Cylinders (center, x = 236 & 306)!
-      for (const vx of [236, 306]) {
-        rect(ctx, vx, fy - 16, 44, 16, '#2b333b');
-        rect(ctx, vx, fy - 92, 44, 10, brass);
-        rect(ctx, vx + 4, fy - 82, 36, 66, powered ? '#1e6e68' : '#162629');
+      // Twin Towering Riveted Glass Ectoplasm Specimen Containment Cylinders (center, x = 468 & x = 618)!
+      for (const vx of [468, 618]) {
+        drawBeveledPanel(ctx, vx - 6, fy - 34, 104, 34, '#26303b', false);
+        drawCylinderH(ctx, vx - 4, fy - 204, 100, 18, brass, true);
+        // Shaded glass cylinder tank!
+        drawCylinderV(ctx, vx + 4, fy - 186, 84, 152, powered ? '#1d756d' : '#14262b', false);
         if (powered) {
-          rect(ctx, vx + 10, fy - 76, 24, 54, '#5ef2dc');
-          // Suspended luminescent ectoplasmic wisp inside tank!
-          circle(ctx, vx + 22, fy - 50, 8, '#ebfffb');
+          rect(ctx, vx + 18, fy - 176, 56, 134, '#4ee3ce');
+          // Floating luminous ectoplasm specimen & rising bubbles inside tank!
+          fillEllipse(ctx, vx + 46, fy - 112, 18, 24, '#d9fff9');
+          fillCircle(ctx, vx + 46, fy - 118, 10, '#ffffff');
+          for (const [bx, by] of [
+            [28, -62],
+            [62, -88],
+            [36, -154],
+          ]) {
+            fillCircle(ctx, vx + bx, fy + by, 4, '#ffffff');
+          }
         }
+        // Vertical brass tie-rods & pressure gauge
+        drawCylinderV(ctx, vx + 2, fy - 186, 5, 152, brass, true);
+        drawCylinderV(ctx, vx + 85, fy - 186, 5, 152, brass, true);
+        drawPressureGauge(ctx, vx + 46, fy - 18, 8, brass, powered ? '#fff6dc' : '#636b70', 0.5);
       }
 
-      // Twin Towering Copper-Toroid Tesla Coils (right, x = 408 & 512)!
-      for (const tx of [408, 512]) {
-        rect(ctx, tx, fy - 20, 48, 20, '#262e36');
-        rect(ctx, tx + 14, fy - 88, 20, 68, copper);
-        for (let wy = fy - 82; wy < fy - 24; wy += 8) {
-          rect(ctx, tx + 12, wy, 24, 2, brass);
+      // Twin Colossal Copper-Wound Toroid Tesla Coils (right, x = 824 & x = 1036)!
+      for (const tx of [824, 1036]) {
+        drawBeveledPanel(ctx, tx, fy - 42, 108, 42, '#242d36', false);
+        // Ribbed white porcelain high-voltage standoffs
+        drawCylinderV(ctx, tx + 14, fy - 62, 14, 20, '#ebf3f7', false);
+        drawCylinderV(ctx, tx + 80, fy - 62, 14, 20, '#ebf3f7', false);
+        // Primary & Secondary Copper Solenoid Windings!
+        drawCylinderV(ctx, tx + 32, fy - 204, 44, 162, copper, true);
+        for (let wy = fy - 196; wy < fy - 48; wy += 10) {
+          rect(ctx, tx + 29, wy, 50, 3, brass);
         }
-        // Toroid top ring!
-        rect(ctx, tx + 4, fy - 100, 40, 12, powered ? '#dce8f2' : '#57626b');
-        if (powered) {
-          // Crackling electric arcs between the two Tesla Coils!
-          rect(ctx, tx + 22, 18, 4, fy - 118, '#fff799');
-        }
+        // Spun Aluminum High-Voltage Toroid Donut Ring at Top!
+        drawCylinderH(ctx, tx + 8, fy - 228, 92, 24, powered ? '#e3eff7' : '#57636e', true);
+        drawShadedSphere(ctx, tx + 54, fy - 238, 9, brass, true);
       }
       if (powered) {
-        rect(ctx, 432, fy - 96, 104, 3, '#9ef7ff');
-        rect(ctx, 448, fy - 93, 72, 2, '#ffffff');
+        // Blazing Galvanic Arc Bridge between the Twin Tesla Coils!
+        pixelLine(ctx, 916, fy - 216, 984, fy - 228, '#9ef7ff', 4);
+        pixelLine(ctx, 984, fy - 228, 1044, fy - 216, '#9ef7ff', 4);
+        pixelLine(ctx, 916, fy - 216, 984, fy - 228, '#ffffff', 2);
+        pixelLine(ctx, 984, fy - 228, 1044, fy - 216, '#ffffff', 2);
       }
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 16. CLOCKWORK BELLFRY (w = 420)
+     * 16. CLOCKWORK BELLFRY (w = 420 -> W = 840, Floor 2)
      * ---------------------------------------------------------------------- */
     case 'clocktower': {
-      // Note: Bellfry Stair at local x = 150 (2510), Chest at local x = 80 (2440)
+      // Note: Chest at local x = 80 (2x = 160), Bellfry Stair at local x = 150 (2x = 300)
       const brass = powered ? '#e8b84b' : '#575145';
-      const darkBrass = powered ? '#9e7226' : '#3b3730';
+      const darkBrass = powered ? '#b0802b' : '#3d3931';
+      const cx = 496;
+      const cy = 154;
 
-      // Giant 92px Backlit Stained-Glass Roman Clockface set into Spire Wall!
-      const cx = 248;
-      const cy = 78;
-      circle(ctx, cx, cy, 46, '#1a1410');
-      circle(ctx, cx, cy, 40, powered ? '#fff0b8' : '#24323b');
-      ring(ctx, cx, cy, 42, 4, brass);
-      ring(ctx, cx, cy, 26, 2, darkBrass);
-      // Clock hands & cardinal numerals
-      rect(ctx, cx - 2, cy - 32, 4, 34, '#14100d');
-      rect(ctx, cx, cy - 2, 26, 4, '#14100d');
+      // Interlocking Escapement Train of 4 Toothed Steampunk Cogwheels Behind & Beside the Great Dial!
+      drawGear(ctx, 396, 236, 44, 14, darkBrass, 0.15);
+      drawGear(ctx, 594, 228, 50, 16, darkBrass, 0.35);
+      drawGear(ctx, 434, 286, 28, 10, brass, 0.5);
+      drawGear(ctx, 558, 292, 32, 12, brass, 0.1);
 
-      // Interlocking Escapement Cogwheels & Swinging Heavy Pendulum!
-      ring(ctx, 202, 124, 18, 4, brass);
-      ring(ctx, 294, 120, 22, 4, darkBrass);
-      rect(ctx, cx - 2, cy + 40, 4, 48, brass);
-      circle(ctx, cx + (powered ? 4 : 0), fy - 24, 12, brass);
+      // Heavy Swinging Brass Compensated Gridiron Pendulum!
+      drawCylinderV(ctx, cx - 4, cy + 80, 8, 106, brass, true);
+      drawShadedSphere(ctx, cx + (powered ? 8 : 0), fy - 48, 22, brass, true);
 
-      // Suspended Great Bronze Belfry Bell on Timber Frame (right, x = 334)
-      rect(ctx, 326, 24, 56, 8, '#4a2d18');
-      rect(ctx, 330, 32, 6, fy - 32, '#3b2413');
-      rect(ctx, 372, 32, 6, fy - 32, '#3b2413');
-      circle(ctx, 354, 68, 18, powered ? '#cf9638' : '#4f4a40');
-      rect(ctx, 332, 68, 44, 18, powered ? '#cf9638' : '#4f4a40');
-      circle(ctx, 354, 88, 5, '#ffe680');
+      // Colossal 184px Backlit Stained-Glass Roman Clockface!
+      fillCircle(ctx, cx, cy, 94, '#17120e');
+      fillCircle(ctx, cx, cy, 84, powered ? '#fff1ba' : '#1d2d38');
+      fillCircle(ctx, cx, cy, 58, powered ? '#fffbe0' : '#263a47');
+      strokeCirclePx(ctx, cx, cy, 86, 7, brass);
+      strokeCirclePx(ctx, cx, cy, 58, 4, darkBrass);
+      // All 12 Roman Hour Spokes & Gothic Lancet Tracery!
+      for (let hIdx = 0; hIdx < 12; hIdx++) {
+        const ang = (hIdx / 12) * Math.PI * 2 - Math.PI / 2;
+        const x1 = cx + Math.cos(ang) * 58;
+        const y1 = cy + Math.sin(ang) * 58;
+        const x2 = cx + Math.cos(ang) * 82;
+        const y2 = cy + Math.sin(ang) * 82;
+        pixelLine(ctx, x1, y1, x2, y2, '#1c140f', hIdx % 3 === 0 ? 4 : 2);
+      }
+      // Ornate Spade Hour & Minute Hands!
+      pixelLine(ctx, cx, cy, cx - 6, cy - 66, '#140f0c', 5);
+      pixelLine(ctx, cx, cy, cx + 48, cy + 8, '#140f0c', 5);
+      drawShadedSphere(ctx, cx, cy, 8, brass, true);
+
+      // Massive Timber Belfry A-Frame & Great Cast-Bronze Vesper Bell (right, x = 656 .. 788)!
+      drawCylinderH(ctx, 648, 46, 144, 16, '#4d2e18', false);
+      drawCylinderV(ctx, 660, 62, 14, fy - 62, '#3d2413', false);
+      drawCylinderV(ctx, 764, 62, 14, fy - 62, '#3d2413', false);
+      drawGear(ctx, 756, 84, 24, 12, '#6e4223', 0); // wooden bell-ringing wheel!
+      // Sculpted Cast-Bronze Bell Profile + Glowing Clapper
+      const bronze = powered ? '#d49a3b' : '#4f4a40';
+      drawShadedSphere(ctx, 718, 124, 34, bronze, true);
+      for (let dy = 0; dy < 42; dy++) {
+        const flare = 34 + Math.round(Math.pow(dy / 42, 1.8) * 18);
+        drawCylinderH(ctx, 718 - flare, 124 + dy, flare * 2, 2, bronze, true);
+      }
+      drawShadedSphere(ctx, 718, 174, 10, '#ffe680', true);
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 17. RAIN-LASHED GLASS SKYBRIDGE (w = 380)
+     * 17. RAIN-LASHED GLASS SKYBRIDGE (w = 380 -> W = 760, Floor 2)
      * ---------------------------------------------------------------------- */
     case 'skybridge': {
-      // Note: Central Lift at local x = 45 (2825)
-      const brass = powered ? '#e6b54a' : '#525048';
-      // Twin High-Voltage Storm Arc-Lamp Pylons & Barometer Weather Pedestal
-      for (const pxX of [132, 286]) {
-        rect(ctx, pxX, fy - 86, 18, 86, '#2a343d');
-        rect(ctx, pxX + 3, fy - 108, 12, 22, brass);
-        rect(ctx, pxX + 5, fy - 104, 8, 14, powered ? '#fff6a6' : '#263840');
+      // Note: Central Brass Lift at local x = 45 -> 2x = 90!
+      const brass = powered ? '#e6b84c' : '#575247';
+
+      // Riveted Wrought-Iron Conservatory Arch Trusses Overhead
+      for (const tx of [212, 428, 644]) {
+        rect(ctx, tx, 28, 8, fy - 28, '#232e38');
+        drawRivetRow(ctx, tx + 3, 40, tx + 3, fy - 40, 24, brass);
       }
-      // Central Brass Anemometer & Barometer Column
-      rect(ctx, 204, fy - 48, 22, 48, '#4a2e19');
-      circle(ctx, 215, fy - 34, 7, powered ? '#f7efd9' : '#687073');
-      rect(ctx, 213, fy - 66, 4, 18, brass);
-      rect(ctx, 203, fy - 64, 24, 3, brass);
+
+      // Twin High-Voltage Storm Lightning-Arrester Pylons with Corona Spheres (x = 264 & x = 576)!
+      for (const pxX of [264, 576]) {
+        drawBeveledPanel(ctx, pxX - 6, fy - 42, 48, 42, '#252f3a', false);
+        drawCylinderV(ctx, pxX + 4, fy - 178, 28, 136, '#323f4d', true);
+        // Porcelain insulator disks
+        for (let iy = fy - 170; iy < fy - 110; iy += 16) {
+          drawCylinderH(ctx, pxX, iy, 36, 8, '#edf5fa', false);
+        }
+        drawCylinderV(ctx, pxX + 10, fy - 224, 16, 46, brass, true);
+        drawShadedSphere(ctx, pxX + 18, fy - 236, 15, powered ? '#fff6a6' : '#2b3e47', true);
+      }
+
+      // Central Victorian Brass Barometer, Hygrometer & Spinning Cup Anemometer (x = 428)!
+      drawBeveledPanel(ctx, 404, fy - 96, 52, 96, '#4d2e18', false);
+      drawPressureGauge(ctx, 430, fy - 68, 15, brass, powered ? '#fff6dc' : '#6c7375', -0.4);
+      drawCylinderV(ctx, 426, fy - 142, 8, 46, brass, true);
+      rect(ctx, 398, fy - 138, 64, 4, brass);
+      drawShadedSphere(ctx, 398, fy - 137, 7, brass, true);
+      drawShadedSphere(ctx, 462, fy - 137, 7, brass, true);
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 18. CELESTIAL AETHER OBSERVATORY (w = 680)
+     * 18. CELESTIAL AETHER OBSERVATORY (w = 680 -> W = 1360, Floor 2)
      * ---------------------------------------------------------------------- */
     case 'observatory': {
-      // Note: Master Rift at local x = 590 (3750)
+      // Note: Master Rift at local x = 590 -> 2x = 1180!
       const brass = powered ? '#ebb849' : '#575247';
-      const wood = powered ? '#593219' : '#291e18';
+      const wood = powered ? '#5c3419' : '#261d17';
 
-      // Star-Chart Drafting Table & Spectroscope Cabinet (left)
-      rect(ctx, 56, fy - 30, 86, 8, wood);
-      rect(ctx, 64, fy - 22, 8, 22, wood);
-      rect(ctx, 126, fy - 22, 8, 22, wood);
-      rect(ctx, 68, fy - 34, 58, 4, powered ? '#dff5f2' : '#576366'); // star chart scroll!
+      // Astronomer's Star-Chart Drafting Table, Sextant & Celestial Scrolls (left, x = 96 .. 304)
+      drawBeveledPanel(ctx, 96, fy - 64, 196, 64, wood, false);
+      rect(ctx, 116, fy - 72, 136, 8, powered ? '#e0f7f4' : '#5e6b70'); // unrolled star-chart!
+      drawShadedSphere(ctx, 108, fy - 72, 6, brass);
+      drawShadedSphere(ctx, 256, fy - 72, 6, brass);
 
-      // Rotating Brass Planetary Orrery on Pedestal (center-left, x = 212)!
-      rect(ctx, 196, fy - 28, 34, 28, wood);
-      ring(ctx, 213, fy - 54, 24, 2, brass);
-      ring(ctx, 213, fy - 54, 15, 2, powered ? '#7ef7e3' : '#3a4d52');
-      circle(ctx, 213, fy - 54, 6, powered ? '#ffe478' : '#595449');
-      circle(ctx, 232, fy - 60, 4, powered ? '#5ef2dc' : '#3f4f52');
+      // Concentric Brass Planetary Orrery on Fluted Mahogany Pedestal (x = 424)!
+      drawBeveledPanel(ctx, 388, fy - 58, 72, 58, wood, false);
+      strokeCirclePx(ctx, 424, fy - 114, 52, 4, brass);
+      strokeCirclePx(ctx, 424, fy - 114, 34, 3, powered ? '#7ef7e3' : '#3a4d52');
+      strokeCirclePx(ctx, 424, fy - 114, 19, 2, brass);
+      drawShadedSphere(ctx, 424, fy - 114, 11, powered ? '#ffe478' : '#595449', true); // Sun
+      drawShadedSphere(ctx, 462, fy - 128, 7, powered ? '#5ef2dc' : '#3d4f52', true); // Planet
+      drawShadedSphere(ctx, 392, fy - 98, 5, powered ? '#ff9d5c' : '#4a433d', true);
 
-      // Slit-Open Starry Observatory Dome Aperture + Colossal 116px Kelvin Aether-Refractor Telescope!
-      rect(ctx, 326, 20, 148, 108, '#080e17');
-      if (powered) {
-        for (const [sx, sy] of [[348, 38], [386, 52], [434, 34], [452, 68], [362, 84]]) {
-          rect(ctx, sx, sy, 2, 2, '#fff8c4');
+      // Giant Arched Riveted Observatory Dome Shutter Open to a Swirling Starry Nebula (x = 616 .. 988, y <= 268)!
+      for (let dy = -168; dy <= 52; dy++) {
+        const halfOuter = dy < 0 ? Math.round(Math.sqrt(Math.max(0, 168 * 168 - dy * dy))) : 168;
+        rect(ctx, 802 - halfOuter, 212 + dy, halfOuter * 2, 1, '#1c2633');
+        if (dy > -138 && dy <= 44) {
+          const halfInner = dy < 0 ? Math.round(Math.sqrt(Math.max(0, 138 * 138 - dy * dy))) : 138;
+          rect(ctx, 802 - halfInner, 212 + dy, halfInner * 2, 1, '#060b14');
         }
       }
-      // Heavy Cast-Iron Equatorial Pier
-      rect(ctx, 356, fy - 62, 36, 62, '#28313b');
-      circle(ctx, 374, fy - 68, 14, brass);
-      // Diagonal 116px Brass & Crystal Refractor Tube aimed up at the stars!
-      for (let t = 0; t < 96; t += 2) {
-        const tx = 334 + t;
-        const ty = fy - 52 - Math.round(t * 0.62);
-        rect(ctx, tx, ty, 12, 12, brass);
+      // Rivets around the curved observatory dome shutter ring + beveled brass/stone sill!
+      for (let a = 0; a <= 12; a++) {
+        const ang = Math.PI + (a / 12) * Math.PI;
+        fillCircle(ctx, 802 + Math.cos(ang) * 153, 212 + Math.sin(ang) * 153, 2, brass);
       }
-      circle(ctx, 432, fy - 112, 11, powered ? '#7ef7e3' : '#2d4247');
-      if (powered) circle(ctx, 434, fy - 114, 5, '#ffffff');
+      drawBeveledPanel(ctx, 622, 260, 360, 16, '#2b3745', false);
+      rect(ctx, 620, 258, 364, 4, brass);
+
+      // Swirling teal-and-gold pixel Aether Nebula & constellations inside dome slit!
+      fillEllipse(ctx, 816, 136, 78, 28, powered ? 'rgba(46, 178, 168, 0.34)' : 'rgba(28, 64, 74, 0.22)');
+      fillEllipse(ctx, 824, 134, 44, 14, powered ? 'rgba(255, 224, 132, 0.28)' : 'rgba(46, 88, 96, 0.2)');
+      const stars = [
+        [694, 96],
+        [738, 74],
+        [784, 118],
+        [846, 82],
+        [898, 108],
+        [922, 156],
+        [712, 168],
+        [868, 178],
+      ];
+      for (const [sx, sy] of stars) {
+        rect(ctx, sx, sy, 3, 3, powered ? '#fff8c4' : '#688296');
+        if (powered) {
+          rect(ctx, sx - 2, sy + 1, 7, 1, '#7ef7e3');
+          rect(ctx, sx + 1, sy - 2, 1, 7, '#7ef7e3');
+        }
+      }
+
+      // Colossal Cast-Iron Equatorial Pier & 220px Diagonal Shaded Brass Kelvin Refractor Telescope!
+      drawBeveledPanel(ctx, 696, fy - 128, 84, 128, '#26303b', false);
+      drawGear(ctx, 738, fy - 142, 30, 12, brass, 0.25); // equatorial setting circle!
+      // Counterweight shaft
+      pixelLine(ctx, 738, fy - 142, 692, fy - 96, '#465463', 5);
+      drawShadedSphere(ctx, 698, fy - 102, 11, '#2f3a45', true);
+
+      // Diagonal Shaded Brass & Mahogany Refractor Tube aimed up at the Nebula!
+      for (let t = 0; t < 196; t += 2) {
+        const tx = 662 + t;
+        const ty = fy - 104 - Math.round(t * 0.64);
+        rect(ctx, tx, ty - 14, 4, 28, shadeHex(brass, 0.68));
+        rect(ctx, tx, ty - 10, 4, 18, brass);
+        rect(ctx, tx, ty - 6, 4, 7, shadeHex(brass, 1.42)); // crisp cylindrical specular strip!
+        if (t % 48 === 0) {
+          rect(ctx, tx, ty - 16, 5, 32, '#5c3419'); // mahogany barrel rings
+        }
+      }
+      // Parallel brass finder-scope!
+      pixelLine(ctx, 712, fy - 154, 796, fy - 208, brass, 4);
+      // Glowing 24px Aether Objective Lens at Skyward Muzzle!
+      drawShadedSphere(ctx, 864, fy - 232, 18, powered ? '#7ef7e3' : '#2a4247', true);
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 19. ANCESTRAL SILVER & CASK VAULT (w = 640)
+     * 19. ANCESTRAL SILVER & CASK VAULT (w = 640 -> W = 1280, Floor -1)
      * ---------------------------------------------------------------------- */
     case 'wine_vault': {
-      // Note: Vigil at local x = 250 (2490), Central Lift at local x = 585 (2825)
-      const oak = powered ? '#6e3f1d' : '#2e2119';
-      const silver = powered ? '#e2eef7' : '#545e66';
+      // Note: Vigil at local x = 250 (2x = 500), Central Brass Lift at local x = 585 (2x = 1170)!
+      const oak = powered ? '#75431f' : '#2e2119';
+      const silver = powered ? '#e3eff7' : '#57626b';
+      const brass = powered ? '#e6b84c' : '#575247';
 
-      // Giant Horizontal Oak Tun Wine Casks on Timber Cradles (left)
-      for (const cx of [54, 142]) {
-        rect(ctx, cx, fy - 14, 68, 14, '#382212');
-        rect(ctx, cx + 4, fy - 58, 60, 44, oak);
-        rect(ctx, cx + 12, fy - 62, 44, 50, powered ? '#854d24' : '#382920');
-        rect(ctx, cx + 10, fy - 58, 4, 44, '#242b33');
-        rect(ctx, cx + 54, fy - 58, 4, 44, '#242b33');
-        rect(ctx, cx + 32, fy - 34, 6, 6, powered ? '#e0b048' : '#575248'); // brass spigot
+      // Two Giant Coopered Horizontal Oak Tun Wine Casks on Timber Cradles (left, x = 84 & x = 264)!
+      for (const cx of [84, 264]) {
+        drawBeveledPanel(ctx, cx + 6, fy - 28, 132, 28, '#382212', false);
+        drawCylinderH(ctx, cx, fy - 124, 144, 98, oak, false);
+        // Stave lines + iron barrel hoops + brass spigot!
+        for (let sy = fy - 114; sy < fy - 34; sy += 16) {
+          rect(ctx, cx + 4, sy, 136, 1, shadeHex(oak, 0.65));
+        }
+        for (const hx of [cx + 18, cx + 44, cx + 96, cx + 122]) {
+          drawCylinderV(ctx, hx, fy - 124, 7, 98, '#26303a', true);
+        }
+        drawShadedSphere(ctx, cx + 72, fy - 68, 7, brass, true);
       }
 
-      // Wrought-Iron Reliquary Grille & Velvet Pedestals with Ancestral Silver Chalices & Shields!
-      rect(ctx, 318, 28, 198, fy - 28, '#141920');
-      for (let gx = 326; gx <= 508; gx += 16) {
-        rect(ctx, gx, 28, 2, fy - 28, '#2b343d');
+      // Diamond Stone-and-Oak Wine Bottle Racks (x = 568 .. 684)
+      drawBeveledPanel(ctx, 568, 72, 116, fy - 72, '#3d2414', true);
+      for (let by = 92; by < fy - 24; by += 22) {
+        for (let bx = 584; bx <= 666; bx += 20) {
+          fillCircle(ctx, bx, by, 6, powered ? '#297a5c' : '#1b302b');
+          px(ctx, bx - 2, by - 2, powered ? '#9ef7c8' : '#35524b'); // glinting bottle punt!
+        }
       }
-      for (const pxX of [342, 404, 466]) {
-        rect(ctx, pxX, fy - 30, 32, 30, powered ? '#6b1d2a' : '#292024');
-        // Gleaming heirloom silver trophy/candelabra/shield!
-        circle(ctx, pxX + 16, fy - 44, 10, silver);
-        rect(ctx, pxX + 12, fy - 36, 8, 6, silver);
-        if (powered) px(ctx, pxX + 14, fy - 47, '#7ef7e3');
+
+      // Wrought-Iron Reliquary Grille & Crimson-Velvet Treasury Pedestals (x = 716 .. 1068)!
+      rect(ctx, 716, 54, 352, fy - 54, '#0f141b');
+      for (let gx = 732; gx <= 1054; gx += 28) {
+        rect(ctx, gx, 54, 4, fy - 54, '#2a3440');
+        px(ctx, gx + 1, 88, brass);
+      }
+      rect(ctx, 716, 86, 352, 5, '#2a3440');
+
+      for (const [pxX, kind] of [
+        [756, 'chalice'],
+        [868, 'shield'],
+        [980, 'ewer'],
+      ]) {
+        drawBeveledPanel(ctx, pxX, fy - 62, 64, 62, powered ? '#731d2b' : '#292024', false);
+        if (kind === 'shield') {
+          drawBeveledPanel(ctx, pxX + 12, fy - 126, 40, 52, silver, false);
+          drawShadedSphere(ctx, pxX + 32, fy - 100, 9, '#5ef2dc', true);
+        } else {
+          drawShadedSphere(ctx, pxX + 32, fy - 96, 16, silver, true);
+          drawCylinderV(ctx, pxX + 28, fy - 80, 8, 18, silver, true);
+          rect(ctx, pxX + 18, fy - 66, 28, 4, silver);
+        }
       }
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 20. SUB-CELLAR SALT & COAL BUNKER (w = 580)
+     * 20. SUB-CELLAR SALT & COAL BUNKER (w = 580 -> W = 1160, Floor -1)
      * ---------------------------------------------------------------------- */
     case 'coal_bunker': {
-      // Note: Cellar Steps at local x = 75 (1735)
-      // Overhead Riveted Iron Salt & Anthracite Chute Hoppers!
-      for (const hx of [168, 368]) {
-        rect(ctx, hx, 16, 76, 46, '#283038');
-        rect(ctx, hx + 14, 62, 48, 24, '#343e47');
-        rect(ctx, hx + 26, 86, 24, 16, '#1f252b');
+      // Note: Cellar Steps at local x = 75 -> 2x = 150!
+      const brass = powered ? '#e6b84c' : '#575247';
+
+      // Heavy Timber Mine-Shoring Posts & Caged Safety Lamps!
+      for (const tx of [272, 628, 984]) {
+        drawCylinderV(ctx, tx, 36, 18, fy - 36, '#452916', false);
+        rect(ctx, tx + 18, 96, 12, 18, powered ? '#ffe280' : '#2a3940');
       }
 
-      // Narrow-Gauge Iron Minecart Rails across Bunker Floor
-      rect(ctx, 136, fy - 3, 396, 3, '#54606b');
-      // Riveted Iron Minecart Heaped with Glittering Consecrated White Rock-Salt!
-      const mx = 178;
-      circle(ctx, mx + 12, fy - 6, 6, '#1b2026');
-      circle(ctx, mx + 44, fy - 6, 6, '#1b2026');
-      rect(ctx, mx, fy - 34, 56, 24, '#36414d');
-      // Glittering consecrated rock-salt crystals!
-      circle(ctx, mx + 20, fy - 38, 12, powered ? '#e8f7fa' : '#6c7a80');
-      circle(ctx, mx + 36, fy - 36, 10, powered ? '#9ef7eb' : '#57686e');
+      // Twin Overhead Riveted Steel Salt & Anthracite Chute Hoppers (x = 336 & x = 716)!
+      for (const hx of [336, 716]) {
+        drawBeveledPanel(ctx, hx, 32, 156, 86, '#28313b', false);
+        drawRivetRow(ctx, hx + 8, 42, hx + 148, 42, 16, brass);
+        for (let dy = 0; dy < 54; dy++) {
+          const inset = Math.round((dy / 54) * 44);
+          rect(ctx, hx + 12 + inset, 118 + dy, 132 - inset * 2, 1, '#333e4a');
+        }
+        drawGear(ctx, hx + 148, 136, 16, 10, brass, 0.2); // hopper gate handwheel!
+      }
 
-      // Anthracite Coal Mound, Burlap Salt Sacks & Shovel Rack (right)
-      circle(ctx, 398, fy - 14, 24, '#161a1f');
-      circle(ctx, 422, fy - 10, 18, '#20262e');
-      for (const sx of [468, 494]) {
-        rect(ctx, sx, fy - 24, 22, 24, powered ? '#a88c64' : '#4a433b');
+      // Narrow-Gauge Steel Minecart Rails & Ties across Bunker Floor
+      for (let sx = 264; sx < W - 84; sx += 28) {
+        rect(ctx, sx, fy - 4, 16, 4, '#3d2514');
+      }
+      rect(ctx, 256, fy - 8, W - 332, 4, '#677785');
+
+      // Riveted Iron Ore Minecart Heaped with Faceted Consecrated White Rock-Salt Crystals (x = 356)!
+      const mx = 356;
+      drawGear(ctx, mx + 26, fy - 14, 13, 8, '#1e252e', 0);
+      drawGear(ctx, mx + 94, fy - 14, 13, 8, '#1e252e', 0.4);
+      // Faceted glittering rock-salt mound!
+      drawShadedSphere(ctx, mx + 44, fy - 76, 24, powered ? '#e8fafa' : '#6c7c82', true);
+      drawShadedSphere(ctx, mx + 78, fy - 72, 22, powered ? '#8cf7e8' : '#576b70', true);
+      drawBeveledPanel(ctx, mx, fy - 72, 120, 48, '#36424f', false);
+      drawRivetRow(ctx, mx + 8, fy - 64, mx + 112, fy - 64, 14, brass);
+
+      // Glistening Anthracite Coal Mound & Stenciled Burlap Salt Sacks (right, x = 748 .. 1044)!
+      fillEllipse(ctx, 812, fy - 24, 68, 32, '#14181f');
+      fillEllipse(ctx, 824, fy - 18, 48, 22, '#202730');
+      for (const [cx, cy] of [
+        [788, -32],
+        [818, -42],
+        [842, -26],
+      ]) {
+        rect(ctx, cx, fy + cy, 6, 4, '#465463'); // specular anthracite chunk glints!
+      }
+      for (const sx of [916, 968, 1016]) {
+        drawCylinderV(ctx, sx, fy - 52, 44, 52, powered ? '#b09368' : '#4d463d', false);
+        rect(ctx, sx + 8, fy - 58, 28, 6, powered ? '#c7aa7d' : '#5c544a'); // tied sack neck
+        strokeCirclePx(ctx, sx + 22, fy - 28, 8, 2, powered ? '#5ef2dc' : '#334245'); // consecrated ward stencil!
       }
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 21. GREAT COPPER BOILER VAULT (w = 680)
+     * 21. GREAT COPPER BOILER VAULT (w = 680 -> W = 1360, Floor -1)
      * ---------------------------------------------------------------------- */
     case 'boiler_vault': {
-      // Note: Furnace Rift at local x = 80 (1060)
-      const copper = powered ? '#d96e34' : '#4a3b36';
+      // Note: Subterranean Furnace Rift at local x = 80 -> 2x = 160!
+      const copper = powered ? '#d96e34' : '#4d3d37';
       const brass = powered ? '#ebb849' : '#575248';
 
-      // Twin Colossal Horizontal Riveted Copper Steam Boilers (x = 186 & x = 426)!
-      for (const bx of [186, 426]) {
-        // Heavy brick/iron cradle
-        rect(ctx, bx + 8, fy - 22, 124, 22, '#20262e');
-        // Cylindrical copper boiler drum
-        rect(ctx, bx, fy - 86, 140, 64, copper);
-        rect(ctx, bx + 6, fy - 90, 128, 8, powered ? '#f08746' : '#594842');
-        // Brass boiler bands
-        for (const bandX of [bx + 24, bx + 68, bx + 112]) {
-          rect(ctx, bandX, fy - 88, 6, 66, brass);
-        }
-        // Roaring Furnace Firebox Door!
-        rect(ctx, bx + 44, fy - 54, 52, 26, powered ? '#ff7b1c' : '#13171c');
-        if (powered) {
-          rect(ctx, bx + 52, fy - 48, 36, 16, '#ffe87d');
-        }
-        // Bourdon Steam Pressure Gauge on top!
-        circle(ctx, bx + 70, fy - 100, 9, brass);
-        circle(ctx, bx + 70, fy - 100, 6, powered ? '#fff6db' : '#6c7375');
+      // Overhead Pressurized Main Steam Header Pipe & Red Gate Valves!
+      drawCylinderH(ctx, 312, 48, 964, 24, copper, true);
+      for (const vx of [496, 752, 996]) {
+        rect(ctx, vx - 4, 44, 10, 32, brass);
+        strokeCirclePx(ctx, vx + 1, 84, 10, 3, '#c93429');
       }
 
-      // Giant Cast-Iron Flywheel & Piston Linkage between the Twin Boilers (x = 366)!
-      ring(ctx, 376, fy - 42, 34, 6, '#2d3640');
-      ring(ctx, 376, fy - 42, 10, 4, brass);
-      rect(ctx, 344, fy - 44, 64, 4, brass);
-      rect(ctx, 374, fy - 74, 4, 64, brass);
+      // Twin Colossal 3D-Shaded Horizontal Riveted Copper Steam Boilers (x = 348 & x = 848)!
+      for (const bx of [348, 848]) {
+        // Heavy firebrick & cast-iron saddle cradles
+        drawBeveledPanel(ctx, bx + 16, fy - 46, 256, 46, '#202730', false);
+        // 3D Cylindrical Copper Boiler Drum!
+        drawCylinderH(ctx, bx, fy - 178, 288, 134, copper, true);
+        // Rounded boiler end-caps
+        fillEllipse(ctx, bx + 4, fy - 111, 14, 65, shadeHex(copper, 1.15));
+        fillEllipse(ctx, bx + 284, fy - 111, 14, 65, shadeHex(copper, 0.65));
+
+        // Steam riser dome + safety whistle valve + Bourdon pressure gauge!
+        drawCylinderV(ctx, bx + 122, fy - 212, 44, 36, copper, true);
+        pixelLine(ctx, bx + 144, fy - 212, bx + 144, 72, copper, 12);
+        drawPressureGauge(ctx, bx + 144, fy - 194, 14, brass, powered ? '#fff7dc' : '#6c7375', powered ? 0.6 : -1.5);
+
+        // Polished Brass Boiler Straps & Double Rows of Dome Rivets!
+        for (const bandX of [bx + 44, bx + 138, bx + 236]) {
+          drawCylinderV(ctx, bandX, fy - 180, 12, 138, brass, true);
+        }
+        drawRivetRow(ctx, bx + 16, fy - 168, bx + 272, fy - 168, 16, brass);
+        drawRivetRow(ctx, bx + 16, fy - 56, bx + 272, fy - 56, 16, brass);
+
+        // Glass Water-Level Sight Column on side!
+        rect(ctx, bx + 254, fy - 146, 8, 56, powered ? '#8cf7e8' : '#2c3d42');
+
+        // Arched Cast-Iron Furnace Firebox Door Roaring with Layered Coal Fire!
+        drawBeveledPanel(ctx, bx + 84, fy - 116, 120, 66, '#1a2028', false);
+        rect(ctx, bx + 94, fy - 106, 100, 48, '#0c0e12');
+        if (powered) {
+          fillEllipse(ctx, bx + 144, fy - 72, 44, 20, '#d93d18');
+          fillEllipse(ctx, bx + 144, fy - 70, 32, 14, '#ff8e26');
+          fillEllipse(ctx, bx + 144, fy - 68, 18, 9, '#fff5a8');
+        }
+        for (let gx = bx + 104; gx <= bx + 184; gx += 13) {
+          rect(ctx, gx, fy - 104, 3, 44, '#262f38'); // furnace grate bars!
+        }
+      }
+
+      // Giant Spoked Cast-Iron Flywheel & Crosshead Steam Piston Engine between Boilers (x = 742)!
+      drawGear(ctx, 742, fy - 88, 68, 20, '#36424f', 0.1);
+      drawGear(ctx, 742, fy - 88, 24, 8, brass, 0.3);
+      pixelLine(ctx, 646, fy - 88, 742, fy - 108, brass, 6); // heavy connecting rod!
       break;
     }
 
     /* ----------------------------------------------------------------------
-     * 22. FLOODED CATACOMB CISTERN (w = 440)
+     * 22. FLOODED CATACOMB CISTERN (w = 440 -> W = 880, Floor -1)
      * ---------------------------------------------------------------------- */
     case 'catacomb_cistern': {
-      // Note: Reliquary Chest at local x = 300 (3180)
-      // Subterranean Dark Water Channel along bottom with Stone Stepping Piers!
-      rect(ctx, 8, fy - 8, w - 16, 8, powered ? '#1f5e66' : '#0f1f26');
+      // Note: Reliquary Chest at local x = 300 -> 2x = 600!
+      const brass = powered ? '#e6b84c' : '#575247';
+      const copper = powered ? '#d46b34' : '#4a3c37';
+
+      // Recessed Arched Catacomb Ossuary Alcoves Stacked with Shaded Skulls & Stone Urns!
+      for (const ax of [84, 248, 668]) {
+        fillCircle(ctx, ax + 54, 118, 54, '#0c1016');
+        rect(ctx, ax, 118, 108, 138, '#0c1016');
+        for (const sy of [158, 208]) {
+          rect(ctx, ax + 6, sy + 18, 96, 8, '#2b3540');
+          for (const kx of [ax + 24, ax + 54, ax + 84]) {
+            drawShadedSphere(ctx, kx, sy + 8, 9, '#cfc8b8', false);
+            rect(ctx, kx - 4, sy + 7, 3, 3, '#14181f');
+            rect(ctx, kx + 2, sy + 7, 3, 3, '#14181f');
+          }
+        }
+      }
+
+      // Heavy Victorian Cast-Iron & Brass Watt Rocking-Beam Bilge Steam Pump (center, x = 396 .. 548)!
+      drawBeveledPanel(ctx, 404, fy - 94, 128, 80, '#252f3a', false);
+      drawCylinderV(ctx, 418, fy - 154, 38, 62, copper, true);
+      drawCylinderV(ctx, 476, fy - 142, 38, 50, brass, true);
+      drawGear(ctx, 526, fy - 68, 28, 12, '#3a4754', 0.2);
+      // Heavy overhead rocking walking-beam!
+      pixelLine(ctx, 388, fy - 178, 544, fy - 162, brass, 9);
+      drawShadedSphere(ctx, 466, fy - 170, 9, copper, true);
+
+      // Subterranean Flooded Water Canal & Mossy Stone Stepping Piers along Floor!
+      rect(ctx, 16, fy - 18, W - 32, 18, powered ? '#1a5c63' : '#0c1b24');
       if (powered) {
-        for (let wx = 20; wx < w - 24; wx += 28) {
-          rect(ctx, wx, fy - 7, 14, 2, '#7ef7e3');
+        for (let wx = 32; wx < W - 48; wx += 48) {
+          rect(ctx, wx, fy - 15, 26, 3, '#7ef7e3');
+          rect(ctx, wx + 12, fy - 9, 18, 2, '#b8fff5');
         }
       }
-      // Recessed Stone Catacomb Skull & Urn Alcoves across Wall!
-      for (const ax of [48, 132, 332]) {
-        rect(ctx, ax, 48, 52, 74, '#11161c');
-        for (const sy of [66, 94]) {
-          rect(ctx, ax + 4, sy + 12, 44, 4, '#2d3742');
-          circle(ctx, ax + 16, sy + 6, 5, '#c8c2b4');
-          circle(ctx, ax + 36, sy + 6, 5, '#c8c2b4');
-        }
+      for (let px0 = 56; px0 < W - 64; px0 += 136) {
+        drawBeveledPanel(ctx, px0, fy - 22, 56, 22, '#3c4854', false);
       }
-      // Heavy Brass Rocking-Beam Steam Bilge Pump (center, x = 204)!
-      const brass = powered ? '#e6b44c' : '#525048';
-      const copper = powered ? '#cf6b36' : '#473b36';
-      rect(ctx, 200, fy - 46, 56, 46, '#262f38');
-      rect(ctx, 208, fy - 72, 18, 28, copper);
-      rect(ctx, 232, fy - 66, 18, 22, brass);
-      // Diagonal rocking pump beam
-      rect(ctx, 192, fy - 84, 72, 6, brass);
       break;
     }
 
@@ -1105,14 +1470,16 @@ export function drawRoomInteriorCanvas(def, powered) {
       break;
   }
 
-  // Apply crisp 1px dark pixel outline to all bespoke room furniture & apparatus!
-  outlineLayer(canvas);
+  // Selective material-tinted dark pixel outline across all room furniture & apparatus!
+  selout(canvas, 24, 0.24);
 
-  // Add subtle atmospheric cobwebs in unpowered haunted interiors!
+  // Atmospheric cobwebs in unpowered haunted interior corners!
   if (!powered && !def.outdoor) {
-    drawCobwebCorner(ctx, 8, 16, false);
-    drawCobwebCorner(ctx, w - 9, 16, true);
+    drawCobweb(ctx, 12, 34, 44, false);
+    drawCobweb(ctx, W - 12, 34, 44, true);
   }
 
   return canvas;
 }
+
+export const drawRoomInteriorCanvas = drawRoomInterior;

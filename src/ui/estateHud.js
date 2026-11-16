@@ -106,9 +106,9 @@ export class EstateHud {
     paintCharacterPreviews(0);
     this.previewTimer = setInterval(() => {
       if (!this.els.titleOverlay.classList.contains('active')) return;
-      this.previewFrame = (this.previewFrame + 1) % 4;
+      this.previewFrame = (this.previewFrame + 1) % 8;
       paintCharacterPreviews(this.previewFrame);
-    }, 220);
+    }, 120);
   }
 
   selectGender(gender) {

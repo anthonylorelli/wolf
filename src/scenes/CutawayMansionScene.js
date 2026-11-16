@@ -94,7 +94,8 @@ export class CutawayMansionScene extends Phaser.Scene {
     this._spawnStartingRetainers();
     this._setupKeyboard();
 
-    // Dynamic world graphics: reflections, power conduits, paranormal shields & UI
+    // Dynamic world graphics: live room ambience, reflections, power conduits, paranormal shields & UI
+    this.ambientGfx = this.add.graphics().setDepth(8.5);
     this.reflectionGfx = this.add.graphics().setDepth(11);
     this.conduitGfx = this.add.graphics().setDepth(17);
     this.shieldGfx = this.add.graphics().setDepth(33);
@@ -102,7 +103,7 @@ export class CutawayMansionScene extends Phaser.Scene {
 
     this.slotSprites = [];
     for (let i = 0; i < 10; i++) {
-      this.slotSprites.push(this.add.image(0, 0, 'slot_empty').setDepth(46).setVisible(false));
+      this.slotSprites.push(this.add.image(0, 0, 'slot_empty').setScale(0.5).setDepth(46).setVisible(false));
     }
     this.promptLabel = this.add
       .text(0, 0, '', {
@@ -152,11 +153,11 @@ export class CutawayMansionScene extends Phaser.Scene {
       return;
     }
     if (w < 500) {
-      this.cameras.main.setZoom(1.18);
-    } else if (h < 500) {
       this.cameras.main.setZoom(1.22);
+    } else if (h < 500) {
+      this.cameras.main.setZoom(1.26);
     } else {
-      this.cameras.main.setZoom(1.55);
+      this.cameras.main.setZoom(1.68);
     }
   }
 
@@ -171,21 +172,26 @@ export class CutawayMansionScene extends Phaser.Scene {
       const cy = topY + ROOM_H / 2;
       const powered = Boolean(def.startRestored);
 
-      // 1. Repeatable architectural wall backdrop
+      // 1. Repeatable 2x HD architectural wall backdrop
       const bg = this.add
         .tileSprite(cx, cy, def.w, ROOM_H, `bg_${def.style}_${powered ? 'r' : 'h'}`)
+        .setTileScale(0.5, 0.5)
         .setDepth(2);
 
-      // 2. Bespoke Full-Width Room Interior Diorama (unique props per room name!)
+      // 2. Bespoke 2x HD Full-Width Room Interior Diorama
       const interior = this.add
         .image(cx, cy, `interior_${def.id}_${powered ? 'r' : 'h'}`)
+        .setScale(0.5)
         .setDepth(6);
 
       // 3. Structural floor beam slab along bottom of room
-      this.add.tileSprite(cx, fy + 11, def.w, 22, 'slab_beam').setDepth(10);
+      this.add.tileSprite(cx, fy + 11, def.w, 22, 'slab_beam').setTileScale(0.5, 0.5).setDepth(10);
 
       if (def.floor === -1 || def.outdoor) {
-        this.add.tileSprite(cx, fy + 36, def.w, 32, 'foundation_stone').setDepth(9);
+        this.add
+          .tileSprite(cx, fy + 36, def.w, 32, 'foundation_stone')
+          .setTileScale(0.5, 0.5)
+          .setDepth(9);
       }
 
       // Steep Victorian mansard slate roof above topmost room sections
@@ -193,20 +199,24 @@ export class CutawayMansionScene extends Phaser.Scene {
         (other) => other.floor === def.floor + 1 && other.x < def.x + def.w - 40 && other.x + other.w > def.x + 40
       );
       if (!hasRoomDirectlyAbove && !def.outdoor) {
-        this.add.tileSprite(cx, topY - 16, def.w + 16, 36, 'roof_mansard').setDepth(10);
+        this.add
+          .tileSprite(cx, topY - 16, def.w + 16, 36, 'roof_mansard')
+          .setTileScale(0.5, 0.5)
+          .setDepth(10);
       }
 
-      // Open doorway side pilasters (ceiling lintel + thin trim — no physical blockade!)
+      // Open doorway carved pilasters & brass arch lintels (zero physical blockade!)
       if (!def.outdoor) {
-        this.add.rectangle(def.x, topY + 18, 10, 36, 0x1c130d).setDepth(9);
-        this.add.rectangle(def.x + def.w, topY + 18, 10, 36, 0x1c130d).setDepth(9);
-        this.add.rectangle(def.x, cy, 4, ROOM_H, 0x1c130d).setDepth(9);
-        this.add.rectangle(def.x + def.w, cy, 4, ROOM_H, 0x1c130d).setDepth(9);
+        for (const edgeX of [def.x, def.x + def.w]) {
+          this.add.rectangle(edgeX, topY + 18, 12, 36, 0x24170f).setDepth(9);
+          this.add.rectangle(edgeX, topY + 35, 14, 3, 0xb88938).setDepth(9.1);
+          this.add.rectangle(edgeX, cy, 5, ROOM_H, 0x1c120c).setDepth(9);
+        }
       }
 
       // Haunted gloom veil (clears when Steam / Electric / Aether power arrives!)
       const veil = this.add
-        .rectangle(cx, cy, def.w, ROOM_H, 0x060d16, powered ? 0 : def.outdoor ? 0.16 : 0.4)
+        .rectangle(cx, cy, def.w, ROOM_H, 0x060d16, powered ? 0 : def.outdoor ? 0.15 : 0.36)
         .setDepth(30);
 
       // Warm room ambient glow
@@ -214,28 +224,31 @@ export class CutawayMansionScene extends Phaser.Scene {
         .image(cx, cy + 10, 'glow_warm')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setScale(def.w / 130, 1.32)
-        .setAlpha(powered ? 0.56 : 0)
+        .setAlpha(powered ? 0.52 : 0)
         .setDepth(30.5);
 
-      // Room name + Power Type plaque on top frieze
+      // Engraved Victorian frieze nameplate along top cornice (above ceiling conduits)
       const pInfo = POWER_TYPES[def.powerType] || POWER_TYPES.steam;
       const nameText = this.add
-        .text(cx, topY + 12, `${def.name.toUpperCase()}`, {
+        .text(cx, topY + 5, ` ${def.name.toUpperCase()} `, {
           fontFamily: 'Silkscreen, monospace',
           fontSize: '8px',
-          color: powered ? '#f2ca6b' : '#738b99',
+          color: powered ? '#f5d27a' : '#8da6b5',
+          backgroundColor: 'rgba(12, 9, 7, 0.76)',
+          padding: { x: 4, y: 1 },
         })
         .setOrigin(0.5, 0)
-        .setAlpha(0.82)
-        .setDepth(12);
+        .setAlpha(0.92)
+        .setDepth(22);
 
-      // Wall-Mounted Conduit Junction Terminal (near upstream side of room)
+      // Wall-Mounted 2x HD Conduit Junction Terminal (near upstream side of room)
       let junctionX = cx;
       let junctionSprite = null;
       if (def.powerType !== 'hub') {
         junctionX = def.junctionSide === 'west' ? def.x + 56 : def.x + def.w - 56;
         junctionSprite = this.add
           .image(junctionX, fy - 42, `junction_${def.powerType}_${powered ? 'on' : 'off'}`)
+          .setScale(0.5)
           .setDepth(15);
       }
 
@@ -267,8 +280,8 @@ export class CutawayMansionScene extends Phaser.Scene {
     // Central 4-Story Brass Cage Lift Shaft (x = 2825)
     const liftH = FLOOR_Y['-1'] - (FLOOR_Y[2] - ROOM_H + 20);
     const liftMidY = (FLOOR_Y['-1'] + (FLOOR_Y[2] - ROOM_H + 20)) / 2;
-    this.add.tileSprite(2825, liftMidY, 48, liftH, 'lift_shaft').setDepth(12);
-    this.liftCar = this.add.image(2825, FLOOR_Y[0] - 27, 'lift_car').setDepth(15);
+    this.add.tileSprite(2825, liftMidY, 48, liftH, 'lift_shaft').setTileScale(0.5, 0.5).setDepth(12);
+    this.liftCar = this.add.image(2825, FLOOR_Y[0] - 27, 'lift_car').setScale(0.5).setDepth(15);
 
     // Carved Staircase Arches at unique stair X positions
     const stairSet = new Set();
@@ -277,7 +290,7 @@ export class CutawayMansionScene extends Phaser.Scene {
         const key = `${vl.x}_${vl.fromFloor}`;
         if (!stairSet.has(key)) {
           stairSet.add(key);
-          this.add.image(vl.x, FLOOR_Y[vl.fromFloor] - 29, 'stair_arch').setDepth(13);
+          this.add.image(vl.x, FLOOR_Y[vl.fromFloor] - 29, 'stair_arch').setScale(0.5).setDepth(13);
         }
       }
     }
@@ -287,12 +300,12 @@ export class CutawayMansionScene extends Phaser.Scene {
     const fy = FLOOR_Y[0];
 
     // 1. Central Tri-Manifold Dynamo Hearth (generates Steam, Electricity & Aether!)
-    this.hearthSprite = this.add.image(CENTER_X, fy - 42, 'foyer_hearth_1').setDepth(15);
+    this.hearthSprite = this.add.image(CENTER_X, fy - 42, 'foyer_hearth_1').setScale(0.5).setDepth(15);
     this.add
       .image(CENTER_X, fy - 36, 'glow_warm')
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(1.5)
-      .setAlpha(0.55)
+      .setScale(1.45)
+      .setAlpha(0.52)
       .setDepth(30.5);
 
     this.hearthStation = {
@@ -312,7 +325,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       cost: 2,
       paidSlots: 0,
       stock: 1,
-      sprite: this.add.image(2465, fy - 22, 'rack_wrench').setDepth(15),
+      sprite: this.add.image(2465, fy - 22, 'rack_wrench').setScale(0.5).setDepth(15),
     };
 
     // 3. Occult Limelight Lantern Rack (x = 2735, 2 Florins -> 1 Spirit-Lance for Warder)
@@ -324,16 +337,20 @@ export class CutawayMansionScene extends Phaser.Scene {
       cost: 2,
       paidSlots: 0,
       stock: 1,
-      sprite: this.add.image(2735, fy - 22, 'rack_lantern').setDepth(15),
+      sprite: this.add.image(2735, fy - 22, 'rack_lantern').setScale(0.5).setDepth(15),
     };
 
-    // 4. Cast-Iron Majordomo Safe & Banker (x = 2535, unlocks at Dynamo Tier II)
-    this.safeSprite = this.add.image(2535, fy - 24, 'safe_vault').setDepth(14).setAlpha(0.45);
-    this.majordomoSprite = this.add.image(2554, fy - 19, 'majordomo').setDepth(16).setVisible(false);
+    // 4. Cast-Iron Majordomo Safe & Banker (x = 2518, unlocks at Dynamo Tier II)
+    this.safeSprite = this.add.image(2516, fy - 24, 'safe_vault').setScale(0.5).setDepth(14).setAlpha(0.45);
+    this.majordomoSprite = this.add
+      .image(2540, fy - 19, 'majordomo')
+      .setScale(0.5)
+      .setDepth(16)
+      .setVisible(false);
     this.bankStation = {
       kind: 'bank',
       floor: 0,
-      x: 2545,
+      x: 2526,
       y: fy,
       cost: 1,
       paidSlots: 0,
@@ -354,9 +371,11 @@ export class CutawayMansionScene extends Phaser.Scene {
 
         const floorCoil = this.add
           .image(sDef.x, fy - 9, startOn ? `shield_coil_${sType}` : 'shield_coil_off')
+          .setScale(0.5)
           .setDepth(22);
         const ceilCoil = this.add
           .image(sDef.x, topY + 15, startOn ? `shield_coil_${sType}` : 'shield_coil_off')
+          .setScale(0.5)
           .setFlipY(true)
           .setDepth(22);
 
@@ -385,7 +404,11 @@ export class CutawayMansionScene extends Phaser.Scene {
 
         // Rift-Banishment Standard inside each Shield threshold (visible when outermost active Shield & Tier II+)
         const bannerX = sDef.x + (sDef.side === 'west' ? 38 : -38);
-        const bannerSprite = this.add.image(bannerX, fy - 26, 'strike_banner').setDepth(16).setVisible(false);
+        const bannerSprite = this.add
+          .image(bannerX, fy - 26, 'strike_banner')
+          .setScale(0.5)
+          .setDepth(16)
+          .setVisible(false);
         this.strikeBanners.push({
           shield: sh,
           floor: def.floor,
@@ -402,7 +425,7 @@ export class CutawayMansionScene extends Phaser.Scene {
 
     for (const rDef of SPECTRAL_RIFTS) {
       const fy = FLOOR_Y[rDef.floor];
-      const sprite = this.add.image(rDef.x, fy - 44, 'rift_0').setDepth(18);
+      const sprite = this.add.image(rDef.x, fy - 44, 'rift_0').setScale(0.5).setDepth(18);
       const glow = this.add
         .image(rDef.x, fy - 44, 'glow_ecto')
         .setBlendMode(Phaser.BlendModes.ADD)
@@ -426,7 +449,7 @@ export class CutawayMansionScene extends Phaser.Scene {
   _buildVigilsAndChests() {
     for (const cDef of HOUSEFOLK_VIGILS) {
       const fy = FLOOR_Y[cDef.floor];
-      this.add.image(cDef.x, fy - 14, 'candle_vigil').setDepth(13);
+      this.add.image(cDef.x, fy - 14, 'candle_vigil').setScale(0.5).setDepth(13);
       this.add
         .image(cDef.x, fy - 18, 'glow_warm')
         .setBlendMode(Phaser.BlendModes.ADD)
@@ -445,7 +468,7 @@ export class CutawayMansionScene extends Phaser.Scene {
 
     for (const ch of SALVAGE_CHESTS) {
       const fy = FLOOR_Y[ch.floor];
-      const sprite = this.add.image(ch.x, fy - 12, 'chest_closed').setDepth(14);
+      const sprite = this.add.image(ch.x, fy - 12, 'chest_closed').setScale(0.5).setDepth(14);
       this.chests.push({
         id: ch.id,
         floor: ch.floor,
@@ -461,18 +484,21 @@ export class CutawayMansionScene extends Phaser.Scene {
   _createHeir() {
     const fy = FLOOR_Y[0];
     const gender = this.state.gender || 'female';
-    const sprite = this.add.image(CENTER_X - 40, fy - 25, `hero_${gender}_0`).setDepth(34);
+    const sprite = this.add
+      .image(CENTER_X - 40, fy - 24, `hero_${gender}_idle_0`)
+      .setScale(0.5)
+      .setDepth(34);
     const lampGlow = this.add
       .image(CENTER_X - 25, fy - 25, 'glow_warm')
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(1.15)
-      .setAlpha(0.44)
+      .setScale(1.12)
+      .setAlpha(0.42)
       .setDepth(31);
     const spiritGlow = this.add
       .image(CENTER_X - 23, fy - 24, 'glow_ecto')
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(0.92)
-      .setAlpha(0.48)
+      .setScale(0.9)
+      .setAlpha(0.46)
       .setDepth(32);
 
     this.heir = {
@@ -503,7 +529,7 @@ export class CutawayMansionScene extends Phaser.Scene {
 
   _createRetainer(role, floor, x) {
     const fy = FLOOR_Y[floor];
-    const sprite = this.add.image(x, fy - 19, `${role}_0`).setDepth(24);
+    const sprite = this.add.image(x, fy - 19, `${role}_0`).setScale(0.5).setDepth(24);
     const ret = {
       role,
       floor,
@@ -530,7 +556,7 @@ export class CutawayMansionScene extends Phaser.Scene {
     if (countNear >= 2) return;
     const x = vigil.x + (Math.random() * 44 - 22);
     const fy = FLOOR_Y[vigil.floor];
-    const sprite = this.add.image(x, fy - 19, 'housefolk_0').setDepth(23);
+    const sprite = this.add.image(x, fy - 19, 'housefolk_0').setScale(0.5).setDepth(23);
     this.housefolk.push({
       vigilId: vigil.id,
       floor: vigil.floor,
@@ -608,8 +634,8 @@ export class CutawayMansionScene extends Phaser.Scene {
     if (gender !== 'female' && gender !== 'male') return;
     this.state.gender = gender;
     if (this.heir?.sprite) {
-      const frame = ((this.heir.stridePhase | 0) % 4 + 4) % 4;
-      this.heir.sprite.setTexture(`hero_${gender}_${this.gameStarted ? frame : 0}`);
+      const frame = ((this.heir.stridePhase | 0) % 8 + 8) % 8;
+      this.heir.sprite.setTexture(this.gameStarted ? `hero_${gender}_${frame}` : `hero_${gender}_idle_0`);
     }
   }
 
@@ -813,10 +839,13 @@ export class CutawayMansionScene extends Phaser.Scene {
       this._updateBolts(dt);
       this._updateWorldCoins(dt, elapsed);
     } else if (this.heir?.spiritGlow) {
+      const gender = this.state.gender || 'female';
+      this.heir.sprite.setTexture(`hero_${gender}_idle_${((elapsed * 2.2) | 0) % 2}`);
       this.heir.spiritGlow.setScale(0.88 + Math.sin(elapsed * 4.5) * 0.08);
     }
 
     this._updateParticlesAndText(dt);
+    this._drawAmbientRoomDetails(elapsed);
     this._drawConduitsAndShields(elapsed);
     this._drawReflectionsAndWorldUi(elapsed);
     this._updateCamera(dt);
@@ -930,7 +959,10 @@ export class CutawayMansionScene extends Phaser.Scene {
   _spawnEnemyFromRift(rift, kind) {
     const maxHp = kind === 'brute' ? 145 : kind === 'phantom' ? 52 : 34;
     const fy = FLOOR_Y[rift.floor];
-    const sprite = this.add.image(rift.x, fy - (kind === 'brute' ? 24 : 16), `${kind}_0`).setDepth(25);
+    const sprite = this.add
+      .image(rift.x, fy - (kind === 'brute' ? 24 : 18), `${kind}_0`)
+      .setScale(0.5)
+      .setDepth(25);
     this.enemies.push({
       kind,
       rift,
@@ -1012,20 +1044,26 @@ export class CutawayMansionScene extends Phaser.Scene {
     h.x = Math.max(bounds.minX, Math.min(bounds.maxX, h.x + h.vx * dt));
     h.y = FLOOR_Y[h.floor];
 
-    if (Math.abs(h.vx) > 14) {
-      h.stridePhase += dt * (Math.abs(h.vx) * 0.052);
+    const isMoving = Math.abs(h.vx) > 12;
+    if (isMoving) {
+      h.stridePhase += dt * (Math.abs(h.vx) * 0.088);
     } else {
       h.stridePhase = 0;
     }
 
     const gender = this.state.gender || 'female';
     const isCasting = h.flareRingTimer > 0.22;
-    const strideFrame = (h.stridePhase | 0) % 4;
-    const texKey = isCasting ? `hero_${gender}_cast` : `hero_${gender}_${strideFrame}`;
+    const strideFrame = (h.stridePhase | 0) % 8;
+    const idleFrame = ((elapsed * 2.2) | 0) % 2;
+    const texKey = isCasting
+      ? `hero_${gender}_cast`
+      : isMoving
+        ? `hero_${gender}_${strideFrame}`
+        : `hero_${gender}_idle_${idleFrame}`;
 
     h.sprite
       .setTexture(texKey)
-      .setPosition(Math.round(h.x), h.y - 25)
+      .setPosition(Math.round(h.x), h.y - 24)
       .setFlipX(h.facing < 0)
       .setAlpha(h.invulnTimer > 0 && ((h.invulnTimer * 20) | 0) % 2 === 0 ? 0.45 : 1);
 
@@ -1636,8 +1674,11 @@ export class CutawayMansionScene extends Phaser.Scene {
         v.wanderDir = Math.sign(v.homeX - v.x);
       }
       v.x += v.wanderDir * 22 * dt;
-      v.anim += dt * 4;
-      const fr = v.wanderDir === 0 ? 0 : (v.anim | 0) % 2;
+      v.anim += dt * 4.5;
+      const fr =
+        v.wanderDir === 0
+          ? (((elapsed * 1.6 + v.homeX * 0.01) | 0) % 2) * 2
+          : (v.anim | 0) % 4;
       v.sprite.setTexture(`housefolk_${fr}`).setPosition(Math.round(v.x), v.y - 19).setFlipX(v.wanderDir < 0);
     }
 
@@ -1651,7 +1692,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       const anchorX = side === 'west' ? (westSh ? westSh.x - 130 : 2150) : (eastSh ? eastSh.x + 130 : 3050);
       const wx = Math.max(420, Math.min(4780, anchorX + (Math.random() - 0.5) * 180));
       const fy = FLOOR_Y[0];
-      const sprite = this.add.image(wx, fy - 14, 'wisp_0').setDepth(21);
+      const sprite = this.add.image(wx, fy - 14, 'wisp_0').setScale(0.5).setDepth(21);
       this.wisps.push({
         floor: 0,
         x: wx,
@@ -1670,7 +1711,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
       w.x = Math.max(380, Math.min(4820, w.x + w.vx * dt));
       w.sprite
-        .setTexture(((elapsed * 6) | 0) % 2 === 0 ? 'wisp_0' : 'wisp_1')
+        .setTexture(`wisp_${((elapsed * 7) | 0) % 4}`)
         .setPosition(Math.round(w.x), w.y - 14 + Math.sin(elapsed * 5 + w.x * 0.02) * 2);
     }
   }
@@ -1685,8 +1726,11 @@ export class CutawayMansionScene extends Phaser.Scene {
       : live.reduce((a, b) => (a.x > b.x ? a : b));
   }
 
-  _updateRetainers(dt) {
+  _updateRetainers(dt, elapsed = 0) {
     const isSafeTime = this.state.phase === 'day';
+    if (this.majordomoSprite?.visible) {
+      this.majordomoSprite.setTexture(((elapsed * 1.8) | 0) % 2 === 0 ? 'majordomo' : 'majordomo_1');
+    }
 
     for (const r of this.retainers) {
       if (r.buffTimer > 0) r.buffTimer = Math.max(0, r.buffTimer - dt);
@@ -1789,7 +1833,7 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      const fr = (r.anim | 0) % 2 === 0 ? 0 : 1;
+      const fr = (r.anim | 0) % 4;
       r.sprite
         .setTexture(`${r.role}_${fr}`)
         .setPosition(Math.round(r.x), r.y - 19)
@@ -1973,7 +2017,7 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   _updateRiftsAndEnemies(dt, elapsed) {
-    const riftFrame = ((elapsed * 5) | 0) % 2;
+    const riftFrame = ((elapsed * 6) | 0) % 4;
     for (const r of this.rifts) {
       if (r.destroyed) continue;
       r.sprite.setTexture(`rift_${riftFrame}`);
@@ -2131,8 +2175,8 @@ export class CutawayMansionScene extends Phaser.Scene {
 
       en.anim += dt * 7;
       en.sprite
-        .setTexture(`${en.kind}_${(en.anim | 0) % 2}`)
-        .setPosition(Math.round(en.x), en.y - (en.kind === 'brute' ? 24 : 16))
+        .setTexture(`${en.kind}_${(en.anim | 0) % 4}`)
+        .setPosition(Math.round(en.x), en.y - (en.kind === 'brute' ? 24 : 18))
         .setFlipX(moveDir < 0);
 
       // Consecrated Silver Florin Ward-Scorch Trap!
@@ -2266,7 +2310,7 @@ export class CutawayMansionScene extends Phaser.Scene {
 
   _fireLimelightBolt(floor, x, y, dir, dmg, canHitRift) {
     this.soundEngine?.playLimelightBolt();
-    const sprite = this.add.image(x, y, 'bolt_limelight').setDepth(29).setFlipX(dir < 0);
+    const sprite = this.add.image(x, y, 'bolt_limelight').setScale(0.5).setDepth(29).setFlipX(dir < 0);
     this.bolts.push({
       friendly: true,
       canHitRift,
@@ -2281,7 +2325,7 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   _fireEctoBolt(floor, x, y, dir) {
-    const sprite = this.add.image(x, y, 'bolt_ecto').setDepth(29);
+    const sprite = this.add.image(x, y, 'bolt_ecto').setScale(0.5).setDepth(29);
     this.bolts.push({
       friendly: false,
       floor,
@@ -2401,6 +2445,255 @@ export class CutawayMansionScene extends Phaser.Scene {
         totalRifts: this.rifts.length,
         retainers: this.retainers.length,
       });
+    }
+  }
+
+  /* ==========================================================================
+   * RENDERING: LIVE ROOM MICRO-ANIMATIONS (DUST MOTES, EMBERS, STEAM & ARCS)
+   * ========================================================================== */
+  _drawAmbientRoomDetails(elapsed) {
+    if (!this.ambientGfx) return;
+    this.ambientGfx.clear();
+
+    const z = Math.max(0.2, this.cameras.main.zoom || 1);
+    const viewHalfW = ((this.scale.width || 1280) / z) * 0.65 + 320;
+    const g = this.ambientGfx;
+
+    for (const rm of this.rooms.values()) {
+      if (Math.abs(rm.cx - this.camFocus.x) > viewHalfW) continue;
+
+      const rx = rm.def.x;
+      const rw = rm.def.w;
+      const topY = rm.topY;
+      const fy = rm.fy;
+      const seed = rx * 0.013 + rm.def.floor * 1.7;
+
+      if (!rm.isPowered) {
+        // Cold drifting spectral mist wisps in unpowered haunted rooms
+        g.fillStyle(0x7ef7e3, 0.12);
+        for (let m = 0; m < 3; m++) {
+          const mx = rx + 36 + (((m * 137 + elapsed * 14 + seed * 40) % Math.max(60, rw - 72)));
+          const my = fy - 18 - Math.sin(elapsed * 1.8 + m * 2.1 + seed) * 10;
+          g.fillEllipse(mx, my, 26, 6);
+        }
+
+        // Weeping Portrait Colonnade: live falling ectoplasm teardrops from ancestor eyes!
+        if (rm.def.id === 'portrait_gallery') {
+          g.fillStyle(0x7ef7e3, 0.78);
+          for (const [idx, pxOff] of [53, 115, 179, 240].entries()) {
+            const drop = ((elapsed * 18 + idx * 9) % 28);
+            g.fillRect(rx + pxOff, topY + 60 + drop, 1.5, 3.5);
+          }
+        }
+        continue;
+      }
+
+      // Warm floating gaslight dust motes in energized Victorian rooms
+      if (!rm.def.outdoor) {
+        const moteCount = Math.min(7, Math.max(4, Math.floor(rw / 95)));
+        for (let i = 0; i < moteCount; i++) {
+          const u = ((i * 0.27 + seed * 0.19) % 1 + 1) % 1;
+          const mx = rx + 28 + u * (rw - 56) + Math.sin(elapsed * 0.9 + i * 1.7 + seed) * 8;
+          const rise = ((elapsed * 7 + i * 29) % 118);
+          const my = fy - 24 - rise;
+          const twinkle = 0.35 + Math.sin(elapsed * 3.4 + i * 2.3) * 0.22;
+          g.fillStyle(rm.def.powerType === 'aether' ? 0x9ef7eb : 0xffe694, Math.max(0.12, twinkle));
+          g.fillRect(mx, my, 2, 2);
+        }
+      }
+
+      // Bespoke per-room live steampunk & occult environmental animations!
+      switch (rm.def.id) {
+        case 'grand_foyer': {
+          // Rising steam wisps & astral shimmer around the Tri-Manifold Dynamo Hearth
+          for (let s = 0; s < 3; s++) {
+            const rise = (elapsed * 22 + s * 14) % 38;
+            const alpha = (1 - rise / 38) * 0.36;
+            g.fillStyle(0xfff2cc, alpha);
+            g.fillCircle(CENTER_X + 18 + Math.sin(elapsed * 4 + s) * 2.5, fy - 76 - rise, 2.2 + rise * 0.05);
+          }
+          g.fillStyle(0x7ef7e3, 0.28 + Math.sin(elapsed * 6) * 0.12);
+          g.fillCircle(CENTER_X, fy - 44, 7 + Math.sin(elapsed * 6) * 1.5);
+          break;
+        }
+
+        case 'banquet_hall':
+        case 'ballroom': {
+          // Crystal electro-chandelier prism glints
+          g.fillStyle(0xfffbe0, 0.78);
+          for (let c = 0; c < 4; c++) {
+            if (((elapsed * 5 + c * 1.3) | 0) % 3 === 0) {
+              const gx = rx + rw * (0.24 + c * 0.17);
+              g.fillRect(gx, topY + 34 + (c % 2) * 6, 2, 2);
+            }
+          }
+          break;
+        }
+
+        case 'scullery': {
+          // Flickering coal embers in cast-iron cooking range + rising alembic steam wisps
+          for (const fxBox of [rx + 212, rx + 263]) {
+            const flick = Math.sin(elapsed * 16 + fxBox) * 2;
+            g.fillStyle(0xffb838, 0.72);
+            g.fillEllipse(fxBox, fy - 23, 14 + flick, 6);
+            const sparkRise = (elapsed * 28 + fxBox) % 22;
+            g.fillStyle(0xfff3a8, 0.85 * (1 - sparkRise / 22));
+            g.fillRect(fxBox + Math.sin(elapsed * 9) * 3, fy - 24 - sparkRise, 1.5, 1.5);
+          }
+          for (const sx of [rx + 226, rx + 332, rx + 375]) {
+            const puff = (elapsed * 19 + sx) % 28;
+            g.fillStyle(0xf2f7f7, (1 - puff / 28) * 0.34);
+            g.fillCircle(sx + Math.sin(elapsed * 3.5 + sx) * 2, fy - 68 - puff, 2 + puff * 0.07);
+          }
+          break;
+        }
+
+        case 'emerald_parlor': {
+          // Roaring parlor hearth flames & gentle steam radiator wisps
+          const hf = Math.sin(elapsed * 14) * 2.2;
+          g.fillStyle(0xff9d2e, 0.75);
+          g.fillEllipse(rx + 140, fy - 15, 16 + hf, 8 + hf * 0.4);
+          g.fillStyle(0xfff6b0, 0.9);
+          g.fillEllipse(rx + 140 + Math.cos(elapsed * 11) * 1.5, fy - 14, 8, 5);
+          for (const radX of [rx + 76, rx + 432]) {
+            const p = (elapsed * 14 + radX) % 22;
+            g.fillStyle(0xfff5dc, (1 - p / 22) * 0.24);
+            g.fillCircle(radX, fy - 30 - p, 2);
+          }
+          break;
+        }
+
+        case 'wintergarden': {
+          // Conservatory fountain cascading droplets & bioluminescent nightshade spores
+          g.fillStyle(0xb8fff5, 0.82);
+          for (let d = 0; d < 4; d++) {
+            const fall = (elapsed * 34 + d * 8) % 30;
+            const side = d % 2 === 0 ? -1 : 1;
+            g.fillRect(rx + 270 + side * (19 + fall * 0.28), fy - 46 + fall, 1.5, 2.5);
+          }
+          g.fillStyle(0x7ef7e3, 0.68);
+          for (let sp = 0; sp < 5; sp++) {
+            const sx = rx + 85 + sp * 92 + Math.sin(elapsed * 1.8 + sp) * 9;
+            const sy = fy - 42 - Math.abs(Math.cos(elapsed * 1.4 + sp * 1.5)) * 34;
+            g.fillRect(sx, sy, 2, 2);
+          }
+          break;
+        }
+
+        case 'alchemy_lab': {
+          // Live crackling galvanic lightning arc between the twin Tesla coil toroids!
+          const tLeftX = rx + 458;
+          const tRightX = rx + 522;
+          const arcY = fy - 109;
+          g.lineStyle(2.4, 0x7ef7e3, 0.65);
+          let prevX = tLeftX;
+          let prevY = arcY;
+          for (let seg = 1; seg <= 5; seg++) {
+            const u = seg / 5;
+            const nx = tLeftX + (tRightX - tLeftX) * u;
+            const jitter = seg === 5 ? 0 : Math.sin(elapsed * 31 + seg * 2.7) * 6.5;
+            const ny = arcY - Math.sin(u * Math.PI) * 6 + jitter;
+            g.lineBetween(prevX, prevY, nx, ny);
+            prevX = nx;
+            prevY = ny;
+          }
+          g.lineStyle(1.2, 0xffffff, 0.95);
+          g.lineBetween(tLeftX, arcY, (tLeftX + tRightX) * 0.5, prevY - 1);
+          g.lineBetween((tLeftX + tRightX) * 0.5, prevY - 1, tRightX, arcY);
+
+          // Rising bubbles inside both glass ectoplasm specimen cylinders!
+          g.fillStyle(0xe6fffb, 0.82);
+          for (const tankX of [rx + 257, rx + 332]) {
+            for (let b = 0; b < 3; b++) {
+              const rise = (elapsed * 24 + b * 22 + tankX * 0.1) % 64;
+              const bx = tankX + Math.sin(elapsed * 5 + b * 2) * 5;
+              g.fillCircle(bx, fy - 22 - rise, 1.6);
+            }
+          }
+          break;
+        }
+
+        case 'clocktower': {
+          // Subtle swinging brass pendulum bob & luminous stained-glass dial pulse
+          const swingX = rx + 248 + Math.sin(elapsed * 2.5) * 7;
+          g.fillStyle(0xffe885, 0.85);
+          g.fillCircle(swingX, fy - 24, 4.5);
+          g.fillStyle(0xfffbe0, 0.1 + Math.sin(elapsed * 2.5) * 0.04);
+          g.fillCircle(rx + 248, topY + 77, 38);
+          break;
+        }
+
+        case 'skybridge': {
+          // High-voltage corona sparks dancing atop both storm arrester spheres
+          for (const pxX of [rx + 141, rx + 297]) {
+            if (((elapsed * 12 + pxX) | 0) % 2 === 0) {
+              const ang = elapsed * 17 + pxX;
+              g.lineStyle(1.3, 0xfff8b8, 0.9);
+              g.lineBetween(
+                pxX,
+                fy - 118,
+                pxX + Math.cos(ang) * 9,
+                fy - 118 + Math.sin(ang) * 9
+              );
+            }
+          }
+          break;
+        }
+
+        case 'observatory': {
+          // Twinkling stars in the open observatory dome & refractor objective lens glint
+          const domeStars = [
+            [347, 48],
+            [369, 37],
+            [392, 59],
+            [423, 41],
+            [449, 54],
+            [461, 78],
+          ];
+          for (let s = 0; s < domeStars.length; s++) {
+            const tw = 0.4 + Math.sin(elapsed * 4.5 + s * 1.9) * 0.45;
+            if (tw > 0.45) {
+              g.fillStyle(0xfff9cc, tw);
+              g.fillRect(rx + domeStars[s][0], topY + domeStars[s][1], 2, 2);
+            }
+          }
+          g.fillStyle(0x9ef7eb, 0.32 + Math.sin(elapsed * 3.6) * 0.14);
+          g.fillCircle(rx + 432, fy - 116, 8);
+          break;
+        }
+
+        case 'boiler_vault': {
+          // Roaring coal fireboxes & pressurized white steam puffs from both horizontal copper boilers!
+          for (const bx of [rx + 246, rx + 496]) {
+            const flick = Math.sin(elapsed * 18 + bx) * 3;
+            g.fillStyle(0xff8e26, 0.72);
+            g.fillEllipse(bx, fy - 35, 22 + flick, 9);
+            g.fillStyle(0xfff5a8, 0.88);
+            g.fillEllipse(bx, fy - 34, 11 - flick * 0.3, 5);
+
+            const puff = (elapsed * 26 + bx) % 34;
+            g.fillStyle(0xf2f7f7, (1 - puff / 34) * 0.38);
+            g.fillCircle(bx + Math.sin(elapsed * 4 + bx) * 2.5, fy - 108 - puff, 2.5 + puff * 0.08);
+          }
+          break;
+        }
+
+        case 'catacomb_cistern': {
+          // Shimmering water ripples across the flooded canal & bilge-pump steam
+          g.fillStyle(0x9ef7eb, 0.55);
+          for (let w = 0; w < 5; w++) {
+            const wx = rx + 24 + (((w * 82 + elapsed * 16) % (rw - 56)));
+            g.fillRect(wx, fy - 7 + (w % 2) * 2, 12, 1.5);
+          }
+          const puff = (elapsed * 20) % 26;
+          g.fillStyle(0xf0f7f7, (1 - puff / 26) * 0.32);
+          g.fillCircle(rx + 233, fy - 86 - puff, 2.2 + puff * 0.06);
+          break;
+        }
+
+        default:
+          break;
+      }
     }
   }
 
@@ -2595,7 +2888,7 @@ export class CutawayMansionScene extends Phaser.Scene {
    * CONSECRATED SILVER FLORINS, SKY, REFLECTIONS & WORLD UI
    * ========================================================================== */
   spawnWorldCoin(floor, x, y, vx, vy, playerDropped) {
-    const sprite = this.add.image(x, y, 'coin_0').setDepth(27);
+    const sprite = this.add.image(x, y, 'coin_0').setScale(0.5).setDepth(27);
     this.worldCoins.push({
       floor,
       x,
@@ -2624,7 +2917,7 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      const spin = ((elapsed * 7 + i) | 0) % 2;
+      const spin = ((elapsed * 8 + i) | 0) % 4;
       c.sprite.setTexture(`coin_${spin}`).setPosition(Math.round(c.x), Math.round(c.y));
 
       if (c.age > 0.25) {
