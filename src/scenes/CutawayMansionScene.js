@@ -6,12 +6,10 @@ import {
   CENTER_X,
   ROOM_H,
   FLOOR_Y,
-  INVESTIGATORS,
+  POWER_TYPES,
   ESTATE_TIERS,
-  BULKHEAD_TIERS,
   CUTAWAY_ROOMS,
   VERTICAL_LINKS,
-  BULKHEAD_SPOTS,
   HOUSEFOLK_VIGILS,
   SALVAGE_CHESTS,
   SPECTRAL_RIFTS,
@@ -40,10 +38,10 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.state = {
       gender: 'female', // 'female' (Mina Vesper) | 'male' (Dr. Julian Vesper)
       day: 1,
-      timeOfDay: 0.16, // 0.0 Dawn .. 0.62 Dusk .. 0.70 Night .. 1.0 Dawn
+      timeOfDay: 0.16,
       phase: 'day', // 'day' | 'dusk' | 'night'
       isBloodStorm: false,
-      coins: 12,
+      coins: 10,
       maxPouch: 30,
       bankCoins: 0,
       wardFlames: 3,
@@ -57,8 +55,8 @@ export class CutawayMansionScene extends Phaser.Scene {
         fast_stride: false,
         extra_housefolk: false,
         long_range: false,
-        bulkhead_turrets: false,
-        tough_walls: false,
+        shield_turrets: false,
+        strong_shields: false,
       },
     };
   }
@@ -68,7 +66,7 @@ export class CutawayMansionScene extends Phaser.Scene {
 
     this.rooms = new Map();
     this.floorBounds = new Map();
-    this.bulkheads = [];
+    this.shields = [];
     this.strikeBanners = [];
     this.vigils = [];
     this.chests = [];
@@ -81,28 +79,31 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.bolts = [];
     this.particles = [];
     this.floatTexts = [];
-    this.jobs = []; // { type: 'bulkhead' | 'room', target }
+    this.jobs = []; // { type: 'conduit', floor, x, target: rm }
 
-    // Sky & Weather Graphics (scrollFactor 0 for rich side-scrolling horizon)
+    // Sky & Weather Graphics
     this.skyGfx = this.add.graphics().setScrollFactor(0).setDepth(-20);
-    this.parallaxGfx = this.add.graphics().setDepth(-10);
     this.weatherGfx = this.add.graphics().setScrollFactor(0).setDepth(48);
 
     this._computeFloorBounds();
     this._buildCutawayMansion();
     this._buildFoyerStations();
-    this._buildBulkheadsAndRifts();
+    this._buildShieldsAndRifts();
     this._buildVigilsAndChests();
     this._createHeir();
     this._spawnStartingRetainers();
     this._setupKeyboard();
 
-    // Dynamic world graphics for reflections, health bars, florin slots & séance exorcism ring
+    // Dynamic world graphics: live room ambience, reflections, power conduits, paranormal shields & UI
+    this.ambientGfx = this.add.graphics().setDepth(8.5);
     this.reflectionGfx = this.add.graphics().setDepth(11);
+    this.conduitGfx = this.add.graphics().setDepth(17);
+    this.shieldGfx = this.add.graphics().setDepth(33);
     this.worldUiGfx = this.add.graphics().setDepth(45);
+
     this.slotSprites = [];
     for (let i = 0; i < 10; i++) {
-      this.slotSprites.push(this.add.image(0, 0, 'slot_empty').setDepth(46).setVisible(false));
+      this.slotSprites.push(this.add.image(0, 0, 'slot_empty').setScale(0.5).setDepth(46).setVisible(false));
     }
     this.promptLabel = this.add
       .text(0, 0, '', {
@@ -124,6 +125,8 @@ export class CutawayMansionScene extends Phaser.Scene {
 
     // Timers
     this.payTickTimer = 0;
+    this.weldSoundTimer = 0;
+    this.switchHoldProgress = 0;
     this.activeSlotTarget = null;
     this.slotDecayTimer = 0;
     this.wispSpawnTimer = 2.0;
@@ -150,18 +153,16 @@ export class CutawayMansionScene extends Phaser.Scene {
       return;
     }
     if (w < 500) {
-      // iPhone Portrait: comfortable side-scrolling cutaway view showing current floor + glimpse of adjacent floor
-      this.cameras.main.setZoom(1.18);
-    } else if (h < 500) {
-      // iPhone Landscape: crisp wide side-scroller view
       this.cameras.main.setZoom(1.22);
+    } else if (h < 500) {
+      this.cameras.main.setZoom(1.26);
     } else {
-      this.cameras.main.setZoom(1.55);
+      this.cameras.main.setZoom(1.68);
     }
   }
 
   /* ==========================================================================
-   * 4-STORY ASYMMETRIC CUTAWAY MANSION BUILDER
+   * 4-STORY CUTAWAY MANSION, BESPOKE ROOM INTERIORS & POWER JUNCTIONS
    * ========================================================================== */
   _buildCutawayMansion() {
     for (const def of CUTAWAY_ROOMS) {
@@ -169,88 +170,118 @@ export class CutawayMansionScene extends Phaser.Scene {
       const topY = fy - ROOM_H;
       const cx = def.x + def.w / 2;
       const cy = topY + ROOM_H / 2;
-      const restored = Boolean(def.startRestored);
+      const powered = Boolean(def.startRestored);
 
-      // Room wall backdrop
+      // 1. Repeatable 2x HD architectural wall backdrop
       const bg = this.add
-        .tileSprite(cx, cy, def.w, ROOM_H, `bg_${def.style}_${restored ? 'r' : 'h'}`)
+        .tileSprite(cx, cy, def.w, ROOM_H, `bg_${def.style}_${powered ? 'r' : 'h'}`)
+        .setTileScale(0.5, 0.5)
         .setDepth(2);
 
-      // Structural floor beam slab along bottom of room
-      this.add.tileSprite(cx, fy + 11, def.w, 22, 'slab_beam').setDepth(10);
+      // 2. Bespoke 2x HD Full-Width Room Interior Diorama
+      const interior = this.add
+        .image(cx, cy, `interior_${def.id}_${powered ? 'r' : 'h'}`)
+        .setScale(0.5)
+        .setDepth(6);
 
-      // Cut-granite foundation beneath Ground outdoor wings & Sub-Cellar
+      // 3. Structural floor beam slab along bottom of room
+      this.add.tileSprite(cx, fy + 11, def.w, 22, 'slab_beam').setTileScale(0.5, 0.5).setDepth(10);
+
       if (def.floor === -1 || def.outdoor) {
-        this.add.tileSprite(cx, fy + 36, def.w, 32, 'foundation_stone').setDepth(9);
+        this.add
+          .tileSprite(cx, fy + 36, def.w, 32, 'foundation_stone')
+          .setTileScale(0.5, 0.5)
+          .setDepth(9);
       }
 
-      // Steep Victorian mansard slate roof above topmost room sections!
+      // Steep Victorian mansard slate roof above topmost room sections
       const hasRoomDirectlyAbove = CUTAWAY_ROOMS.some(
         (other) => other.floor === def.floor + 1 && other.x < def.x + def.w - 40 && other.x + other.w > def.x + 40
       );
       if (!hasRoomDirectlyAbove && !def.outdoor) {
-        this.add.tileSprite(cx, topY - 16, def.w + 16, 36, 'roof_mansard').setDepth(10);
+        this.add
+          .tileSprite(cx, topY - 16, def.w + 16, 36, 'roof_mansard')
+          .setTileScale(0.5, 0.5)
+          .setDepth(10);
       }
 
-      // Side partition pilasters between rooms
+      // Open doorway carved pilasters & brass arch lintels (zero physical blockade!)
       if (!def.outdoor) {
-        this.add.rectangle(def.x, cy, 8, ROOM_H, 0x1c130d).setDepth(9);
-        this.add.rectangle(def.x + def.w, cy, 8, ROOM_H, 0x1c130d).setDepth(9);
+        for (const edgeX of [def.x, def.x + def.w]) {
+          this.add.rectangle(edgeX, topY + 18, 12, 36, 0x24170f).setDepth(9);
+          this.add.rectangle(edgeX, topY + 35, 14, 3, 0xb88938).setDepth(9.1);
+          this.add.rectangle(edgeX, cy, 5, ROOM_H, 0x1c120c).setDepth(9);
+        }
       }
 
-      // Haunted gloom veil (fades out when restored!)
+      // Haunted gloom veil (clears when Steam / Electric / Aether power arrives!)
       const veil = this.add
-        .rectangle(cx, cy, def.w, ROOM_H, 0x060d16, restored ? 0 : def.outdoor ? 0.18 : 0.44)
+        .rectangle(cx, cy, def.w, ROOM_H, 0x060d16, powered ? 0 : def.outdoor ? 0.15 : 0.36)
         .setDepth(30);
 
-      // Warm gaslight glow halos
+      // Warm room ambient glow
       const glow = this.add
-        .image(cx, cy + 12, 'glow_warm')
+        .image(cx, cy + 10, 'glow_warm')
         .setBlendMode(Phaser.BlendModes.ADD)
-        .setScale(def.w / 130, 1.35)
-        .setAlpha(restored ? 0.68 : 0)
-        .setDepth(31);
+        .setScale(def.w / 130, 1.32)
+        .setAlpha(powered ? 0.52 : 0)
+        .setDepth(30.5);
 
-      // Room Centerpiece Fixture (skip for grand_foyer which uses Master Boiler Hearth)
-      let centerpiece = null;
-      if (def.id !== 'grand_foyer') {
-        centerpiece = this.add
-          .image(cx, fy - 32, `fix_${def.fixtureKind}_${restored ? 'r' : 'h'}`)
-          .setDepth(14);
-      }
-
-      // Subtle room name plaque on top trim
-      this.add
-        .text(cx, topY + 14, def.name.toUpperCase(), {
+      // Engraved Victorian frieze nameplate along top cornice (above ceiling conduits)
+      const pInfo = POWER_TYPES[def.powerType] || POWER_TYPES.steam;
+      const nameText = this.add
+        .text(cx, topY + 5, ` ${def.name.toUpperCase()} `, {
           fontFamily: 'Silkscreen, monospace',
           fontSize: '8px',
-          color: restored ? '#f2ca6b' : '#6e8491',
+          color: powered ? '#f5d27a' : '#8da6b5',
+          backgroundColor: 'rgba(12, 9, 7, 0.76)',
+          padding: { x: 4, y: 1 },
         })
         .setOrigin(0.5, 0)
-        .setAlpha(0.75)
-        .setDepth(12);
+        .setAlpha(0.92)
+        .setDepth(22);
+
+      // Wall-Mounted 2x HD Conduit Junction Terminal (near upstream side of room)
+      let junctionX = cx;
+      let junctionSprite = null;
+      if (def.powerType !== 'hub') {
+        junctionX = def.junctionSide === 'west' ? def.x + 56 : def.x + def.w - 56;
+        junctionSprite = this.add
+          .image(junctionX, fy - 42, `junction_${def.powerType}_${powered ? 'on' : 'off'}`)
+          .setScale(0.5)
+          .setDepth(15);
+      }
 
       this.rooms.set(def.id, {
         def,
+        powerInfo: pInfo,
         bg,
+        interior,
         veil,
         glow,
-        centerpiece,
+        nameText,
         cx,
         fy,
-        isRestored: restored,
-        restoreQueued: false,
-        buildProgress: 0,
-        paidSlots: 0,
-        maxSlots: def.restoreCost,
+        topY,
+        junctionX,
+        junctionSprite,
+        isRestored: powered, // kept alias for snapshot compatibility
+        isPowered: powered,
+        wireQueued: false,
+        conduitProgress: powered ? 1 : 0,
+        poweredFrom: null,
+        shields: [],
       });
     }
 
-    // Central 4-Story Brass Cage Lift Shaft (x = 2825, spanning Floor 2 down to Floor -1)
+    // Update initial 'ready' state on junctions immediately adjacent to Grand Foyer
+    this._refreshJunctionSprites();
+
+    // Central 4-Story Brass Cage Lift Shaft (x = 2825)
     const liftH = FLOOR_Y['-1'] - (FLOOR_Y[2] - ROOM_H + 20);
     const liftMidY = (FLOOR_Y['-1'] + (FLOOR_Y[2] - ROOM_H + 20)) / 2;
-    this.add.tileSprite(2825, liftMidY, 48, liftH, 'lift_shaft').setDepth(12);
-    this.liftCar = this.add.image(2825, FLOOR_Y[0] - 27, 'lift_car').setDepth(15);
+    this.add.tileSprite(2825, liftMidY, 48, liftH, 'lift_shaft').setTileScale(0.5, 0.5).setDepth(12);
+    this.liftCar = this.add.image(2825, FLOOR_Y[0] - 27, 'lift_car').setScale(0.5).setDepth(15);
 
     // Carved Staircase Arches at unique stair X positions
     const stairSet = new Set();
@@ -259,7 +290,7 @@ export class CutawayMansionScene extends Phaser.Scene {
         const key = `${vl.x}_${vl.fromFloor}`;
         if (!stairSet.has(key)) {
           stairSet.add(key);
-          this.add.image(vl.x, FLOOR_Y[vl.fromFloor] - 29, 'stair_arch').setDepth(13);
+          this.add.image(vl.x, FLOOR_Y[vl.fromFloor] - 29, 'stair_arch').setScale(0.5).setDepth(13);
         }
       }
     }
@@ -268,14 +299,14 @@ export class CutawayMansionScene extends Phaser.Scene {
   _buildFoyerStations() {
     const fy = FLOOR_Y[0];
 
-    // 1. Master Boiler Hearth (Upgrades Estate Tier I -> II -> III)
-    this.hearthSprite = this.add.image(CENTER_X, fy - 38, 'foyer_hearth_1').setDepth(15);
+    // 1. Central Tri-Manifold Dynamo Hearth (generates Steam, Electricity & Aether!)
+    this.hearthSprite = this.add.image(CENTER_X, fy - 42, 'foyer_hearth_1').setScale(0.5).setDepth(15);
     this.add
-      .image(CENTER_X, fy - 34, 'glow_warm')
+      .image(CENTER_X, fy - 36, 'glow_warm')
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(1.7)
-      .setAlpha(0.8)
-      .setDepth(31);
+      .setScale(1.45)
+      .setAlpha(0.52)
+      .setDepth(30.5);
 
     this.hearthStation = {
       kind: 'hearth',
@@ -285,7 +316,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       paidSlots: 0,
     };
 
-    // 2. Tinkerer's Wrench Rack (x = 2465, 2 Coins -> 1 Wrench for Artificer)
+    // 2. Pipefitter & Lineman Wrench Rack (x = 2465, 2 Florins -> 1 Wrench for Artificer)
     this.wrenchRack = {
       kind: 'rack_wrench',
       floor: 0,
@@ -293,12 +324,11 @@ export class CutawayMansionScene extends Phaser.Scene {
       y: fy,
       cost: 2,
       paidSlots: 0,
-      stock: 1, // 1 free wrench ready on Day 1!
-      sprite: this.add.image(2465, fy - 22, 'rack_wrench').setDepth(15),
-      stockDots: [],
+      stock: 1,
+      sprite: this.add.image(2465, fy - 22, 'rack_wrench').setScale(0.5).setDepth(15),
     };
 
-    // 3. Limelight Lantern Rack (x = 2735, 2 Coins -> 1 Limelight Lance for Warder)
+    // 3. Occult Limelight Lantern Rack (x = 2735, 2 Florins -> 1 Spirit-Lance for Warder)
     this.lanternRack = {
       kind: 'rack_lantern',
       floor: 0,
@@ -306,68 +336,96 @@ export class CutawayMansionScene extends Phaser.Scene {
       y: fy,
       cost: 2,
       paidSlots: 0,
-      stock: 1, // 1 free lantern ready on Day 1!
-      sprite: this.add.image(2735, fy - 22, 'rack_lantern').setDepth(15),
-      stockDots: [],
+      stock: 1,
+      sprite: this.add.image(2735, fy - 22, 'rack_lantern').setScale(0.5).setDepth(15),
     };
 
-    // 4. Cast-Iron Majordomo Safe & Banker (x = 2535, unlocks at Estate Tier 2)
-    this.safeSprite = this.add.image(2535, fy - 24, 'safe_vault').setDepth(14).setAlpha(0.45);
-    this.majordomoSprite = this.add.image(2554, fy - 19, 'majordomo').setDepth(16).setVisible(false);
+    // 4. Cast-Iron Majordomo Safe & Banker (x = 2518, unlocks at Dynamo Tier II)
+    this.safeSprite = this.add.image(2516, fy - 24, 'safe_vault').setScale(0.5).setDepth(14).setAlpha(0.45);
+    this.majordomoSprite = this.add
+      .image(2540, fy - 19, 'majordomo')
+      .setScale(0.5)
+      .setDepth(16)
+      .setVisible(false);
     this.bankStation = {
       kind: 'bank',
       floor: 0,
-      x: 2545,
+      x: 2526,
       y: fy,
       cost: 1,
       paidSlots: 0,
     };
   }
 
-  _buildBulkheadsAndRifts() {
-    for (const bDef of BULKHEAD_SPOTS) {
-      const fy = FLOOR_Y[bDef.floor];
-      const tierInfo = BULKHEAD_TIERS[bDef.startLevel];
-      const sprite = this.add.image(bDef.x, fy - 39, `bulkhead_${bDef.startLevel}`).setDepth(22);
-      if (bDef.side === 'west') sprite.setFlipX(true);
+  _buildShieldsAndRifts() {
+    for (const def of CUTAWAY_ROOMS) {
+      const rm = this.rooms.get(def.id);
+      if (!def.shields?.length) continue;
 
-      const bh = {
-        id: bDef.id,
-        floor: bDef.floor,
-        x: bDef.x,
-        y: fy,
-        side: bDef.side,
-        level: bDef.startLevel,
-        hp: tierInfo.maxHp,
-        maxHp: tierInfo.maxHp,
-        upgradeQueued: false,
-        targetLevel: bDef.startLevel,
-        buildProgress: 0,
-        paidSlots: 0,
-        turretCooldown: 0,
-        sprite,
-      };
-      this.bulkheads.push(bh);
+      for (const sDef of def.shields) {
+        const fy = FLOOR_Y[def.floor];
+        const topY = fy - ROOM_H;
+        const sType = sDef.shieldType || (def.powerType === 'hub' ? 'aether' : def.powerType);
+        const pInfo = POWER_TYPES[sType] || POWER_TYPES.aether;
+        const startOn = Boolean(sDef.startActive && rm.isPowered);
 
-      // Strike Banner right inside each Bulkhead spot (visible when outermost Lv.2+ & Estate Tier >= 2)
-      const bannerX = bDef.x + (bDef.side === 'west' ? 36 : -36);
-      const bannerSprite = this.add.image(bannerX, fy - 26, 'strike_banner').setDepth(16).setVisible(false);
-      this.strikeBanners.push({
-        bulkhead: bh,
-        floor: bDef.floor,
-        x: bannerX,
-        y: fy,
-        cost: 4,
-        paidSlots: 0,
-        active: false,
-        cooldown: 0,
-        sprite: bannerSprite,
-      });
+        const floorCoil = this.add
+          .image(sDef.x, fy - 9, startOn ? `shield_coil_${sType}` : 'shield_coil_off')
+          .setScale(0.5)
+          .setDepth(22);
+        const ceilCoil = this.add
+          .image(sDef.x, topY + 15, startOn ? `shield_coil_${sType}` : 'shield_coil_off')
+          .setScale(0.5)
+          .setFlipY(true)
+          .setDepth(22);
+
+        const sh = {
+          id: sDef.id,
+          room: rm,
+          floor: def.floor,
+          x: sDef.x,
+          y: fy,
+          topY,
+          side: sDef.side,
+          shieldType: sType,
+          powerInfo: pInfo,
+          active: startOn,
+          overloaded: false,
+          overloadTimer: 0,
+          charge: startOn ? pInfo.maxCharge : 0,
+          maxCharge: pInfo.maxCharge,
+          hitFlash: 0,
+          turretCooldown: 0,
+          floorCoil,
+          ceilCoil,
+        };
+        this.shields.push(sh);
+        rm.shields.push(sh);
+
+        // Rift-Banishment Standard inside each Shield threshold (visible when outermost active Shield & Tier II+)
+        const bannerX = sDef.x + (sDef.side === 'west' ? 38 : -38);
+        const bannerSprite = this.add
+          .image(bannerX, fy - 26, 'strike_banner')
+          .setScale(0.5)
+          .setDepth(16)
+          .setVisible(false);
+        this.strikeBanners.push({
+          shield: sh,
+          floor: def.floor,
+          x: bannerX,
+          y: fy,
+          cost: 4,
+          paidSlots: 0,
+          active: false,
+          cooldown: 0,
+          sprite: bannerSprite,
+        });
+      }
     }
 
     for (const rDef of SPECTRAL_RIFTS) {
       const fy = FLOOR_Y[rDef.floor];
-      const sprite = this.add.image(rDef.x, fy - 44, 'rift_0').setDepth(18);
+      const sprite = this.add.image(rDef.x, fy - 44, 'rift_0').setScale(0.5).setDepth(18);
       const glow = this.add
         .image(rDef.x, fy - 44, 'glow_ecto')
         .setBlendMode(Phaser.BlendModes.ADD)
@@ -391,26 +449,26 @@ export class CutawayMansionScene extends Phaser.Scene {
   _buildVigilsAndChests() {
     for (const cDef of HOUSEFOLK_VIGILS) {
       const fy = FLOOR_Y[cDef.floor];
-      this.add.image(cDef.x, fy - 14, 'candle_vigil').setDepth(13);
+      this.add.image(cDef.x, fy - 14, 'candle_vigil').setScale(0.5).setDepth(13);
       this.add
         .image(cDef.x, fy - 18, 'glow_warm')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setScale(0.58)
-        .setAlpha(0.5)
-        .setDepth(31);
+        .setAlpha(0.45)
+        .setDepth(30.5);
       this.add
         .image(cDef.x, fy - 10, 'glow_ecto')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setScale(0.42)
-        .setAlpha(0.32)
-        .setDepth(31);
+        .setAlpha(0.3)
+        .setDepth(30.5);
       this.vigils.push({ id: cDef.id, floor: cDef.floor, x: cDef.x, y: fy });
       this._spawnHousefolkAt(cDef);
     }
 
     for (const ch of SALVAGE_CHESTS) {
       const fy = FLOOR_Y[ch.floor];
-      const sprite = this.add.image(ch.x, fy - 12, 'chest_closed').setDepth(14);
+      const sprite = this.add.image(ch.x, fy - 12, 'chest_closed').setScale(0.5).setDepth(14);
       this.chests.push({
         id: ch.id,
         floor: ch.floor,
@@ -426,18 +484,21 @@ export class CutawayMansionScene extends Phaser.Scene {
   _createHeir() {
     const fy = FLOOR_Y[0];
     const gender = this.state.gender || 'female';
-    const sprite = this.add.image(CENTER_X - 40, fy - 25, `hero_${gender}_0`).setDepth(34);
+    const sprite = this.add
+      .image(CENTER_X - 40, fy - 24, `hero_${gender}_idle_0`)
+      .setScale(0.5)
+      .setDepth(34);
     const lampGlow = this.add
       .image(CENTER_X - 25, fy - 25, 'glow_warm')
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(1.15)
-      .setAlpha(0.44)
+      .setScale(1.12)
+      .setAlpha(0.42)
       .setDepth(31);
     const spiritGlow = this.add
       .image(CENTER_X - 23, fy - 24, 'glow_ecto')
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(0.92)
-      .setAlpha(0.48)
+      .setScale(0.9)
+      .setAlpha(0.46)
       .setDepth(32);
 
     this.heir = {
@@ -445,7 +506,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       x: CENTER_X - 40,
       y: fy,
       vx: 0,
-      facing: 1, // +1 right, -1 left
+      facing: 1,
       stamina: 100,
       exhaustedTimer: 0,
       stridePhase: 0,
@@ -461,17 +522,16 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   _spawnStartingRetainers() {
-    // Start Day 1 with 1 loyal Artificer & 2 Lamplighter Warders so the estate feels alive immediately!
     this._createRetainer('artificer', 0, CENTER_X - 90);
-    this._createRetainer('warder', 0, CENTER_X - 140);
-    this._createRetainer('warder', 0, CENTER_X + 140);
+    this._createRetainer('warder', 0, CENTER_X - 150);
+    this._createRetainer('warder', 0, CENTER_X + 150);
   }
 
   _createRetainer(role, floor, x) {
     const fy = FLOOR_Y[floor];
-    const sprite = this.add.image(x, fy - 19, `${role}_0`).setDepth(24);
+    const sprite = this.add.image(x, fy - 19, `${role}_0`).setScale(0.5).setDepth(24);
     const ret = {
-      role, // 'servant' | 'artificer' | 'warder' | 'steward'
+      role,
       floor,
       x,
       y: fy,
@@ -496,7 +556,7 @@ export class CutawayMansionScene extends Phaser.Scene {
     if (countNear >= 2) return;
     const x = vigil.x + (Math.random() * 44 - 22);
     const fy = FLOOR_Y[vigil.floor];
-    const sprite = this.add.image(x, fy - 19, 'housefolk_0').setDepth(23);
+    const sprite = this.add.image(x, fy - 19, 'housefolk_0').setScale(0.5).setDepth(23);
     this.housefolk.push({
       vigilId: vigil.id,
       floor: vigil.floor,
@@ -534,14 +594,48 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   /* ==========================================================================
-   * PUBLIC CONTROLS API (USED BY KEYBOARD & IPHONE TOUCH HUD)
+   * POWER NETWORK GRAPH HELPERS & PUBLIC CONTROLS API
    * ========================================================================== */
+  getPoweredUpstreamLink(rm) {
+    if (!rm || !rm.def.connectFrom?.length) return null;
+    for (const link of rm.def.connectFrom) {
+      const parent = this.rooms.get(link.room);
+      if (parent && parent.isPowered) {
+        return { parent, riserX: link.riserX || null };
+      }
+    }
+    return null;
+  }
+
+  getMaxShieldCapacity() {
+    const base = ESTATE_TIERS[this.state.estateTier - 1]?.baseShieldCap || 4;
+    let bonus = 0;
+    for (const rm of this.rooms.values()) {
+      if (rm.isPowered && rm.def.bonusShieldCap) {
+        bonus += rm.def.bonusShieldCap;
+      }
+    }
+    return base + bonus;
+  }
+
+  getActiveShieldCount() {
+    return this.shields.filter((s) => s.active).length;
+  }
+
+  _refreshJunctionSprites() {
+    for (const rm of this.rooms.values()) {
+      if (!rm.junctionSprite) continue;
+      const st = rm.isPowered ? 'on' : this.getPoweredUpstreamLink(rm) ? 'ready' : 'off';
+      rm.junctionSprite.setTexture(`junction_${rm.def.powerType}_${st}`);
+    }
+  }
+
   setInvestigatorGender(gender) {
     if (gender !== 'female' && gender !== 'male') return;
     this.state.gender = gender;
     if (this.heir?.sprite) {
-      const frame = ((this.heir.stridePhase | 0) % 4 + 4) % 4;
-      this.heir.sprite.setTexture(`hero_${gender}_${this.gameStarted ? frame : 0}`);
+      const frame = ((this.heir.stridePhase | 0) % 8 + 8) % 8;
+      this.heir.sprite.setTexture(this.gameStarted ? `hero_${gender}_${frame}` : `hero_${gender}_idle_0`);
     }
   }
 
@@ -558,9 +652,11 @@ export class CutawayMansionScene extends Phaser.Scene {
   setTouchPay(held) {
     if (held && !this.touchPayHeld) {
       this.soundEngine?.init();
-      // If pressed with no nearby slot, drop 1 consecrated Ward Florin onto the floorboards!
-      if (!this._findNearestPayable()) {
+      const cand = this._findNearestInteractable();
+      if (!cand) {
         this.tossLooseCoin();
+      } else if (cand.mode === 'unconnected') {
+        this.onToast?.(cand.sub);
       }
     }
     this.touchPayHeld = held;
@@ -599,7 +695,7 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.spawnSparks(pulseX, pulseY, 10, 0xffe680);
 
     // 1. Direct Paranormal Exorcism Blast against nearby Apparitions!
-    const exorcismDmg = Math.round(30 * (this.state.perks.galvanic_bolts ? 1.35 : 1.0));
+    const exorcismDmg = Math.round(30 * (this.state.perks.galvanic_bolts ? 1.4 : 1.0));
     let banishedCount = 0;
     let struckCount = 0;
     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -618,7 +714,19 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 2. Condense nearby Ectoplasm Orbs (Wisps) directly into consecrated Silver Florins!
+    // 2. Also surge +35 Charge into any nearby active Paranormal Shield!
+    for (const sh of this.shields) {
+      if (sh.floor === this.heir.floor && Math.abs(sh.x - pulseX) < 165 && sh.active) {
+        if (sh.overloaded) {
+          sh.overloaded = false;
+          sh.overloadTimer = 0;
+        }
+        sh.charge = Math.min(sh.maxCharge, sh.charge + 40);
+        this.spawnSparks(sh.x, sh.y - 90, 10, sh.powerInfo.shieldColor);
+      }
+    }
+
+    // 3. Condense nearby Ectoplasm Orbs directly into consecrated Silver Florins!
     let condensed = 0;
     for (let wi = this.wisps.length - 1; wi >= 0; wi--) {
       const w = this.wisps[wi];
@@ -631,7 +739,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 3. Empower nearby Manor Retainers (+55% speed & fire rate for 6.5s)
+    // 4. Empower nearby Manor Retainers
     let inspired = 0;
     for (const r of this.retainers) {
       if (r.floor === this.heir.floor && Math.abs(r.x - pulseX) < 340) {
@@ -640,7 +748,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 4. Astrally magnetize loose floor Florins toward the Investigator!
+    // 5. Magnetize loose floor Florins toward Investigator
     for (const c of this.worldCoins) {
       if (c.floor === this.heir.floor && Math.abs(c.x - pulseX) < 230) {
         c.vx = (pulseX - c.x) * 3.6;
@@ -721,21 +829,24 @@ export class CutawayMansionScene extends Phaser.Scene {
     if (this.gameStarted) {
       this._updateDayNightCycle(dt);
       this._updateHeir(dt, elapsed);
-      this._updateCoinSlotFeeding(dt);
+      this._updateInteraction(dt);
       this._updateChests();
       this._updateHousefolkAndWisps(dt, elapsed);
       this._updateRetainers(dt, elapsed);
-      this._updateBulkheadTurrets(dt);
+      this._updateParanormalShields(dt);
       this._updateStrikeBanners(dt);
       this._updateRiftsAndEnemies(dt, elapsed);
       this._updateBolts(dt);
       this._updateWorldCoins(dt, elapsed);
     } else if (this.heir?.spiritGlow) {
-      // Subtle ghostly lantern breath behind the Title Screen
+      const gender = this.state.gender || 'female';
+      this.heir.sprite.setTexture(`hero_${gender}_idle_${((elapsed * 2.2) | 0) % 2}`);
       this.heir.spiritGlow.setScale(0.88 + Math.sin(elapsed * 4.5) * 0.08);
     }
 
     this._updateParticlesAndText(dt);
+    this._drawAmbientRoomDetails(elapsed);
+    this._drawConduitsAndShields(elapsed);
     this._drawReflectionsAndWorldUi(elapsed);
     this._updateCamera(dt);
   }
@@ -748,7 +859,6 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.state.timeOfDay = (this.state.timeOfDay + dt / DAY_LENGTH_SEC) % 1.0;
     const t = this.state.timeOfDay;
 
-    // Wrap across midnight/dawn -> New Day!
     if (t < prev) {
       this.state.day += 1;
       this.state.isBloodStorm = this.state.day % 4 === 0;
@@ -762,7 +872,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       if (newPhase === 'dusk') {
         this.soundEngine?.playDuskToll();
         const stormTxt = this.state.isBloodStorm ? ' — BLOOD-MOON TEMPEST APPROACHING!' : '';
-        this.onToast?.(`Dusk tolls on Day ${this.state.day}${stormTxt}. Warders manning the Threshold Gates!`);
+        this.onToast?.(`Dusk tolls on Day ${this.state.day}${stormTxt}. Check your Paranormal Shields!`);
       } else if (newPhase === 'night' && !this.waveSpawnedTonight) {
         this.waveSpawnedTonight = true;
         this._spawnNightWave();
@@ -773,11 +883,24 @@ export class CutawayMansionScene extends Phaser.Scene {
   _onDawnArrived() {
     this.soundEngine?.playDawnChime();
 
-    // 1. Every restored room yields its Dawn Consecrated Silver Florins!
+    // Reset any overloaded Paranormal Shields at Dawn & recharge!
+    for (const sh of this.shields) {
+      if (sh.active) {
+        sh.overloaded = false;
+        sh.overloadTimer = 0;
+        sh.charge = sh.maxCharge;
+        this._syncShieldCoils(sh);
+      }
+    }
+
+    // Powered rooms condense Dawn Silver Florins (diverting power to an active Shield halves domestic yield)
     let harvestTotal = 0;
     for (const rm of this.rooms.values()) {
-      if (!rm.isRestored) continue;
-      const count = rm.def.dawnCoins || 0;
+      if (!rm.isPowered) continue;
+      const baseCount = rm.def.dawnCoins || 0;
+      if (baseCount <= 0) continue;
+      const divertingToShield = rm.shields.some((s) => s.active) && rm.def.id !== 'grand_foyer';
+      const count = divertingToShield ? Math.max(1, Math.floor(baseCount * 0.5)) : baseCount;
       harvestTotal += count;
       for (let i = 0; i < count; i++) {
         this.spawnWorldCoin(
@@ -791,7 +914,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 2. Majordomo Safe compounds daily interest!
+    // Majordomo Safe compounds daily interest!
     if (this.state.bankCoins > 0) {
       const rate = this.state.perks.high_interest ? 0.35 : 0.22;
       const gain = Math.max(1, Math.min(8, Math.round(this.state.bankCoins * rate)));
@@ -801,7 +924,7 @@ export class CutawayMansionScene extends Phaser.Scene {
 
     this.onBanner?.(
       `Dawn of Day ${this.state.day}`,
-      `Sanctified wings condensed ${harvestTotal} Silver Florins across Vesper Manor.`
+      `Powered wings condensed ${harvestTotal} Silver Florins & recharged all Paranormal Shields.`
     );
   }
 
@@ -836,7 +959,10 @@ export class CutawayMansionScene extends Phaser.Scene {
   _spawnEnemyFromRift(rift, kind) {
     const maxHp = kind === 'brute' ? 145 : kind === 'phantom' ? 52 : 34;
     const fy = FLOOR_Y[rift.floor];
-    const sprite = this.add.image(rift.x, fy - (kind === 'brute' ? 24 : 16), `${kind}_0`).setDepth(25);
+    const sprite = this.add
+      .image(rift.x, fy - (kind === 'brute' ? 24 : 18), `${kind}_0`)
+      .setScale(0.5)
+      .setDepth(25);
     this.enemies.push({
       kind,
       rift,
@@ -865,22 +991,20 @@ export class CutawayMansionScene extends Phaser.Scene {
     if (h.invulnTimer > 0) h.invulnTimer = Math.max(0, h.invulnTimer - dt);
     if (h.exhaustedTimer > 0) h.exhaustedTimer = Math.max(0, h.exhaustedTimer - dt);
 
-    // Joystick vertical flick at stairs/lifts
     if (Math.abs(this.joy.y) > 0.68 && Math.abs(this.joy.x) < 0.45 && h.transitCooldown <= 0) {
       this.tryTakeVerticalLink(this.joy.y < 0 ? 1 : -1);
     }
 
-    // Horizontal side-scrolling input
     let moveIn = this.joy.x;
     if (this.keys.a.isDown || this.keys.left.isDown) moveIn -= 1;
     if (this.keys.d.isDown || this.keys.right.isDown) moveIn += 1;
     moveIn = Math.max(-1, Math.min(1, moveIn));
 
     const curRoom = this.getActiveRoom();
-    const inWarmRoom = Boolean(curRoom && curRoom.isRestored);
+    const inWarmRoom = Boolean(curRoom && curRoom.isPowered);
     this.soundEngine?.setAtmosphere(this.state.phase === 'night', inWarmRoom);
 
-    // Rekindle snuffed Spirit-Lantern Ward Flames inside warm sanctified rooms
+    // Rekindle snuffed Spirit-Lantern Ward Flames inside powered rooms
     if (this.state.wardFlames < this.state.maxWardFlames && inWarmRoom) {
       this.state.wardRegenTimer += dt;
       if (this.state.wardRegenTimer >= 7.5) {
@@ -920,21 +1044,26 @@ export class CutawayMansionScene extends Phaser.Scene {
     h.x = Math.max(bounds.minX, Math.min(bounds.maxX, h.x + h.vx * dt));
     h.y = FLOOR_Y[h.floor];
 
-    // 4-frame on-foot coat stride + raised-lantern Séance cast pose
-    if (Math.abs(h.vx) > 14) {
-      h.stridePhase += dt * (Math.abs(h.vx) * 0.052);
+    const isMoving = Math.abs(h.vx) > 12;
+    if (isMoving) {
+      h.stridePhase += dt * (Math.abs(h.vx) * 0.088);
     } else {
       h.stridePhase = 0;
     }
 
     const gender = this.state.gender || 'female';
     const isCasting = h.flareRingTimer > 0.22;
-    const strideFrame = (h.stridePhase | 0) % 4;
-    const texKey = isCasting ? `hero_${gender}_cast` : `hero_${gender}_${strideFrame}`;
+    const strideFrame = (h.stridePhase | 0) % 8;
+    const idleFrame = ((elapsed * 2.2) | 0) % 2;
+    const texKey = isCasting
+      ? `hero_${gender}_cast`
+      : isMoving
+        ? `hero_${gender}_${strideFrame}`
+        : `hero_${gender}_idle_${idleFrame}`;
 
     h.sprite
       .setTexture(texKey)
-      .setPosition(Math.round(h.x), h.y - 25)
+      .setPosition(Math.round(h.x), h.y - 24)
       .setFlipX(h.facing < 0)
       .setAlpha(h.invulnTimer > 0 && ((h.invulnTimer * 20) | 0) % 2 === 0 ? 0.45 : 1);
 
@@ -945,7 +1074,6 @@ export class CutawayMansionScene extends Phaser.Scene {
       .setPosition(lanternX, lanternY)
       .setScale((isCasting ? 1.25 : 0.88) + Math.sin(elapsed * 6) * 0.08);
 
-    // Subtle trailing ghostly motes from swinging Spirit-Censer / Leyden Lantern & Astral-Step boots
     h.moteTimer -= dt;
     if (h.moteTimer <= 0) {
       h.moteTimer = wantsSprint ? 0.08 : Math.abs(h.vx) > 14 ? 0.22 : 0.45;
@@ -956,7 +1084,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // Majordomo Auto-Withdrawal when walking past the Safe with a light satchel!
+    // Majordomo Auto-Withdrawal when walking past the Safe with a light satchel
     if (
       this.state.estateTier >= 2 &&
       this.state.bankCoins > 0 &&
@@ -978,20 +1106,115 @@ export class CutawayMansionScene extends Phaser.Scene {
     }
   }
 
-  _findNearestPayable() {
+  /* ==========================================================================
+   * CONTEXTUAL INTERACTION: CONDUIT CONSTRUCTION, SHIELD SWITCHES & FOYER SLOTS
+   * ========================================================================== */
+  _findNearestInteractable() {
     const h = this.heir;
     const candidates = [];
 
-    // 1. Master Séance Boiler Hearth Upgrade (Floor 0)
+    // 1. Room Conduit Junction Terminals (Construct Steam Pipes / Electrical Lines / Aetheric Conduits — NO COINS!)
+    for (const rm of this.rooms.values()) {
+      if (rm.def.floor !== h.floor || rm.isPowered || !rm.junctionSprite) continue;
+      const d = Math.abs(h.x - rm.junctionX);
+      if (d < 62) {
+        const upLink = this.getPoweredUpstreamLink(rm);
+        if (upLink) {
+          candidates.push({
+            dist: d,
+            mode: 'wire',
+            id: `wire_${rm.def.id}`,
+            x: rm.junctionX,
+            y: rm.fy - 74,
+            label: `Construct ${rm.powerInfo.conduitName}`,
+            sub: `From ${upLink.parent.def.name} • ${rm.def.perk}`,
+            room: rm,
+            upLink,
+          });
+        } else {
+          const firstParent = this.rooms.get(rm.def.connectFrom[0]?.room);
+          candidates.push({
+            dist: d + 15,
+            mode: 'unconnected',
+            id: `unconn_${rm.def.id}`,
+            x: rm.junctionX,
+            y: rm.fy - 74,
+            label: `Unpowered ${rm.powerInfo.label} Junction`,
+            sub: `Connect power to ${firstParent ? firstParent.def.name : 'adjacent wing'} first!`,
+            room: rm,
+          });
+        }
+      }
+    }
+
+    // 2. Doorway Paranormal Shield Relays (Apply Room Power -> Paranormal Shield — NO COINS!)
+    for (const sh of this.shields) {
+      if (sh.floor !== h.floor) continue;
+      const d = Math.abs(h.x - sh.x);
+      if (!sh.room.isPowered) {
+        if (d < 36) {
+          candidates.push({
+            dist: d + 20,
+            mode: 'unconnected',
+            id: `sh_unpow_${sh.id}`,
+            x: sh.x,
+            y: sh.y - 82,
+            label: `Unpowered ${sh.powerInfo.shieldName} Relay`,
+            sub: `Construct ${sh.room.def.name}’s ${sh.room.powerInfo.conduitName} first to energize this doorway shield!`,
+            shield: sh,
+          });
+        }
+        continue;
+      }
+      if (d < 46) {
+        if (sh.active && sh.overloaded) {
+          candidates.push({
+            dist: d,
+            mode: 'shield',
+            id: `sh_reset_${sh.id}`,
+            x: sh.x,
+            y: sh.y - 82,
+            label: `Reset Overloaded ${sh.powerInfo.shieldName}`,
+            sub: 'Re-energizes doorway Paranormal Shield to 65% capacity',
+            shield: sh,
+          });
+        } else if (!sh.active) {
+          candidates.push({
+            dist: d,
+            mode: 'shield',
+            id: `sh_on_${sh.id}`,
+            x: sh.x,
+            y: sh.y - 82,
+            label: `Apply Power → ${sh.powerInfo.shieldName}`,
+            sub: `Channels ${sh.room.def.name} power to block apparitions (${this.getActiveShieldCount()}/${this.getMaxShieldCapacity()} Grid)`,
+            shield: sh,
+          });
+        } else {
+          candidates.push({
+            dist: d + 8, // Slightly lower priority than nearby junction if overlapping
+            mode: 'shield',
+            id: `sh_off_${sh.id}`,
+            x: sh.x,
+            y: sh.y - 82,
+            label: `Release ${sh.powerInfo.shieldName}`,
+            sub: `Returns full domestic power & Dawn Florin yield to ${sh.room.def.name}`,
+            shield: sh,
+          });
+        }
+      }
+    }
+
+    // 3. Central Foyer Tri-Manifold Dynamo Upgrade (Floor 0, Florins)
     const tierDef = ESTATE_TIERS[this.state.estateTier - 1];
     if (h.floor === 0 && tierDef.upgradeCost > 0) {
       const d = Math.abs(h.x - this.hearthStation.x);
       if (d < 54) {
         candidates.push({
           dist: d,
+          mode: 'coin',
           id: 'hearth',
           x: this.hearthStation.x,
-          y: h.y - 84,
+          y: h.y - 88,
           label: tierDef.nextLabel,
           sub: tierDef.unlockDesc,
           cost: tierDef.upgradeCost,
@@ -1001,7 +1224,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 2. Wrench & Lantern Tool Racks (Floor 0)
+    // 4. Wrench & Lantern Tool Racks (Floor 0, Florins)
     for (const rack of [this.wrenchRack, this.lanternRack]) {
       if (h.floor === 0 && rack.stock < 3) {
         const d = Math.abs(h.x - rack.x);
@@ -1009,13 +1232,14 @@ export class CutawayMansionScene extends Phaser.Scene {
           const isWrench = rack.kind === 'rack_wrench';
           candidates.push({
             dist: d,
+            mode: 'coin',
             id: rack.kind,
             x: rack.x,
             y: h.y - 62,
             label: isWrench ? 'Forge Wrench (Artificer)' : 'Consecrate Lantern (Warder)',
             sub: isWrench
-              ? 'Equips an Attendant to build Ward Gates & restore wings'
-              : 'Equips an Attendant to condense Ectoplasm & guard walls',
+              ? 'Equips Staff to construct Steam/Electric/Aether lines & tune Shields'
+              : 'Equips Staff to guard Paranormal Shields & banish Rifts',
             cost: rack.cost,
             obj: rack,
             onComplete: () => {
@@ -1028,12 +1252,13 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 3. Majordomo Safe Deposit (Floor 0, Tier 2+)
+    // 5. Majordomo Safe Deposit (Floor 0, Tier 2+)
     if (h.floor === 0 && this.state.estateTier >= 2) {
       const d = Math.abs(h.x - this.bankStation.x);
       if (d < 40) {
         candidates.push({
           dist: d,
+          mode: 'coin',
           id: 'bank',
           x: this.bankStation.x,
           y: h.y - 64,
@@ -1049,13 +1274,14 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 4. Shivering Manor Housefolk at Candle Vigils (1 Florin -> Rally Attendant!)
+    // 6. Shivering Manor Housefolk at Candle Vigils (1 Florin -> Rally Staff!)
     for (const v of this.housefolk) {
       if (v.floor !== h.floor) continue;
       const d = Math.abs(h.x - v.x);
       if (d < 46) {
         candidates.push({
           dist: d,
+          mode: 'coin',
           id: `hf_${v.x}`,
           x: v.x,
           y: v.y - 48,
@@ -1068,82 +1294,22 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 5. Frontier Ward Gates & Sanctum Seals (Build / Repair / Upgrade!)
-    for (const bh of this.bulkheads) {
-      if (bh.floor !== h.floor || bh.upgradeQueued) continue;
-      const d = Math.abs(h.x - bh.x);
-      if (d > 48) continue;
-
-      if (bh.level > 0 && bh.hp < bh.maxHp * 0.65) {
-        candidates.push({
-          dist: d,
-          id: `${bh.id}_rep`,
-          x: bh.x,
-          y: bh.y - 86,
-          label: `Mend ${BULKHEAD_TIERS[bh.level].name}`,
-          sub: `Restores full ${bh.maxHp} Ward Integrity before nightfall`,
-          cost: 2,
-          obj: bh,
-          onComplete: () => {
-            bh.hp = bh.maxHp;
-            this.spawnSparks(bh.x, bh.y - 36, 16, 0x7ef7e3);
-            this.spawnFloatText(bh.x, bh.y - 64, 'WARD MENDED!', '#7ef7e3');
-          },
-        });
-      } else {
-        const curTier = BULKHEAD_TIERS[bh.level];
-        const nextTier = BULKHEAD_TIERS[bh.level + 1];
-        const nextReq = nextTier?.reqEstateTier || 1;
-        if (curTier.cost > 0 && this.state.estateTier >= nextReq) {
-          candidates.push({
-            dist: d,
-            id: bh.id,
-            x: bh.x,
-            y: bh.y - 86,
-            label: curTier.nextName,
-            sub: `Artificers consecrate this threshold (${nextTier?.maxHp || 95} HP)`,
-            cost: curTier.cost,
-            obj: bh,
-            onComplete: () => this._queueBulkheadUpgrade(bh),
-          });
-        }
-      }
-    }
-
-    // 6. Rift-Banishment Standards (Muster Rift Expedition!)
+    // 7. Rift-Banishment Standards (Muster Rift Expedition!)
     for (const sb of this.strikeBanners) {
       if (!sb.active || sb.floor !== h.floor || sb.cooldown > 0) continue;
       const d = Math.abs(h.x - sb.x);
-      if (d < 46) {
+      if (d < 44) {
         candidates.push({
           dist: d,
-          id: `sb_${sb.bulkhead.id}`,
+          mode: 'coin',
+          id: `sb_${sb.shield.id}`,
           x: sb.x,
           y: sb.y - 66,
           label: 'Muster Rift Banishment Squad',
-          sub: 'Sends up to 3 Warders out to shatter this wing’s Spectral Rift',
+          sub: 'Sends up to 3 Warders beyond the Paranormal Shield to shatter this wing’s Rift',
           cost: sb.cost,
           obj: sb,
           onComplete: () => this._launchStrikeSquad(sb),
-        });
-      }
-    }
-
-    // 7. Unrestored Room Centerpieces (Queue Artificers to Sanctify Room!)
-    for (const rm of this.rooms.values()) {
-      if (rm.def.floor !== h.floor || rm.isRestored || rm.restoreQueued || rm.maxSlots <= 0) continue;
-      const d = Math.abs(h.x - rm.cx);
-      if (d < 56) {
-        candidates.push({
-          dist: d,
-          id: `rm_${rm.def.id}`,
-          x: rm.cx,
-          y: rm.fy - 78,
-          label: rm.def.fixtureLabel,
-          sub: rm.def.perk,
-          cost: rm.maxSlots,
-          obj: rm,
-          onComplete: () => this._queueRoomRestoration(rm),
         });
       }
     }
@@ -1152,19 +1318,21 @@ export class CutawayMansionScene extends Phaser.Scene {
     return candidates[0] || null;
   }
 
-  _updateCoinSlotFeeding(dt) {
-    const cand = this._findNearestPayable();
+  _updateInteraction(dt) {
+    const cand = this._findNearestInteractable();
 
-    // Refund uncompleted slots if Investigator walks away!
+    // Refund uncompleted coin slots if Investigator walks away from a Foyer station
     if (this.activeSlotTarget && (!cand || cand.obj !== this.activeSlotTarget.obj)) {
       this._refundPartialSlots(this.activeSlotTarget.obj);
       this.activeSlotTarget = null;
     }
+    if (!cand || cand.mode !== 'shield') {
+      this.switchHoldProgress = 0;
+    }
 
-    const kbPay = this.keys.s.isDown || this.keys.down.isDown || this.keys.e.isDown;
-    const isPaying = kbPay || this.touchPayHeld;
+    const kbHold = this.keys.s.isDown || this.keys.down.isDown || this.keys.e.isDown;
+    const isHolding = kbHold || this.touchPayHeld;
 
-    // Allow keyboard S/Down at stairs/lifts to descend, or away from slots to drop 1 consecrated Ward Florin
     const justDownS =
       Phaser.Input.Keyboard.JustDown(this.keys.s) ||
       Phaser.Input.Keyboard.JustDown(this.keys.down);
@@ -1179,37 +1347,86 @@ export class CutawayMansionScene extends Phaser.Scene {
           return;
         }
         this.tossLooseCoin();
+      } else if (cand.mode === 'unconnected') {
+        this.onToast?.(cand.sub);
       }
     }
 
     if (!cand) return;
-    this.activeSlotTarget = cand;
 
-    if (isPaying) {
-      this.slotDecayTimer = 1.6;
-      this.payTickTimer -= dt;
-      if (this.payTickTimer <= 0) {
-        this.payTickTimer = 0.17;
-        if (this.state.coins > 0) {
-          this.state.coins -= 1;
-          cand.obj.paidSlots = (cand.obj.paidSlots || 0) + 1;
-          this.soundEngine?.playCoinSlot(cand.obj.paidSlots - 1, cand.cost);
-          this.spawnSparks(cand.x, cand.y, 5, 0x7ef7e3);
+    // MODE A: CONSTRUCTING STEAM PIPES, ELECTRICAL LINES OR AETHERIC CONDUITS (0 COINS!)
+    if (cand.mode === 'wire') {
+      if (isHolding) {
+        const rm = cand.room;
+        if (!rm.poweredFrom) rm.poweredFrom = cand.upLink;
+        const speedMult = this.state.perks.fast_builders ? 0.78 : 0.58;
+        rm.conduitProgress = Math.min(1, rm.conduitProgress + dt * speedMult);
 
-          if (cand.obj.paidSlots >= cand.cost) {
-            cand.obj.paidSlots = 0;
-            this.activeSlotTarget = null;
-            cand.onComplete();
-          }
-        } else {
-          this.payTickTimer = 0.4;
-          this.spawnFloatText(this.heir.x, this.heir.y - 48, 'NEED FLORINS!', '#ff8d7a');
+        if (rm.conduitProgress >= 0.12 && !rm.wireQueued) {
+          rm.wireQueued = true;
+          this.jobs.push({ type: 'conduit', floor: rm.def.floor, x: rm.junctionX, target: rm });
+        }
+
+        this.weldSoundTimer -= dt;
+        if (this.weldSoundTimer <= 0) {
+          this.weldSoundTimer = 0.12;
+          this.soundEngine?.playConduitWeld(rm.def.powerType, rm.conduitProgress);
+          this.spawnSparks(rm.junctionX, rm.fy - 44, 3, rm.powerInfo.pulseColor);
+        }
+
+        if (rm.conduitProgress >= 1) {
+          this._completeRoomPowering(rm);
         }
       }
-    } else if ((cand.obj.paidSlots || 0) > 0) {
-      this.slotDecayTimer -= dt;
-      if (this.slotDecayTimer <= 0) {
-        this._refundPartialSlots(cand.obj);
+      return;
+    }
+
+    // MODE B: APPLYING OR RELEASING ROOM POWER ON A PARANORMAL SHIELD (0 COINS!)
+    if (cand.mode === 'shield') {
+      if (isHolding) {
+        const sh = cand.shield;
+        const needed = sh.overloaded ? 0.55 : 0.34;
+        this.switchHoldProgress += dt / needed;
+        if (this.switchHoldProgress >= 1) {
+          this.switchHoldProgress = 0;
+          this.touchPayHeld = false;
+          this._toggleOrResetShield(sh);
+        }
+      } else {
+        this.switchHoldProgress = Math.max(0, this.switchHoldProgress - dt * 3);
+      }
+      return;
+    }
+
+    // MODE C: COIN SLOTS FOR FOYER GEAR, VIGILS & DYNAMO CORE
+    if (cand.mode === 'coin') {
+      this.activeSlotTarget = cand;
+      if (isHolding) {
+        this.slotDecayTimer = 1.6;
+        this.payTickTimer -= dt;
+        if (this.payTickTimer <= 0) {
+          this.payTickTimer = 0.17;
+          if (this.state.coins > 0) {
+            this.state.coins -= 1;
+            cand.obj.paidSlots = (cand.obj.paidSlots || 0) + 1;
+            this.soundEngine?.playCoinSlot(cand.obj.paidSlots - 1, cand.cost);
+            this.spawnSparks(cand.x, cand.y, 5, 0x7ef7e3);
+
+            if (cand.obj.paidSlots >= cand.cost) {
+              cand.obj.paidSlots = 0;
+              this.activeSlotTarget = null;
+              cand.onComplete();
+            }
+          } else {
+            this.payTickTimer = 0.4;
+            this.spawnFloatText(this.heir.x, this.heir.y - 48, 'NEED FLORINS!', '#ff8d7a');
+          }
+        }
+      } else if ((cand.obj.paidSlots || 0) > 0) {
+        this.slotDecayTimer -= dt;
+        if (this.slotDecayTimer <= 0) {
+          this._refundPartialSlots(cand.obj);
+        }
       }
     }
   }
@@ -1224,25 +1441,148 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   /* ==========================================================================
-   * ESTATE PROGRESSION, JOBS & RETAINER AI
+   * ROOM POWERING, PARANORMAL SHIELD ROUTING & RETAINER AI
    * ========================================================================== */
+  _completeRoomPowering(rm) {
+    if (rm.isPowered) return;
+    if (!rm.poweredFrom) {
+      rm.poweredFrom = this.getPoweredUpstreamLink(rm);
+    }
+    rm.isPowered = true;
+    rm.isRestored = true;
+    rm.wireQueued = false;
+    rm.conduitProgress = 1;
+
+    rm.bg.setTexture(`bg_${rm.def.style}_r`);
+    rm.interior.setTexture(`interior_${rm.def.id}_r`);
+    rm.nameText.setColor('#f2ca6b');
+
+    this.tweens.add({ targets: rm.veil, alpha: 0, duration: 650 });
+    this.tweens.add({ targets: rm.glow, alpha: 0.56, duration: 650 });
+
+    if (rm.def.perkId) {
+      this.state.perks[rm.def.perkId] = true;
+      if (rm.def.perkId === 'strong_shields') {
+        for (const sh of this.shields) {
+          sh.maxCharge = Math.round(sh.powerInfo.maxCharge * 1.35);
+          if (sh.active) sh.charge = Math.min(sh.maxCharge, sh.charge + 55);
+        }
+      }
+    }
+
+    // Update downstream Junction Terminals that can now receive power from this room!
+    this._refreshJunctionSprites();
+
+    if (rm.def.isFarm) {
+      this._createRetainer('steward', rm.def.floor, rm.cx - 24);
+    }
+
+    this.soundEngine?.playRoomRestored();
+    this.spawnSparks(rm.junctionX, rm.fy - 44, 20, rm.powerInfo.pulseColor);
+    this.spawnSparks(rm.cx, rm.fy - 38, 22, 0xffe484);
+    this.spawnFloatText(rm.cx, rm.fy - 64, `${rm.powerInfo.label.toUpperCase()} ONLINE!`, rm.powerInfo.hex);
+    this.onBanner?.(`${rm.def.name} Energized`, `${rm.powerInfo.conduitName} connected — ${rm.def.perk}`);
+    this._checkVictory();
+  }
+
+  _toggleOrResetShield(sh) {
+    if (!sh.room.isPowered) return false;
+
+    if (sh.active && sh.overloaded) {
+      sh.overloaded = false;
+      sh.overloadTimer = 0;
+      sh.charge = Math.round(sh.maxCharge * 0.65);
+      this._syncShieldCoils(sh);
+      this.soundEngine?.playShieldToggle(true, sh.shieldType);
+      this.spawnSparks(sh.x, sh.y - 86, 18, sh.powerInfo.shieldColor);
+      this.spawnFloatText(sh.x, sh.y - 96, 'SHIELD RE-ENERGIZED!', sh.powerInfo.hex);
+      return true;
+    }
+
+    if (sh.active) {
+      sh.active = false;
+      sh.overloaded = false;
+      this._syncShieldCoils(sh);
+      this._syncRoomGlowForShield(sh.room);
+      this.soundEngine?.playShieldToggle(false, sh.shieldType);
+      this.spawnFloatText(sh.x, sh.y - 88, 'SHIELD OFF (FULL ROOM POWER)', '#ffd978');
+      return true;
+    }
+
+    // Activating Paranormal Shield: check Grid Capacity or auto-advance from redundant inner shield!
+    const cap = this.getMaxShieldCapacity();
+    if (this.getActiveShieldCount() >= cap) {
+      const innerRedundant = this.shields
+        .filter(
+          (other) =>
+            other !== sh &&
+            other.active &&
+            other.floor === sh.floor &&
+            other.side === sh.side &&
+            (sh.side === 'west' ? other.x > sh.x : other.x < sh.x)
+        )
+        .sort((a, b) => Math.abs(a.x - CENTER_X) - Math.abs(b.x - CENTER_X))[0];
+
+      if (innerRedundant) {
+        innerRedundant.active = false;
+        innerRedundant.overloaded = false;
+        this._syncShieldCoils(innerRedundant);
+        this._syncRoomGlowForShield(innerRedundant.room);
+        this.onToast?.(
+          `Shifted shield power outward from ${innerRedundant.room.def.name} to ${sh.room.def.name}!`
+        );
+      } else {
+        this.onToast?.(
+          `Shield Grid at capacity (${cap}/${cap})! Release an inner shield or power a Generator Wing.`
+        );
+        this.spawnFloatText(sh.x, sh.y - 88, `GRID FULL (${cap}/${cap})`, '#ff8d7a');
+        return false;
+      }
+    }
+
+    sh.active = true;
+    sh.overloaded = false;
+    sh.maxCharge = Math.round(
+      sh.powerInfo.maxCharge * (this.state.perks.strong_shields ? 1.35 : 1.0)
+    );
+    sh.charge = sh.maxCharge;
+    this._syncShieldCoils(sh);
+    this._syncRoomGlowForShield(sh.room);
+    this.soundEngine?.playShieldToggle(true, sh.shieldType);
+    this.spawnSparks(sh.x, sh.y - 86, 20, sh.powerInfo.shieldColor);
+    this.spawnFloatText(sh.x, sh.y - 96, `${sh.powerInfo.shieldName.toUpperCase()} ON!`, sh.powerInfo.hex);
+    return true;
+  }
+
+  _syncShieldCoils(sh) {
+    const tex = sh.active && !sh.overloaded ? `shield_coil_${sh.shieldType}` : 'shield_coil_off';
+    sh.floorCoil.setTexture(tex);
+    sh.ceilCoil.setTexture(tex);
+  }
+
+  _syncRoomGlowForShield(rm) {
+    if (!rm.isPowered) return;
+    const anyOn = rm.shields.some((s) => s.active) && rm.def.id !== 'grand_foyer';
+    rm.glow.setAlpha(anyOn ? 0.34 : 0.56);
+  }
+
   _upgradeEstateTier() {
     this.state.estateTier = Math.min(3, this.state.estateTier + 1);
     this.hearthSprite.setTexture(`foyer_hearth_${this.state.estateTier}`);
     this.soundEngine?.playRoomRestored();
-    this.spawnSparks(CENTER_X, FLOOR_Y[0] - 40, 28, 0xffe484);
+    this.spawnSparks(CENTER_X, FLOOR_Y[0] - 44, 28, 0xffe484);
 
     if (this.state.estateTier === 2) {
       this.safeSprite.setAlpha(1);
       this.majordomoSprite.setVisible(true);
       this.onBanner?.(
-        'Estate Tier II: Sanctified Manor Hall',
-        'Majordomo Safe, Cold-Iron Ward Gates, Banishment Standards & Brass Cage Lift unlocked!'
+        'Dynamo Tier II: Pressurized Manifold',
+        `Shield Grid expanded to ${this.getMaxShieldCapacity()}! Safe, Lift & Banishment Standards online.`
       );
     } else if (this.state.estateTier === 3) {
       this.onBanner?.(
-        'Estate Tier III: Luminous Aether Estate',
-        'Galvanic Sanctum Seals unlocked across all four stories!'
+        'Dynamo Tier III: Luminous Aether Reactor',
+        `Shield Grid expanded to ${this.getMaxShieldCapacity()} & +35% Shield Recharge across all floors!`
       );
     }
   }
@@ -1257,73 +1597,8 @@ export class CutawayMansionScene extends Phaser.Scene {
     this._createRetainer('servant', v.floor, v.x);
   }
 
-  _queueBulkheadUpgrade(bh) {
-    bh.upgradeQueued = true;
-    bh.targetLevel = bh.level + 1;
-    bh.buildProgress = 0;
-    this.jobs.push({ type: 'bulkhead', floor: bh.floor, x: bh.x, target: bh });
-    this.spawnFloatText(bh.x, bh.y - 54, 'QUEUED FOR ARTIFICERS', '#ffd978');
-  }
-
-  _queueRoomRestoration(rm) {
-    rm.restoreQueued = true;
-    rm.buildProgress = 0;
-    this.jobs.push({ type: 'room', floor: rm.def.floor, x: rm.cx, target: rm });
-    this.spawnFloatText(rm.cx, rm.fy - 58, 'ARTIFICERS DISPATCHED!', '#ffd978');
-  }
-
-  _completeBulkheadUpgrade(bh) {
-    bh.level = bh.targetLevel;
-    bh.upgradeQueued = false;
-    const baseMax = BULKHEAD_TIERS[bh.level].maxHp;
-    bh.maxHp = Math.round(baseMax * (this.state.perks.tough_walls ? 1.3 : 1.0));
-    bh.hp = bh.maxHp;
-    bh.sprite.setTexture(`bulkhead_${bh.level}`).setVisible(true);
-    this.soundEngine?.playRoomRestored();
-    this.spawnSparks(bh.x, bh.y - 36, 22, 0xffe078);
-    this.spawnFloatText(bh.x, bh.y - 66, `${BULKHEAD_TIERS[bh.level].name.toUpperCase()}!`, '#ffe680');
-  }
-
-  _completeRoomRestoration(rm) {
-    rm.isRestored = true;
-    rm.restoreQueued = false;
-    rm.bg.setTexture(`bg_${rm.def.style}_r`);
-    if (rm.centerpiece) rm.centerpiece.setTexture(`fix_${rm.def.fixtureKind}_r`);
-
-    this.tweens.add({ targets: rm.veil, alpha: 0, duration: 700 });
-    this.tweens.add({ targets: rm.glow, alpha: 0.68, duration: 700 });
-
-    if (rm.def.perkId) {
-      this.state.perks[rm.def.perkId] = true;
-      if (rm.def.perkId === 'tough_walls') {
-        for (const bh of this.bulkheads) {
-          if (bh.level > 0) {
-            bh.maxHp = Math.round(BULKHEAD_TIERS[bh.level].maxHp * 1.3);
-            bh.hp = Math.min(bh.maxHp, bh.hp + 40);
-          }
-        }
-      }
-    }
-
-    // Immediate celebratory Silver Florin burst!
-    const bonus = Math.max(2, rm.def.dawnCoins || 2);
-    for (let i = 0; i < bonus; i++) {
-      this.spawnWorldCoin(rm.def.floor, rm.cx, rm.fy - 28, (i - bonus / 2) * 32, -95, false);
-    }
-
-    // Spawn a dedicated Conservatory Steward in botanical/boiler rooms for visual life!
-    if (rm.def.isFarm) {
-      this._createRetainer('steward', rm.def.floor, rm.cx - 24);
-    }
-
-    this.soundEngine?.playRoomRestored();
-    this.spawnSparks(rm.cx, rm.fy - 36, 28, 0xffe484);
-    this.onBanner?.(`${rm.def.name} Sanctified`, rm.def.perk);
-    this._checkVictory();
-  }
-
   _launchStrikeSquad(sb) {
-    const dir = sb.bulkhead.side === 'west' ? -1 : 1;
+    const dir = sb.shield.side === 'west' ? -1 : 1;
     const targetRift = this.rifts.find(
       (r) => !r.destroyed && r.floor === sb.floor && Math.sign(r.x - sb.x) === dir
     );
@@ -1335,15 +1610,19 @@ export class CutawayMansionScene extends Phaser.Scene {
     sb.cooldown = 18;
     const warders = this.retainers.filter((r) => r.role === 'warder' && !r.strikeRift);
     const chosen = warders
-      .sort((a, b) => Math.abs(a.x - sb.x) + Math.abs(a.floor - sb.floor) * 400 - (Math.abs(b.x - sb.x) + Math.abs(b.floor - sb.floor) * 400))
+      .sort(
+        (a, b) =>
+          Math.abs(a.x - sb.x) +
+          Math.abs(a.floor - sb.floor) * 400 -
+          (Math.abs(b.x - sb.x) + Math.abs(b.floor - sb.floor) * 400)
+      )
       .slice(0, 3);
 
     if (chosen.length === 0) {
-      // Refund Florins if player has zero Warders!
       for (let i = 0; i < sb.cost; i++) {
         this.spawnWorldCoin(sb.floor, sb.x, sb.y - 24, (i - 1.5) * 25, -80, false);
       }
-      this.onToast?.('Arm Lamplighter Warders at the Foyer Lantern Rack first!');
+      this.onToast?.('Arm Occult Warders at the Foyer Lantern Rack first!');
       return;
     }
 
@@ -1354,7 +1633,7 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.soundEngine?.playBellFlare();
     this.onBanner?.(
       'Rift Banishment Squad Deployed!',
-      `${chosen.length} Warders marching on the ${targetRift.def.name}—stride with them!`
+      `${chosen.length} Warders marching past your Paranormal Shield toward ${targetRift.def.name}!`
     );
   }
 
@@ -1376,7 +1655,6 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   _updateHousefolkAndWisps(dt, elapsed) {
-    // Spawn shivering Housefolk periodically at Candlelight Vigils
     this.housefolkSpawnTimer -= dt;
     if (this.housefolkSpawnTimer <= 0) {
       this.housefolkSpawnTimer = this.state.perks.extra_housefolk ? 11 : 17;
@@ -1396,22 +1674,25 @@ export class CutawayMansionScene extends Phaser.Scene {
         v.wanderDir = Math.sign(v.homeX - v.x);
       }
       v.x += v.wanderDir * 22 * dt;
-      v.anim += dt * 4;
-      const fr = v.wanderDir === 0 ? 0 : (v.anim | 0) % 2;
+      v.anim += dt * 4.5;
+      const fr =
+        v.wanderDir === 0
+          ? (((elapsed * 1.6 + v.homeX * 0.01) | 0) % 2) * 2
+          : (v.anim | 0) % 4;
       v.sprite.setTexture(`housefolk_${fr}`).setPosition(Math.round(v.x), v.y - 19).setFlipX(v.wanderDir < 0);
     }
 
-    // Spawn daytime Ectoplasm Orbs outside Ground Ward Gates for Warders & Séance Pulses to condense!
+    // Spawn daytime Ectoplasm Orbs outside outermost Paranormal Shields
     this.wispSpawnTimer -= dt;
     if (this.wispSpawnTimer <= 0 && this.state.phase === 'day' && this.wisps.length < 6) {
       this.wispSpawnTimer = 4.2;
-      const westBh = this._getOutermostBulkhead(0, 'west');
-      const eastBh = this._getOutermostBulkhead(0, 'east');
+      const westSh = this._getOutermostShield(0, 'west');
+      const eastSh = this._getOutermostShield(0, 'east');
       const side = Math.random() < 0.5 ? 'west' : 'east';
-      const anchorX = side === 'west' ? (westBh ? westBh.x - 130 : 2100) : (eastBh ? eastBh.x + 130 : 3100);
+      const anchorX = side === 'west' ? (westSh ? westSh.x - 130 : 2150) : (eastSh ? eastSh.x + 130 : 3050);
       const wx = Math.max(420, Math.min(4780, anchorX + (Math.random() - 0.5) * 180));
       const fy = FLOOR_Y[0];
-      const sprite = this.add.image(wx, fy - 14, 'wisp_0').setDepth(21);
+      const sprite = this.add.image(wx, fy - 14, 'wisp_0').setScale(0.5).setDepth(21);
       this.wisps.push({
         floor: 0,
         x: wx,
@@ -1430,29 +1711,35 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
       w.x = Math.max(380, Math.min(4820, w.x + w.vx * dt));
       w.sprite
-        .setTexture(((elapsed * 6) | 0) % 2 === 0 ? 'wisp_0' : 'wisp_1')
+        .setTexture(`wisp_${((elapsed * 7) | 0) % 4}`)
         .setPosition(Math.round(w.x), w.y - 14 + Math.sin(elapsed * 5 + w.x * 0.02) * 2);
     }
   }
 
-  _getOutermostBulkhead(floor, side) {
-    const built = this.bulkheads.filter((b) => b.floor === floor && b.side === side && b.level > 0 && bhAlive(b));
-    if (!built.length) return null;
+  _getOutermostShield(floor, side) {
+    const live = this.shields.filter(
+      (s) => s.floor === floor && s.side === side && s.active && !s.overloaded && s.charge > 0
+    );
+    if (!live.length) return null;
     return side === 'west'
-      ? built.reduce((a, b) => (a.x < b.x ? a : b))
-      : built.reduce((a, b) => (a.x > b.x ? a : b));
+      ? live.reduce((a, b) => (a.x < b.x ? a : b))
+      : live.reduce((a, b) => (a.x > b.x ? a : b));
   }
 
-  _updateRetainers(dt) {
+  _updateRetainers(dt, elapsed = 0) {
     const isSafeTime = this.state.phase === 'day';
+    if (this.majordomoSprite?.visible) {
+      this.majordomoSprite.setTexture(((elapsed * 1.8) | 0) % 2 === 0 ? 'majordomo' : 'majordomo_1');
+    }
 
     for (const r of this.retainers) {
       if (r.buffTimer > 0) r.buffTimer = Math.max(0, r.buffTimer - dt);
       if (r.fireCooldown > 0) r.fireCooldown = Math.max(0, r.fireCooldown - dt);
 
-      const speedMult = (r.buffTimer > 0 ? 1.55 : 1.0) * (r.role === 'artificer' && this.state.perks.fast_builders ? 1.38 : 1.0);
+      const speedMult =
+        (r.buffTimer > 0 ? 1.55 : 1.0) *
+        (r.role === 'artificer' && this.state.perks.fast_builders ? 1.4 : 1.0);
 
-      // Warders hand condensed Florins directly to the Investigator when walking past!
       if (r.heldCoins > 0 && r.floor === this.heir.floor && Math.abs(r.x - this.heir.x) < 34) {
         const give = r.heldCoins;
         r.heldCoins = 0;
@@ -1462,7 +1749,6 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
 
       if (r.role === 'servant') {
-        // Walk to Foyer & claim a stocked Wrench or Lantern!
         if (this.wrenchRack.stock > 0 || this.lanternRack.stock > 0) {
           const targetRack =
             this.wrenchRack.stock > 0 && this.lanternRack.stock > 0
@@ -1486,42 +1772,49 @@ export class CutawayMansionScene extends Phaser.Scene {
           this._stepUnitToward(r, 0, CENTER_X + Math.sin(r.anim) * 70, 62, dt);
         }
       } else if (r.role === 'artificer') {
+        // Pick up queued conduit construction jobs, OR autonomously construct reachable nearby unpowered junctions during Day!
         if (!r.job && this.jobs.length > 0) {
           r.job = this.jobs.shift();
         }
 
         if (r.job) {
-          const j = r.job;
-          const stillActive =
-            (j.type === 'bulkhead' && j.target.upgradeQueued) ||
-            (j.type === 'room' && j.target.restoreQueued);
-
-          if (!stillActive) {
+          const rm = r.job.target;
+          if (rm.isPowered) {
             r.job = null;
-          } else if (r.floor === j.floor && Math.abs(r.x - j.x) < 22) {
+          } else if (r.floor === rm.def.floor && Math.abs(r.x - rm.junctionX) < 22) {
             r.anim += dt * 10;
-            j.target.buildProgress += dt * 0.42 * speedMult;
-            if (Math.random() < 0.22) {
+            if (!rm.poweredFrom) rm.poweredFrom = this.getPoweredUpstreamLink(rm);
+            rm.conduitProgress += dt * 0.45 * speedMult;
+            if (Math.random() < 0.2) {
               this.soundEngine?.playHammerTick();
-              this.spawnSparks(j.x, FLOOR_Y[j.floor] - 28, 3, 0xffd263);
+              this.spawnSparks(rm.junctionX, rm.fy - 44, 3, rm.powerInfo.pulseColor);
             }
-            if (j.target.buildProgress >= 1.0) {
-              if (j.type === 'bulkhead') this._completeBulkheadUpgrade(j.target);
-              else this._completeRoomRestoration(j.target);
+            if (rm.conduitProgress >= 1.0) {
+              this._completeRoomPowering(rm);
               r.job = null;
             }
           } else {
-            this._stepUnitToward(r, j.floor, j.x, 108 * speedMult, dt);
+            this._stepUnitToward(r, rm.def.floor, rm.junctionX, 110 * speedMult, dt);
           }
         } else {
-          // Idle Artificer: mend damaged Ward Gates or wait safely inside Foyer!
-          const hurtBh = this.bulkheads.find((b) => b.level > 0 && b.hp > 0 && b.hp < b.maxHp);
-          if (hurtBh && isSafeTime) {
-            if (r.floor === hurtBh.floor && Math.abs(r.x - hurtBh.x) < 26) {
-              hurtBh.hp = Math.min(hurtBh.maxHp, hurtBh.hp + dt * 24 * speedMult);
-              if (Math.random() < 0.15) this.spawnSparks(hurtBh.x, hurtBh.y - 30, 2, 0xffd263);
+          // Idle Artificer: reset overloaded or drained Paranormal Shields!
+          const needySh = this.shields.find(
+            (s) => s.active && (s.overloaded || s.charge < s.maxCharge * 0.85)
+          );
+          if (needySh && isSafeTime) {
+            if (r.floor === needySh.floor && Math.abs(r.x - needySh.x) < 26) {
+              if (needySh.overloaded) {
+                needySh.overloaded = false;
+                needySh.charge = Math.round(needySh.maxCharge * 0.5);
+                this._syncShieldCoils(needySh);
+              } else {
+                needySh.charge = Math.min(needySh.maxCharge, needySh.charge + dt * 28 * speedMult);
+              }
+              if (Math.random() < 0.16) {
+                this.spawnSparks(needySh.x, needySh.y - 50, 2, needySh.powerInfo.shieldColor);
+              }
             } else {
-              this._stepUnitToward(r, hurtBh.floor, hurtBh.x, 96 * speedMult, dt);
+              this._stepUnitToward(r, needySh.floor, needySh.x, 98 * speedMult, dt);
             }
           } else {
             const safeX = CENTER_X + (r.patrolSide === 'west' ? -85 : 85);
@@ -1532,7 +1825,7 @@ export class CutawayMansionScene extends Phaser.Scene {
         this._updateWarderAI(r, dt, speedMult, isSafeTime);
       } else if (r.role === 'steward') {
         const farmRoom = Array.from(this.rooms.values()).find(
-          (rm) => rm.def.floor === r.floor && rm.isRestored && rm.def.isFarm
+          (rm) => rm.def.floor === r.floor && rm.isPowered && rm.def.isFarm
         );
         if (farmRoom) {
           const tx = farmRoom.cx + Math.sin(r.anim * 0.25) * 48;
@@ -1540,7 +1833,7 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      const fr = (r.anim | 0) % 2 === 0 ? 0 : 1;
+      const fr = (r.anim | 0) % 4;
       r.sprite
         .setTexture(`${r.role}_${fr}`)
         .setPosition(Math.round(r.x), r.y - 19)
@@ -1552,7 +1845,6 @@ export class CutawayMansionScene extends Phaser.Scene {
     const boltRange = this.state.perks.long_range ? 255 : 195;
     const boltDmg = (this.state.perks.galvanic_bolts ? 24 : 17) * (r.buffTimer > 0 ? 1.25 : 1.0);
 
-    // 1. Rift Banishment Expedition!
     if (r.strikeRift) {
       if (r.strikeRift.destroyed) {
         r.strikeRift = null;
@@ -1573,7 +1865,6 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 2. Shoot any Apparition in range on current floor!
     const targetEnemy = this._findEnemyOnFloor(r.floor, r.x, boltRange);
     if (targetEnemy && r.fireCooldown <= 0) {
       r.facing = Math.sign(targetEnemy.x - r.x) || 1;
@@ -1582,12 +1873,11 @@ export class CutawayMansionScene extends Phaser.Scene {
       return;
     }
 
-    // 3. Daytime Ectoplasm Orb Condensing for Silver Florins
     if (isSafeTime && r.floor === 0 && r.heldCoins < 5) {
       const wisp = this.wisps.find(
         (w) =>
           (r.patrolSide === 'west' ? w.x < CENTER_X : w.x > CENTER_X) &&
-          Math.abs(w.x - r.x) < 260
+          Math.abs(wispDist(w, r)) < 260
       );
       if (wisp) {
         if (Math.abs(wisp.x - r.x) < boltRange && r.fireCooldown <= 0) {
@@ -1601,9 +1891,9 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 4. Station at Outermost Built Ward Gate
+    // Station safely inside Outermost Active Paranormal Shield!
     const guardPost = this._pickWarderPost(r);
-    const offset = r.patrolSide === 'west' ? 28 : -28;
+    const offset = r.patrolSide === 'west' ? 30 : -30;
     const postX = guardPost
       ? guardPost.x + (isSafeTime ? -offset : offset)
       : CENTER_X + (r.patrolSide === 'west' ? -150 : 150);
@@ -1618,12 +1908,12 @@ export class CutawayMansionScene extends Phaser.Scene {
 
   _pickWarderPost(r) {
     if (this.state.day >= 3 && this.retainers.indexOf(r) % 3 === 2) {
-      const cellarPost = this._getOutermostBulkhead(-1, 'west');
-      const spirePost = this._getOutermostBulkhead(2, 'east');
+      const cellarPost = this._getOutermostShield(-1, 'west');
+      const spirePost = this._getOutermostShield(2, 'east');
       if (this.state.day >= 4 && spirePost) return spirePost;
       if (cellarPost) return cellarPost;
     }
-    return this._getOutermostBulkhead(0, r.patrolSide);
+    return this._getOutermostShield(0, r.patrolSide);
   }
 
   _stepUnitToward(unit, targetFloor, targetX, speed, dt) {
@@ -1639,7 +1929,6 @@ export class CutawayMansionScene extends Phaser.Scene {
       return;
     }
 
-    // Multi-story cutaway routing via nearest open Staircase or Brass Cage Lift!
     const nextFloor = unit.floor + Math.sign(targetFloor - unit.floor);
     const validLinks = VERTICAL_LINKS.filter(
       (vl) =>
@@ -1666,23 +1955,47 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   /* ==========================================================================
-   * SANCTUM AUTO-TURRETS, BANISHMENT STANDARDS, RIFTS & APPARITIONS
+   * PARANORMAL SHIELD RECHARGE, TURRETS, BANISHMENT STANDARDS & APPARITIONS
    * ========================================================================== */
-  _updateBulkheadTurrets(dt) {
-    for (const bh of this.bulkheads) {
-      if (bh.level < 3 && !(bh.level >= 2 && this.state.perks.bulkhead_turrets)) continue;
-      if (bh.hp <= 0) continue;
-      if (bh.turretCooldown > 0) {
-        bh.turretCooldown -= dt;
+  _updateParanormalShields(dt) {
+    const tierBoost = this.state.estateTier >= 3 ? 1.35 : 1.0;
+    const cisternBoost = this.state.perks.strong_shields ? 1.35 : 1.0;
+    const baseRegen = (this.state.phase === 'day' ? 8.5 : 2.2) * tierBoost * cisternBoost;
+
+    for (const sh of this.shields) {
+      if (sh.hitFlash > 0) sh.hitFlash = Math.max(0, sh.hitFlash - dt * 4);
+      if (!sh.active) continue;
+
+      if (sh.overloaded) {
+        sh.overloadTimer -= dt;
+        if (sh.overloadTimer <= 0) {
+          sh.overloaded = false;
+          sh.charge = Math.round(sh.maxCharge * 0.5);
+          this._syncShieldCoils(sh);
+          this.spawnSparks(sh.x, sh.y - 86, 12, sh.powerInfo.shieldColor);
+        }
         continue;
       }
-      const dir = bh.side === 'west' ? -1 : 1;
-      const en = this.enemies.find(
-        (e) => e.floor === bh.floor && Math.sign(e.x - bh.x) === dir && Math.abs(e.x - bh.x) < 220
-      );
-      if (en) {
-        bh.turretCooldown = 1.25;
-        this._fireLimelightBolt(bh.floor, bh.x, bh.y - 58, dir, 22, false);
+
+      // Live Steam / Electric / Aether conduit continuously recharges the Paranormal Shield!
+      if (sh.charge < sh.maxCharge) {
+        sh.charge = Math.min(sh.maxCharge, sh.charge + baseRegen * dt);
+      }
+
+      // Boiler Vault Perk: Active Paranormal Shields fire automated Limelight bolts!
+      if (this.state.perks.shield_turrets) {
+        if (sh.turretCooldown > 0) {
+          sh.turretCooldown -= dt;
+        } else {
+          const dir = sh.side === 'west' ? -1 : 1;
+          const en = this.enemies.find(
+            (e) => e.floor === sh.floor && Math.sign(e.x - sh.x) === dir && Math.abs(e.x - sh.x) < 220
+          );
+          if (en) {
+            sh.turretCooldown = 1.3;
+            this._fireLimelightBolt(sh.floor, sh.x, sh.y - 78, dir, 20, false);
+          }
+        }
       }
     }
   }
@@ -1690,21 +2003,21 @@ export class CutawayMansionScene extends Phaser.Scene {
   _updateStrikeBanners(dt) {
     for (const sb of this.strikeBanners) {
       if (sb.cooldown > 0) sb.cooldown = Math.max(0, sb.cooldown - dt);
-      const bh = sb.bulkhead;
-      const outermost = this._getOutermostBulkhead(bh.floor, bh.side);
-      const dir = bh.side === 'west' ? -1 : 1;
+      const sh = sb.shield;
+      const outermost = this._getOutermostShield(sh.floor, sh.side);
+      const dir = sh.side === 'west' ? -1 : 1;
       const hasLiveRift = this.rifts.some(
-        (r) => !r.destroyed && r.floor === bh.floor && Math.sign(r.x - bh.x) === dir
+        (r) => !r.destroyed && r.floor === sh.floor && Math.sign(r.x - sh.x) === dir
       );
       sb.active = Boolean(
-        this.state.estateTier >= 2 && outermost === bh && bh.level >= 2 && bh.hp > 0 && hasLiveRift
+        this.state.estateTier >= 2 && outermost === sh && sh.active && !sh.overloaded && hasLiveRift
       );
       sb.sprite.setVisible(sb.active);
     }
   }
 
   _updateRiftsAndEnemies(dt, elapsed) {
-    const riftFrame = ((elapsed * 5) | 0) % 2;
+    const riftFrame = ((elapsed * 6) | 0) % 4;
     for (const r of this.rifts) {
       if (r.destroyed) continue;
       r.sprite.setTexture(`rift_${riftFrame}`);
@@ -1714,7 +2027,6 @@ export class CutawayMansionScene extends Phaser.Scene {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const en = this.enemies[i];
 
-      // Burn away lingering apparitions in bright morning daylight!
       if (this.state.phase === 'day' && this.state.timeOfDay > 0.06 && this.state.timeOfDay < 0.5) {
         en.hp -= dt * 16;
       }
@@ -1754,7 +2066,7 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       } else if (en.floor === 2) {
         moveDir = -1;
-        transitLinkX = 2510; // Bellfry Stair -> Ballroom
+        transitLinkX = 2510;
         transitToFloor = 1;
       } else if (en.floor === 1) {
         const stairX = en.x <= 2900 ? 2375 : 3425;
@@ -1763,10 +2075,9 @@ export class CutawayMansionScene extends Phaser.Scene {
         transitToFloor = 0;
       } else if (en.floor === -1) {
         moveDir = 1;
-        transitLinkX = 2825; // Central Lift Shaft -> Grand Foyer
+        transitLinkX = 2825;
         transitToFloor = 0;
       } else {
-        // Floor 0: converge on Grand Foyer Hearth and prowl inside if unwarded
         if (en.x < CENTER_X - 68) {
           moveDir = 1;
           en.prowlDir = 1;
@@ -1781,49 +2092,68 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      const spd = en.kind === 'brute' ? 42 : en.kind === 'phantom' ? 56 : 74;
+      // Aetheric Resonance Shield chills nearby enemies by 35%!
+      const nearAetherShield = this.shields.some(
+        (s) =>
+          s.floor === en.floor &&
+          s.active &&
+          !s.overloaded &&
+          s.shieldType === 'aether' &&
+          Math.abs(s.x - en.x) < 85
+      );
+      const baseSpd = en.kind === 'brute' ? 42 : en.kind === 'phantom' ? 56 : 74;
+      const spd = baseSpd * (nearAetherShield ? 0.65 : 1.0);
 
-      // Check if blocked by a consecrated Ward Gate / Sanctum Seal!
-      const blockingBh = !en.fleeing
-        ? this.bulkheads.find(
-            (b) =>
-              b.floor === en.floor &&
-              b.level > 0 &&
-              b.hp > 0 &&
-              Math.sign(b.x - en.x) === moveDir &&
-              Math.abs(b.x - en.x) < 24
+      // Check if blocked by a powered Paranormal Shield!
+      const blockingSh = !en.fleeing
+        ? this.shields.find(
+            (s) =>
+              s.floor === en.floor &&
+              s.active &&
+              !s.overloaded &&
+              s.charge > 0 &&
+              Math.sign(s.x - en.x) === moveDir &&
+              Math.abs(s.x - en.x) < 24
           )
         : null;
 
-      if (blockingBh) {
+      if (blockingSh) {
         en.attackCooldown -= dt;
         if (en.attackCooldown <= 0) {
           en.attackCooldown = en.kind === 'brute' ? 1.1 : 0.9;
-          const dmg = en.kind === 'brute' ? 28 : en.kind === 'phantom' ? 12 : 9;
-          blockingBh.hp = Math.max(0, blockingBh.hp - dmg);
-          this.spawnSparks(blockingBh.x, blockingBh.y - 32, 6, 0x7ef7e1);
-          if (blockingBh.hp <= 0) {
-            blockingBh.level = 0;
-            blockingBh.sprite.setTexture('bulkhead_0');
-            this.soundEngine?.playCoinScatter();
-            this.onToast?.(`A Ward Gate on Floor ${blockingBh.floor} was breached!`);
+          const dmg = en.kind === 'brute' ? 26 : en.kind === 'phantom' ? 12 : 9;
+          this._damageShield(blockingSh, dmg);
+
+          // Power-type specific Paranormal Shield counter-effects!
+          if (blockingSh.shieldType === 'electric') {
+            const zap = this.state.perks.galvanic_bolts ? 13 : 9;
+            en.hp -= zap;
+            this.spawnSparks(en.x, en.y - 18, 7, 0xfff599);
+            if (en.hp <= 0) {
+              this._killEnemy(en, i, true);
+              continue;
+            }
+          } else if (blockingSh.shieldType === 'steam' && en.kind !== 'brute') {
+            en.x -= moveDir * 14;
+            this.spawnSparks(blockingSh.x, en.y - 22, 6, 0xffd78a);
           }
         }
       } else {
-        // Phantoms hurl ecto-bolts at Ward Gates from range
+        // Phantoms hurl ecto-bolts at Paranormal Shields from range
         if (en.kind === 'phantom' && !en.fleeing) {
-          const farBh = this.bulkheads.find(
-            (b) =>
-              b.floor === en.floor &&
-              b.level > 0 &&
-              b.hp > 0 &&
-              Math.sign(b.x - en.x) === moveDir &&
-              Math.abs(b.x - en.x) < 160
+          const farSh = this.shields.find(
+            (s) =>
+              s.floor === en.floor &&
+              s.active &&
+              !s.overloaded &&
+              s.charge > 0 &&
+              Math.sign(s.x - en.x) === moveDir &&
+              Math.abs(s.x - en.x) < 160
           );
-          if (farBh) {
+          if (farSh) {
             en.attackCooldown -= dt;
             if (en.attackCooldown <= 0) {
-              en.attackCooldown = 1.8;
+              en.attackCooldown = 1.85;
               this._fireEctoBolt(en.floor, en.x, en.y - 20, moveDir);
             }
           }
@@ -1831,7 +2161,6 @@ export class CutawayMansionScene extends Phaser.Scene {
 
         en.x += moveDir * spd * dt;
 
-        // Multi-floor stair/lift transition when unblocked!
         if (transitLinkX !== null && Math.abs(en.x - transitLinkX) < 12) {
           en.floor = transitToFloor;
           en.x = transitLinkX;
@@ -1846,11 +2175,11 @@ export class CutawayMansionScene extends Phaser.Scene {
 
       en.anim += dt * 7;
       en.sprite
-        .setTexture(`${en.kind}_${(en.anim | 0) % 2}`)
-        .setPosition(Math.round(en.x), en.y - (en.kind === 'brute' ? 24 : 16))
+        .setTexture(`${en.kind}_${(en.anim | 0) % 4}`)
+        .setPosition(Math.round(en.x), en.y - (en.kind === 'brute' ? 24 : 18))
         .setFlipX(moveDir < 0);
 
-      // Silver Ward-Scorch Trap: Consecrated Silver Florins on the floor burn & repel Poltergeist Specters!
+      // Consecrated Silver Florin Ward-Scorch Trap!
       if (!en.fleeing && en.kind === 'specter') {
         const coinIdx = this.worldCoins.findIndex(
           (c) => c.floor === en.floor && Math.abs(c.x - en.x) < 18
@@ -1872,7 +2201,6 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      // Chill Touch on Investigator -> Scatters Florins or snuffs 1 Spirit-Lantern Ward Flame!
       if (
         !en.fleeing &&
         en.floor === this.heir.floor &&
@@ -1882,7 +2210,6 @@ export class CutawayMansionScene extends Phaser.Scene {
         this._hitHeir(en);
       }
 
-      // Startle unprotected Retainers!
       if (!en.fleeing && en.kind === 'specter') {
         const hitRet = this.retainers.find(
           (r) => r.role !== 'servant' && r.floor === en.floor && Math.abs(r.x - en.x) < 18
@@ -1897,11 +2224,26 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      // Recoil back into Rift
       if (en.fleeing && en.floor === en.rift.floor && Math.abs(en.x - en.rift.x) < 24) {
         en.sprite.destroy();
         this.enemies.splice(i, 1);
       }
+    }
+  }
+
+  _damageShield(sh, dmg) {
+    sh.hitFlash = 1.0;
+    sh.charge = Math.max(0, sh.charge - dmg);
+    this.spawnSparks(sh.x, sh.y - 65, 6, sh.powerInfo.shieldColor);
+    if (sh.charge <= 0) {
+      sh.overloaded = true;
+      sh.overloadTimer = 14.0;
+      this._syncShieldCoils(sh);
+      this.soundEngine?.playCoinScatter();
+      this.spawnSparks(sh.x, sh.y - 90, 22, 0xff8d7a);
+      this.onToast?.(
+        `${sh.room.def.name}’s ${sh.powerInfo.shieldName} overloaded! Reset its relay or hold with Exorcisms!`
+      );
     }
   }
 
@@ -1931,7 +2273,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       if (this.state.wardFlames > 0) {
         this.spawnFloatText(this.heir.x, this.heir.y - 54, 'WARD FLAME SNUFFED!', '#7ef7e3');
         this.onToast?.(
-          `A Spirit-Lantern Ward Flame was snuffed (${this.state.wardFlames}/3 left)! Step into a restored wing to rekindle it.`
+          `A Spirit-Lantern Ward Flame was snuffed (${this.state.wardFlames}/3 left)! Step into a powered wing to rekindle it.`
         );
       } else {
         this._handleLanternSnuffedRecovery();
@@ -1948,8 +2290,8 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.state.coins = Math.max(4, this.state.coins);
     this.spawnSparks(CENTER_X, FLOOR_Y[0] - 32, 24, 0x7ef7e3);
     this.onBanner?.(
-      'Drawn Back to the Séance Hearth',
-      'Chill mist enveloped your snuffed lantern—your Majordomo relit all three Ward Flames at the Foyer Hearth!'
+      'Drawn Back to the Dynamo Hearth',
+      'Chill mist enveloped your snuffed lantern—all three Ward Flames relit at the Foyer Core!'
     );
   }
 
@@ -1968,7 +2310,7 @@ export class CutawayMansionScene extends Phaser.Scene {
 
   _fireLimelightBolt(floor, x, y, dir, dmg, canHitRift) {
     this.soundEngine?.playLimelightBolt();
-    const sprite = this.add.image(x, y, 'bolt_limelight').setDepth(29).setFlipX(dir < 0);
+    const sprite = this.add.image(x, y, 'bolt_limelight').setScale(0.5).setDepth(29).setFlipX(dir < 0);
     this.bolts.push({
       friendly: true,
       canHitRift,
@@ -1983,15 +2325,15 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   _fireEctoBolt(floor, x, y, dir) {
-    const sprite = this.add.image(x, y, 'bolt_ecto').setDepth(29);
+    const sprite = this.add.image(x, y, 'bolt_ecto').setScale(0.5).setDepth(29);
     this.bolts.push({
       friendly: false,
       floor,
       x,
       y,
       vx: dir * 210,
-      dmg: 10,
-      life: 1.0,
+      dmg: 14,
+      life: 1.1,
       sprite,
     });
   }
@@ -2001,23 +2343,20 @@ export class CutawayMansionScene extends Phaser.Scene {
       const b = this.bolts[i];
       b.life -= dt;
       b.x += b.vx * dt;
-      b.sprite.setPosition(b.x, b.y);
+      b.sprite.setPosition(Math.round(b.x), Math.round(b.y));
+
       let hit = b.life <= 0;
 
       if (!hit && b.friendly) {
-        // Check Night Apparitions
-        for (let ei = this.enemies.length - 1; ei >= 0; ei--) {
-          const en = this.enemies[ei];
-          if (en.floor === b.floor && Math.abs(en.x - b.x) < 18) {
-            en.hp -= b.dmg;
-            this.spawnSparks(b.x, b.y, 5, 0xffe680);
-            if (en.hp <= 0) this._killEnemy(en, ei, true);
-            hit = true;
-            break;
-          }
+        const idx = this.enemies.findIndex((e) => e.floor === b.floor && Math.abs(e.x - b.x) < 18);
+        if (idx >= 0) {
+          const en = this.enemies[idx];
+          en.hp -= b.dmg;
+          this.spawnSparks(b.x, b.y, 6, 0xffe484);
+          if (en.hp <= 0) this._killEnemy(en, idx, true);
+          hit = true;
         }
 
-        // Check Daytime Ectoplasm Orbs -> Condense 1 Silver Florin!
         if (!hit && b.floor === 0) {
           const wi = this.wisps.findIndex((w) => Math.abs(w.x - b.x) < 16);
           if (wi >= 0) {
@@ -2030,7 +2369,6 @@ export class CutawayMansionScene extends Phaser.Scene {
           }
         }
 
-        // Check Spectral Rift Portal!
         if (!hit && b.canHitRift) {
           const rift = this.rifts.find((r) => !r.destroyed && r.floor === b.floor && Math.abs(r.x - b.x) < 28);
           if (rift) {
@@ -2043,12 +2381,13 @@ export class CutawayMansionScene extends Phaser.Scene {
           }
         }
       } else if (!hit && !b.friendly) {
-        const bh = this.bulkheads.find(
-          (w) => w.floor === b.floor && w.level > 0 && w.hp > 0 && Math.abs(w.x - b.x) < 18
+        const sh = this.shields.find(
+          (s) => s.floor === b.floor && s.active && !s.overloaded && s.charge > 0 && Math.abs(s.x - b.x) < 18
         );
-        if (bh) {
-          bh.hp = Math.max(0, bh.hp - b.dmg);
-          this.spawnSparks(b.x, b.y, 5, 0x7ef7e1);
+        if (sh) {
+          // Aetheric shields vaporize ranged ecto-bolts for minimal drain!
+          const mitigated = sh.shieldType === 'aether' ? Math.round(b.dmg * 0.35) : b.dmg;
+          this._damageShield(sh, mitigated);
           hit = true;
         }
       }
@@ -2079,9 +2418,12 @@ export class CutawayMansionScene extends Phaser.Scene {
       );
     }
 
+    const left = this.rifts.filter((r) => !r.destroyed).length;
     this.onBanner?.(
       `${rift.def.name} Shattered!`,
-      'The spectral tear has been sealed forever—that horizon is safe!'
+      left > 0
+        ? `${left} Spectral Rift${left > 1 ? 's' : ''} remaining across Vesper Manor.`
+        : 'All four Spectral Rifts have been banished forever!'
     );
     this._checkVictory();
   }
@@ -2089,16 +2431,15 @@ export class CutawayMansionScene extends Phaser.Scene {
   _checkVictory() {
     if (this.victoryShown) return;
     const allRiftsGone = this.rifts.every((r) => r.destroyed);
-    let restoredCount = 0;
+    let poweredCount = 0;
     for (const rm of this.rooms.values()) {
-      if (rm.isRestored) restoredCount++;
+      if (rm.isPowered) poweredCount++;
     }
-
-    if (allRiftsGone || restoredCount >= CUTAWAY_ROOMS.length) {
+    if (allRiftsGone || (poweredCount >= CUTAWAY_ROOMS.length && this.rifts.filter((r) => !r.destroyed).length <= 1)) {
       this.victoryShown = true;
       this.onVictory?.({
         days: this.state.day,
-        restoredRooms: restoredCount,
+        restoredRooms: poweredCount,
         totalRooms: CUTAWAY_ROOMS.length,
         riftsSealed: this.rifts.filter((r) => r.destroyed).length,
         totalRifts: this.rifts.length,
@@ -2108,10 +2449,446 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   /* ==========================================================================
-   * CONSECRATED SILVER FLORINS, REFLECTIONS, DIEGETIC SLOTS & SKY
+   * RENDERING: LIVE ROOM MICRO-ANIMATIONS (DUST MOTES, EMBERS, STEAM & ARCS)
+   * ========================================================================== */
+  _drawAmbientRoomDetails(elapsed) {
+    if (!this.ambientGfx) return;
+    this.ambientGfx.clear();
+
+    const z = Math.max(0.2, this.cameras.main.zoom || 1);
+    const viewHalfW = ((this.scale.width || 1280) / z) * 0.65 + 320;
+    const g = this.ambientGfx;
+
+    for (const rm of this.rooms.values()) {
+      if (Math.abs(rm.cx - this.camFocus.x) > viewHalfW) continue;
+
+      const rx = rm.def.x;
+      const rw = rm.def.w;
+      const topY = rm.topY;
+      const fy = rm.fy;
+      const seed = rx * 0.013 + rm.def.floor * 1.7;
+
+      if (!rm.isPowered) {
+        // Cold drifting spectral mist wisps in unpowered haunted rooms
+        g.fillStyle(0x7ef7e3, 0.12);
+        for (let m = 0; m < 3; m++) {
+          const mx = rx + 36 + (((m * 137 + elapsed * 14 + seed * 40) % Math.max(60, rw - 72)));
+          const my = fy - 18 - Math.sin(elapsed * 1.8 + m * 2.1 + seed) * 10;
+          g.fillEllipse(mx, my, 26, 6);
+        }
+
+        // Weeping Portrait Colonnade: live falling ectoplasm teardrops from ancestor eyes!
+        if (rm.def.id === 'portrait_gallery') {
+          g.fillStyle(0x7ef7e3, 0.78);
+          for (const [idx, pxOff] of [53, 115, 179, 240].entries()) {
+            const drop = ((elapsed * 18 + idx * 9) % 28);
+            g.fillRect(rx + pxOff, topY + 60 + drop, 1.5, 3.5);
+          }
+        }
+        continue;
+      }
+
+      // Warm floating gaslight dust motes in energized Victorian rooms
+      if (!rm.def.outdoor) {
+        const moteCount = Math.min(7, Math.max(4, Math.floor(rw / 95)));
+        for (let i = 0; i < moteCount; i++) {
+          const u = ((i * 0.27 + seed * 0.19) % 1 + 1) % 1;
+          const mx = rx + 28 + u * (rw - 56) + Math.sin(elapsed * 0.9 + i * 1.7 + seed) * 8;
+          const rise = ((elapsed * 7 + i * 29) % 118);
+          const my = fy - 24 - rise;
+          const twinkle = 0.35 + Math.sin(elapsed * 3.4 + i * 2.3) * 0.22;
+          g.fillStyle(rm.def.powerType === 'aether' ? 0x9ef7eb : 0xffe694, Math.max(0.12, twinkle));
+          g.fillRect(mx, my, 2, 2);
+        }
+      }
+
+      // Bespoke per-room live steampunk & occult environmental animations!
+      switch (rm.def.id) {
+        case 'grand_foyer': {
+          // Rising steam wisps & astral shimmer around the Tri-Manifold Dynamo Hearth
+          for (let s = 0; s < 3; s++) {
+            const rise = (elapsed * 22 + s * 14) % 38;
+            const alpha = (1 - rise / 38) * 0.36;
+            g.fillStyle(0xfff2cc, alpha);
+            g.fillCircle(CENTER_X + 18 + Math.sin(elapsed * 4 + s) * 2.5, fy - 76 - rise, 2.2 + rise * 0.05);
+          }
+          g.fillStyle(0x7ef7e3, 0.28 + Math.sin(elapsed * 6) * 0.12);
+          g.fillCircle(CENTER_X, fy - 44, 7 + Math.sin(elapsed * 6) * 1.5);
+          break;
+        }
+
+        case 'banquet_hall':
+        case 'ballroom': {
+          // Crystal electro-chandelier prism glints
+          g.fillStyle(0xfffbe0, 0.78);
+          for (let c = 0; c < 4; c++) {
+            if (((elapsed * 5 + c * 1.3) | 0) % 3 === 0) {
+              const gx = rx + rw * (0.24 + c * 0.17);
+              g.fillRect(gx, topY + 34 + (c % 2) * 6, 2, 2);
+            }
+          }
+          break;
+        }
+
+        case 'scullery': {
+          // Flickering coal embers in cast-iron cooking range + rising alembic steam wisps
+          for (const fxBox of [rx + 212, rx + 263]) {
+            const flick = Math.sin(elapsed * 16 + fxBox) * 2;
+            g.fillStyle(0xffb838, 0.72);
+            g.fillEllipse(fxBox, fy - 23, 14 + flick, 6);
+            const sparkRise = (elapsed * 28 + fxBox) % 22;
+            g.fillStyle(0xfff3a8, 0.85 * (1 - sparkRise / 22));
+            g.fillRect(fxBox + Math.sin(elapsed * 9) * 3, fy - 24 - sparkRise, 1.5, 1.5);
+          }
+          for (const sx of [rx + 226, rx + 332, rx + 375]) {
+            const puff = (elapsed * 19 + sx) % 28;
+            g.fillStyle(0xf2f7f7, (1 - puff / 28) * 0.34);
+            g.fillCircle(sx + Math.sin(elapsed * 3.5 + sx) * 2, fy - 68 - puff, 2 + puff * 0.07);
+          }
+          break;
+        }
+
+        case 'emerald_parlor': {
+          // Roaring parlor hearth flames & gentle steam radiator wisps
+          const hf = Math.sin(elapsed * 14) * 2.2;
+          g.fillStyle(0xff9d2e, 0.75);
+          g.fillEllipse(rx + 140, fy - 15, 16 + hf, 8 + hf * 0.4);
+          g.fillStyle(0xfff6b0, 0.9);
+          g.fillEllipse(rx + 140 + Math.cos(elapsed * 11) * 1.5, fy - 14, 8, 5);
+          for (const radX of [rx + 76, rx + 432]) {
+            const p = (elapsed * 14 + radX) % 22;
+            g.fillStyle(0xfff5dc, (1 - p / 22) * 0.24);
+            g.fillCircle(radX, fy - 30 - p, 2);
+          }
+          break;
+        }
+
+        case 'wintergarden': {
+          // Conservatory fountain cascading droplets & bioluminescent nightshade spores
+          g.fillStyle(0xb8fff5, 0.82);
+          for (let d = 0; d < 4; d++) {
+            const fall = (elapsed * 34 + d * 8) % 30;
+            const side = d % 2 === 0 ? -1 : 1;
+            g.fillRect(rx + 270 + side * (19 + fall * 0.28), fy - 46 + fall, 1.5, 2.5);
+          }
+          g.fillStyle(0x7ef7e3, 0.68);
+          for (let sp = 0; sp < 5; sp++) {
+            const sx = rx + 85 + sp * 92 + Math.sin(elapsed * 1.8 + sp) * 9;
+            const sy = fy - 42 - Math.abs(Math.cos(elapsed * 1.4 + sp * 1.5)) * 34;
+            g.fillRect(sx, sy, 2, 2);
+          }
+          break;
+        }
+
+        case 'alchemy_lab': {
+          // Live crackling galvanic lightning arc between the twin Tesla coil toroids!
+          const tLeftX = rx + 458;
+          const tRightX = rx + 522;
+          const arcY = fy - 109;
+          g.lineStyle(2.4, 0x7ef7e3, 0.65);
+          let prevX = tLeftX;
+          let prevY = arcY;
+          for (let seg = 1; seg <= 5; seg++) {
+            const u = seg / 5;
+            const nx = tLeftX + (tRightX - tLeftX) * u;
+            const jitter = seg === 5 ? 0 : Math.sin(elapsed * 31 + seg * 2.7) * 6.5;
+            const ny = arcY - Math.sin(u * Math.PI) * 6 + jitter;
+            g.lineBetween(prevX, prevY, nx, ny);
+            prevX = nx;
+            prevY = ny;
+          }
+          g.lineStyle(1.2, 0xffffff, 0.95);
+          g.lineBetween(tLeftX, arcY, (tLeftX + tRightX) * 0.5, prevY - 1);
+          g.lineBetween((tLeftX + tRightX) * 0.5, prevY - 1, tRightX, arcY);
+
+          // Rising bubbles inside both glass ectoplasm specimen cylinders!
+          g.fillStyle(0xe6fffb, 0.82);
+          for (const tankX of [rx + 257, rx + 332]) {
+            for (let b = 0; b < 3; b++) {
+              const rise = (elapsed * 24 + b * 22 + tankX * 0.1) % 64;
+              const bx = tankX + Math.sin(elapsed * 5 + b * 2) * 5;
+              g.fillCircle(bx, fy - 22 - rise, 1.6);
+            }
+          }
+          break;
+        }
+
+        case 'clocktower': {
+          // Subtle swinging brass pendulum bob & luminous stained-glass dial pulse
+          const swingX = rx + 248 + Math.sin(elapsed * 2.5) * 7;
+          g.fillStyle(0xffe885, 0.85);
+          g.fillCircle(swingX, fy - 24, 4.5);
+          g.fillStyle(0xfffbe0, 0.1 + Math.sin(elapsed * 2.5) * 0.04);
+          g.fillCircle(rx + 248, topY + 77, 38);
+          break;
+        }
+
+        case 'skybridge': {
+          // High-voltage corona sparks dancing atop both storm arrester spheres
+          for (const pxX of [rx + 141, rx + 297]) {
+            if (((elapsed * 12 + pxX) | 0) % 2 === 0) {
+              const ang = elapsed * 17 + pxX;
+              g.lineStyle(1.3, 0xfff8b8, 0.9);
+              g.lineBetween(
+                pxX,
+                fy - 118,
+                pxX + Math.cos(ang) * 9,
+                fy - 118 + Math.sin(ang) * 9
+              );
+            }
+          }
+          break;
+        }
+
+        case 'observatory': {
+          // Twinkling stars in the open observatory dome & refractor objective lens glint
+          const domeStars = [
+            [347, 48],
+            [369, 37],
+            [392, 59],
+            [423, 41],
+            [449, 54],
+            [461, 78],
+          ];
+          for (let s = 0; s < domeStars.length; s++) {
+            const tw = 0.4 + Math.sin(elapsed * 4.5 + s * 1.9) * 0.45;
+            if (tw > 0.45) {
+              g.fillStyle(0xfff9cc, tw);
+              g.fillRect(rx + domeStars[s][0], topY + domeStars[s][1], 2, 2);
+            }
+          }
+          g.fillStyle(0x9ef7eb, 0.32 + Math.sin(elapsed * 3.6) * 0.14);
+          g.fillCircle(rx + 432, fy - 116, 8);
+          break;
+        }
+
+        case 'boiler_vault': {
+          // Roaring coal fireboxes & pressurized white steam puffs from both horizontal copper boilers!
+          for (const bx of [rx + 246, rx + 496]) {
+            const flick = Math.sin(elapsed * 18 + bx) * 3;
+            g.fillStyle(0xff8e26, 0.72);
+            g.fillEllipse(bx, fy - 35, 22 + flick, 9);
+            g.fillStyle(0xfff5a8, 0.88);
+            g.fillEllipse(bx, fy - 34, 11 - flick * 0.3, 5);
+
+            const puff = (elapsed * 26 + bx) % 34;
+            g.fillStyle(0xf2f7f7, (1 - puff / 34) * 0.38);
+            g.fillCircle(bx + Math.sin(elapsed * 4 + bx) * 2.5, fy - 108 - puff, 2.5 + puff * 0.08);
+          }
+          break;
+        }
+
+        case 'catacomb_cistern': {
+          // Shimmering water ripples across the flooded canal & bilge-pump steam
+          g.fillStyle(0x9ef7eb, 0.55);
+          for (let w = 0; w < 5; w++) {
+            const wx = rx + 24 + (((w * 82 + elapsed * 16) % (rw - 56)));
+            g.fillRect(wx, fy - 7 + (w % 2) * 2, 12, 1.5);
+          }
+          const puff = (elapsed * 20) % 26;
+          g.fillStyle(0xf0f7f7, (1 - puff / 26) * 0.32);
+          g.fillCircle(rx + 233, fy - 86 - puff, 2.2 + puff * 0.06);
+          break;
+        }
+
+        default:
+          break;
+      }
+    }
+  }
+
+  /* ==========================================================================
+   * RENDERING: STEAM PIPES, ELECTRICAL LINES, AETHERIC CONDUITS & PARANORMAL SHIELDS
+   * ========================================================================== */
+  _drawConduitsAndShields(elapsed) {
+    this.conduitGfx.clear();
+    this.shieldGfx.clear();
+
+    // 1. Central Foyer Tri-Manifold Header (radiating Steam, Electricity & Aether from x = CENTER_X!)
+    const foyer = this.rooms.get('grand_foyer');
+    if (foyer) {
+      const hy = foyer.topY + 24;
+      // Riser from Tri-Manifold Hearth up to ceiling header
+      this.conduitGfx.lineStyle(4, 0xd96e34, 0.92);
+      this.conduitGfx.lineBetween(CENTER_X + 18, foyer.fy - 78, CENTER_X + 18, hy);
+      this.conduitGfx.lineStyle(3, 0xebb849, 0.92);
+      this.conduitGfx.lineBetween(CENTER_X - 18, foyer.fy - 78, CENTER_X - 18, hy - 4);
+      this.conduitGfx.lineStyle(3, 0x5ef2dc, 0.92);
+      this.conduitGfx.lineBetween(CENTER_X, foyer.fy - 78, CENTER_X, hy + 4);
+
+      // Foyer ceiling distribution busbars spanning West (2320) to East (2880)
+      this._drawStyledConduitSegment('electric', foyer.def.x + 8, hy - 4, CENTER_X, hy - 4, 1, elapsed);
+      this._drawStyledConduitSegment('steam', CENTER_X, hy, foyer.def.x + foyer.def.w - 8, hy, 1, elapsed);
+      this._drawStyledConduitSegment('aether', foyer.def.x + 48, hy + 4, foyer.def.x + foyer.def.w - 48, hy + 4, 1, elapsed);
+    }
+
+    // 2. Room-by-Room Power Conduit Lines (Steam Pipes, Electrical Lines & Aetheric Conduits)
+    for (const rm of this.rooms.values()) {
+      if (rm.def.powerType === 'hub') continue;
+      const pType = rm.def.powerType;
+      const ceilY = rm.topY + 24;
+      const prog = rm.conduitProgress;
+      const upLink = rm.poweredFrom || this.getPoweredUpstreamLink(rm);
+
+      // Faint unconstructed ceiling bracket guide when upstream room is powered!
+      if (!rm.isPowered && upLink && prog <= 0.01) {
+        this.conduitGfx.lineStyle(1.5, rm.powerInfo.pipeColor, 0.25);
+        this.conduitGfx.lineBetween(rm.def.x + 12, ceilY, rm.def.x + rm.def.w - 12, ceilY);
+        this.conduitGfx.lineBetween(rm.junctionX, ceilY, rm.junctionX, rm.fy - 58);
+      }
+
+      if (prog <= 0.01) continue;
+
+      // Determine entry point from upstream room (horizontal doorway OR vertical staircase/lift riser!)
+      let entryX = rm.def.junctionSide === 'west' ? rm.def.x : rm.def.x + rm.def.w;
+      if (upLink?.riserX) {
+        entryX = upLink.riserX;
+        const parentCeilY = upLink.parent.topY + 24;
+        const vertProg = Math.min(1, prog * 2.0);
+        const curVertY = parentCeilY + (ceilY - parentCeilY) * vertProg;
+        this._drawStyledConduitSegment(pType, entryX, parentCeilY, entryX, curVertY, 1, elapsed);
+      }
+
+      // Horizontal ceiling run across the room + drop-pipe into Junction Terminal!
+      const farX = rm.def.junctionSide === 'west' ? rm.def.x + rm.def.w - 10 : rm.def.x + 10;
+      const horizProg = upLink?.riserX ? Math.max(0, (prog - 0.35) / 0.65) : prog;
+      if (horizProg > 0) {
+        const curEndX = entryX + (farX - entryX) * horizProg;
+        this._drawStyledConduitSegment(pType, entryX, ceilY, curEndX, ceilY, 1, elapsed);
+        // Drop line from ceiling trunk down into the wall Junction Terminal
+        this._drawStyledConduitSegment(pType, rm.junctionX, ceilY, rm.junctionX, rm.fy - 58, 1, elapsed);
+      }
+    }
+
+    // 3. Floor-to-Ceiling Paranormal Shields (powered directly by room conduits!)
+    for (const sh of this.shields) {
+      if (!sh.active) continue;
+
+      const ceilY = sh.topY + 22;
+      const floorY = sh.y - 14;
+      const h = floorY - ceilY;
+      const col = sh.powerInfo.shieldColor;
+      const core = sh.powerInfo.shieldCore;
+
+      // Overhead feed line from room ceiling conduit into top Shield Emitter Coil
+      this.conduitGfx.lineStyle(2, col, sh.overloaded ? 0.25 : 0.88);
+      this.conduitGfx.lineBetween(sh.x, sh.room.topY + 24, sh.x, ceilY - 4);
+
+      if (sh.overloaded) {
+        // Flickering broken arc ticks while overloaded
+        if (((elapsed * 10) | 0) % 2 === 0) {
+          this.shieldGfx.lineStyle(1.5, 0xff8d7a, 0.55);
+          this.shieldGfx.lineBetween(sh.x - 4, ceilY + 8, sh.x + 4, ceilY + 24);
+          this.shieldGfx.lineBetween(sh.x + 3, floorY - 22, sh.x - 3, floorY - 6);
+        }
+        continue;
+      }
+
+      const pct = Math.max(0.15, sh.charge / sh.maxCharge);
+      const pulse = 0.85 + Math.sin(elapsed * 7 + sh.x * 0.05) * 0.15 + sh.hitFlash * 0.35;
+
+      // Outer translucent forcefield veil (no physical wood/iron — pure luminous paranormal energy!)
+      this.shieldGfx.fillStyle(col, 0.16 * pct * pulse);
+      this.shieldGfx.fillRect(sh.x - 9, ceilY, 18, h);
+      this.shieldGfx.fillStyle(core, 0.24 * pct * pulse);
+      this.shieldGfx.fillRect(sh.x - 3, ceilY, 6, h);
+
+      // Twin crisp vertical containment beams
+      this.shieldGfx.lineStyle(2, col, 0.88 * pulse);
+      this.shieldGfx.lineBetween(sh.x - 6, ceilY, sh.x - 6, floorY);
+      this.shieldGfx.lineBetween(sh.x + 6, ceilY, sh.x + 6, floorY);
+      this.shieldGfx.lineStyle(1.5, core, 0.92);
+      this.shieldGfx.lineBetween(sh.x, ceilY, sh.x, floorY);
+
+      // Power-Type Signature Field Pattern!
+      const midY = (ceilY + floorY) / 2;
+      if (sh.shieldType === 'electric') {
+        // Crackling Galvanic Zig-Zag Lightning Lattice
+        this.shieldGfx.lineStyle(1.5, 0xffffff, 0.85);
+        let prevX = sh.x;
+        for (let y = ceilY + 12; y < floorY - 8; y += 18) {
+          const nextX = sh.x + Math.sin(elapsed * 22 + y * 0.4) * 6;
+          this.shieldGfx.lineBetween(prevX, y - 12, nextX, y);
+          prevX = nextX;
+        }
+      } else if (sh.shieldType === 'steam') {
+        // Rising Pressurized Salt-Steam Ward Rings
+        this.shieldGfx.lineStyle(1.5, core, 0.72);
+        for (let k = 0; k < 5; k++) {
+          const ry = floorY - (((elapsed * 48 + k * 34) % h));
+          this.shieldGfx.lineBetween(sh.x - 7, ry, sh.x + 7, ry);
+        }
+      } else {
+        // Aetheric Occult Sigil Circle & Diamond at Barrier Heart
+        this.shieldGfx.lineStyle(1.5, core, 0.85);
+        this.shieldGfx.strokeCircle(sh.x, midY, 10 + Math.sin(elapsed * 4) * 1.5);
+        this.shieldGfx.strokeCircle(sh.x, midY, 5);
+      }
+    }
+  }
+
+  _drawStyledConduitSegment(powerType, x1, y1, x2, y2, alpha, elapsed) {
+    const pInfo = POWER_TYPES[powerType] || POWER_TYPES.steam;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (len < 2) return;
+
+    if (powerType === 'steam') {
+      // Heavy Double Copper Steam Pipe + Brass Flanges + Traveling Pressure Pulse
+      this.conduitGfx.lineStyle(5, 0x4a2514, alpha * 0.95);
+      this.conduitGfx.lineBetween(x1, y1, x2, y2);
+      this.conduitGfx.lineStyle(3, pInfo.pipeColor, alpha);
+      this.conduitGfx.lineBetween(x1, y1, x2, y2);
+
+      const steps = Math.max(1, Math.floor(len / 56));
+      for (let i = 1; i <= steps; i++) {
+        const t = i / (steps + 1);
+        const fx = x1 + dx * t;
+        const fy = y1 + dy * t;
+        this.conduitGfx.fillStyle(0xebb849, alpha);
+        this.conduitGfx.fillRect(fx - 2, fy - 3, 4, 6);
+      }
+    } else if (powerType === 'electric') {
+      // Twin Braided Copper Cables + White Porcelain Insulator Knobs
+      this.conduitGfx.lineStyle(2, pInfo.pipeColor, alpha);
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        this.conduitGfx.lineBetween(x1, y1 - 2, x2, y2 - 2);
+        this.conduitGfx.lineBetween(x1, y1 + 2, x2, y2 + 2);
+      } else {
+        this.conduitGfx.lineBetween(x1 - 2, y1, x2 - 2, y2);
+        this.conduitGfx.lineBetween(x1 + 2, y1, x2 + 2, y2);
+      }
+      const steps = Math.max(1, Math.floor(len / 64));
+      for (let i = 0; i <= steps; i++) {
+        const t = i / Math.max(1, steps);
+        this.conduitGfx.fillStyle(0xf0f6fa, alpha);
+        this.conduitGfx.fillRect(x1 + dx * t - 2, y1 + dy * t - 3, 4, 6);
+      }
+    } else {
+      // Crystal Aetheric Vacuum Tube + Brass Collars
+      this.conduitGfx.lineStyle(5, 0x163d3b, alpha * 0.95);
+      this.conduitGfx.lineBetween(x1, y1, x2, y2);
+      this.conduitGfx.lineStyle(2.5, pInfo.pipeColor, alpha);
+      this.conduitGfx.lineBetween(x1, y1, x2, y2);
+    }
+
+    // Animated Traveling Energy / Steam / Plasma Pulses outward along the line!
+    const pulseCount = Math.max(1, Math.floor(len / 95));
+    this.conduitGfx.fillStyle(pInfo.pulseColor, 0.95);
+    for (let p = 0; p < pulseCount; p++) {
+      const u = ((elapsed * 0.65 + p / pulseCount) % 1 + 1) % 1;
+      const px = x1 + dx * u;
+      const py = y1 + dy * u;
+      this.conduitGfx.fillCircle(px, py, 2.6);
+    }
+  }
+
+  /* ==========================================================================
+   * CONSECRATED SILVER FLORINS, SKY, REFLECTIONS & WORLD UI
    * ========================================================================== */
   spawnWorldCoin(floor, x, y, vx, vy, playerDropped) {
-    const sprite = this.add.image(x, y, 'coin_0').setDepth(27);
+    const sprite = this.add.image(x, y, 'coin_0').setScale(0.5).setDepth(27);
     this.worldCoins.push({
       floor,
       x,
@@ -2140,10 +2917,9 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      const spin = ((elapsed * 7 + i) | 0) % 2;
+      const spin = ((elapsed * 8 + i) | 0) % 4;
       c.sprite.setTexture(`coin_${spin}`).setPosition(Math.round(c.x), Math.round(c.y));
 
-      // Shivering Housefolk picks up loose Florin -> Rallied to Manor Staff!
       if (c.age > 0.25) {
         const hf = this.housefolk.find((v) => v.floor === c.floor && Math.abs(v.x - c.x) < 22);
         if (hf) {
@@ -2154,7 +2930,6 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      // Warder scoops condensed Florin during Day
       if (!c.playerDropped && c.age > 0.45) {
         const warder = this.retainers.find(
           (r) => r.role === 'warder' && r.heldCoins < 5 && r.floor === c.floor && Math.abs(r.x - c.x) < 20
@@ -2167,7 +2942,6 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      // Investigator scoops Florin into Satchel!
       const pickupDelay = c.playerDropped ? 0.95 : 0.22;
       if (
         c.age > pickupDelay &&
@@ -2199,7 +2973,6 @@ export class CutawayMansionScene extends Phaser.Scene {
     const viewH = h / z;
     const t = this.state.timeOfDay;
 
-    // Sky palette shifts from warm Victorian dawn -> misty amber-slate day -> dusk -> deep night / blood moon
     let topCol = 0x162433;
     let botCol = 0x2c4252;
     if (this.state.phase === 'dusk') {
@@ -2214,7 +2987,6 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.skyGfx.fillGradientStyle(topCol, topCol, botCol, botCol, 1);
     this.skyGfx.fillRect(left - 24, top - 24, viewW + 48, viewH + 48);
 
-    // Sun / Moon arc across top sky
     const orbX = left + viewW * (0.12 + t * 0.76);
     const orbY = top + (58 + Math.sin(t * Math.PI) * -26) / z;
     const orbCol =
@@ -2228,7 +3000,6 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.skyGfx.fillStyle(orbCol, 0.9);
     this.skyGfx.fillCircle(orbX, orbY, 13 / z);
 
-    // Slanted October Rain Streaks
     this.weatherGfx.clear();
     const rainAlpha = this.state.phase === 'night' ? 0.22 : 0.11;
     this.weatherGfx.lineStyle(1 / z, 0x9ec4d6, rainAlpha);
@@ -2243,7 +3014,6 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.reflectionGfx.clear();
     this.worldUiGfx.clear();
 
-    // 1. Subtle Polished Floor Reflections beneath Investigator & Retainers!
     if (this.heir) {
       this.reflectionGfx.fillStyle(0xffd269, 0.11);
       this.reflectionGfx.fillEllipse(this.heir.x, this.heir.y + 4, 28, 5);
@@ -2259,7 +3029,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 2. Dual Concentric Occult Séance Exorcism Ring!
+    // Dual Concentric Occult Séance Exorcism Ring
     if (this.heir.flareRingTimer > 0) {
       const p = 1 - this.heir.flareRingTimer / 0.62;
       const cx = this.heir.x;
@@ -2281,7 +3051,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 3. Tool Rack Stock Pips
+    // Tool Rack Stock Pips
     for (const rack of [this.wrenchRack, this.lanternRack]) {
       for (let s = 0; s < rack.stock; s++) {
         this.worldUiGfx.fillStyle(0xffe27a, 0.95);
@@ -2289,17 +3059,17 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 4. Bulkhead & Rift Health Bars + Construction Progress Bars
-    for (const bh of this.bulkheads) {
-      if (bh.upgradeQueued) {
-        this._drawProgressBar(bh.x, bh.y - 72, 34, bh.buildProgress, 0xffe078);
-      } else if (bh.level > 0 && bh.hp < bh.maxHp) {
-        this._drawProgressBar(bh.x, bh.y - 78, 32, bh.hp / bh.maxHp, 0x62f5df);
+    // Conduit Construction Progress Bars & Paranormal Shield Charge Bars
+    for (const rm of this.rooms.values()) {
+      if (!rm.isPowered && rm.conduitProgress > 0.01) {
+        this._drawProgressBar(rm.junctionX, rm.fy - 66, 44, rm.conduitProgress, rm.powerInfo.pulseColor);
       }
     }
-    for (const rm of this.rooms.values()) {
-      if (rm.restoreQueued) {
-        this._drawProgressBar(rm.cx, rm.fy - 68, 46, rm.buildProgress, 0xffe078);
+    for (const sh of this.shields) {
+      if (sh.active && !sh.overloaded && sh.charge < sh.maxCharge * 0.98) {
+        this._drawProgressBar(sh.x, sh.y - 102, 34, sh.charge / sh.maxCharge, sh.powerInfo.shieldColor);
+      } else if (sh.active && sh.overloaded) {
+        this._drawProgressBar(sh.x, sh.y - 102, 34, 1 - sh.overloadTimer / 14.0, 0xff8d7a);
       }
     }
     for (const rf of this.rifts) {
@@ -2308,30 +3078,55 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 5. Diegetic Floating Coin Slots (○ ○ ○ -> ● ● ○) above Nearest Interactable!
-    const cand = this.gameStarted ? this._findNearestPayable() : null;
+    // Contextual World Prompt (Conduit Gauge, Shield Switch, or Foyer Coin Slots)
+    const cand = this.gameStarted ? this._findNearestInteractable() : null;
     for (const sp of this.slotSprites) sp.setVisible(false);
 
     if (cand) {
-      const count = Math.min(this.slotSprites.length, cand.cost);
-      const filled = cand.obj.paidSlots || 0;
-      const spacing = 15;
-      const startX = cand.x - ((count - 1) * spacing) / 2;
       const bobY = cand.y + Math.sin(elapsed * 5) * 2.5;
+      if (cand.mode === 'coin') {
+        const count = Math.min(this.slotSprites.length, cand.cost);
+        const filled = cand.obj.paidSlots || 0;
+        const spacing = 15;
+        const startX = cand.x - ((count - 1) * spacing) / 2;
 
-      for (let i = 0; i < count; i++) {
-        this.slotSprites[i]
-          .setTexture(i < filled ? 'slot_filled' : 'slot_empty')
-          .setPosition(Math.round(startX + i * spacing), Math.round(bobY))
+        for (let i = 0; i < count; i++) {
+          this.slotSprites[i]
+            .setTexture(i < filled ? 'slot_filled' : 'slot_empty')
+            .setPosition(Math.round(startX + i * spacing), Math.round(bobY))
+            .setVisible(true);
+        }
+        this.promptLabel
+          .setText(cand.label)
+          .setPosition(Math.round(cand.x), Math.round(bobY - 11))
+          .setVisible(true);
+      } else if (cand.mode === 'wire') {
+        const pct = Math.round(cand.room.conduitProgress * 100);
+        const tag = pct > 0 ? `WIRING ${pct}%` : `WIRE: ${cand.room.powerInfo.label.toUpperCase()}`;
+        this.promptLabel
+          .setText(tag)
+          .setPosition(Math.round(cand.x), Math.round(bobY - 4))
+          .setVisible(true);
+      } else if (cand.mode === 'shield') {
+        if (this.switchHoldProgress > 0.02) {
+          this._drawProgressBar(cand.x, bobY + 4, 38, this.switchHoldProgress, cand.shield.powerInfo.shieldColor);
+        }
+        const shTag = cand.shield.overloaded
+          ? 'RESET SHIELD'
+          : cand.shield.active
+            ? 'SHIELD ACTIVE'
+            : cand.shield.powerInfo.shieldName.toUpperCase();
+        this.promptLabel
+          .setText(shTag)
+          .setPosition(Math.round(cand.x), Math.round(bobY - 4))
+          .setVisible(true);
+      } else {
+        this.promptLabel
+          .setText('UNPOWERED')
+          .setPosition(Math.round(cand.x), Math.round(bobY - 4))
           .setVisible(true);
       }
-
-      this.promptLabel
-        .setText(cand.label)
-        .setPosition(Math.round(cand.x), Math.round(bobY - 11))
-        .setVisible(true);
     } else {
-      // Check if standing at a Staircase / Brass Lift!
       const links = this.gameStarted ? this.findNearbyVerticalLinks() : [];
       if (links.length > 0) {
         this.promptLabel
@@ -2359,9 +3154,6 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.cameras.main.centerOn(this.camFocus.x, this.camFocus.y);
   }
 
-  /* ==========================================================================
-   * PARTICLES, FLOATING TEXT & HUD SNAPSHOT
-   * ========================================================================== */
   spawnSparks(x, y, count, tint) {
     for (let i = 0; i < count; i++) {
       const ang = Math.random() * Math.PI * 2;
@@ -2394,7 +3186,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(47);
-    this.floatTexts.push({ txt, y, life: 0.9 });
+    this.floatTexts.push({ txt, y, life: 0.95 });
   }
 
   _updateParticlesAndText(dt) {
@@ -2449,7 +3241,7 @@ export class CutawayMansionScene extends Phaser.Scene {
   getSnapshot() {
     let restoredCount = 0;
     for (const rm of this.rooms.values()) {
-      if (rm.isRestored) restoredCount++;
+      if (rm.isPowered) restoredCount++;
     }
     const artificers = this.retainers.filter((r) => r.role === 'artificer').length;
     const warders = this.retainers.filter((r) => r.role === 'warder').length;
@@ -2461,24 +3253,22 @@ export class CutawayMansionScene extends Phaser.Scene {
       heir: this.heir,
       activeRoom: this.getActiveRoom(),
       rooms: this.rooms,
-      bulkheads: this.bulkheads,
+      shields: this.shields,
+      activeShields: this.getActiveShieldCount(),
+      maxShields: this.getMaxShieldCapacity(),
       rifts: this.rifts,
       enemies: this.enemies,
       restoredCount,
       totalRooms: CUTAWAY_ROOMS.length,
       riftsLeft,
       roster: { artificers, warders, servants },
-      nearbyPayable: this._findNearestPayable(),
+      nearbyInteractable: this._findNearestInteractable(),
       nearbyLinks: this.findNearbyVerticalLinks(),
       isOverview: this.isOverview,
     };
   }
 }
 
-function bhAlive(b) {
-  return b.level > 0 && b.hp > 0;
-}
-
-function fyFor(floor) {
-  return FLOOR_Y[floor];
+function wispDist(w, r) {
+  return w.x - r.x;
 }

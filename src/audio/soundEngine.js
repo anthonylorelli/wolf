@@ -184,6 +184,23 @@ export class SoundEngine {
     });
   }
 
+  playConduitWeld(powerType, progress = 0.5) {
+    const base = powerType === 'steam' ? 210 : powerType === 'electric' ? 540 : 420;
+    const wave = powerType === 'electric' ? 'sawtooth' : powerType === 'steam' ? 'triangle' : 'sine';
+    const freq = base * (1 + progress * 0.65);
+    this.playTone(freq, 0.08, wave, 0.09, freq * 1.15);
+  }
+
+  playShieldToggle(active, powerType = 'aether') {
+    const root = powerType === 'steam' ? 261.63 : powerType === 'electric' ? 329.63 : 392.0;
+    if (active) {
+      this.playTone(root, 0.24, 'triangle', 0.14, root * 1.5);
+      setTimeout(() => this.playTone(root * 2, 0.32, 'sine', 0.11), 55);
+    } else {
+      this.playTone(root * 1.5, 0.22, 'triangle', 0.12, root * 0.75);
+    }
+  }
+
   playRiftShatter() {
     this.playTone(110, 0.45, 'sawtooth', 0.16, 55);
     const chord = [293.66, 440, 554.37, 739.99, 880];
