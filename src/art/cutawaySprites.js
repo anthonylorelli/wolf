@@ -91,10 +91,15 @@ export function generateCutawayTextures(scene) {
   addCanvasTex(scene, 'lift_shaft', drawLiftShaft());
   addCanvasTex(scene, 'lift_car', drawLiftCar());
 
-  // 7. Foyer Tri-Manifold Dynamo, Racks, Safe, Conduit Junctions & Paranormal Shield Coils
+  // 7. Foyer Tri-Manifold Dynamo, Workbench, Racks, Safe, Conduit Junctions & Paranormal Shield Coils
   addCanvasTex(scene, 'foyer_hearth_1', drawDynamoHearth(1));
   addCanvasTex(scene, 'foyer_hearth_2', drawDynamoHearth(2));
   addCanvasTex(scene, 'foyer_hearth_3', drawDynamoHearth(3));
+  addCanvasTex(scene, 'foyer_workbench', drawFoyerWorkbench());
+  addCanvasTex(scene, 'workshop_bench_off', drawWorkshopBench('off'));
+  addCanvasTex(scene, 'workshop_bench_steam', drawWorkshopBench('steam'));
+  addCanvasTex(scene, 'workshop_bench_electric', drawWorkshopBench('electric'));
+  addCanvasTex(scene, 'workshop_bench_aether', drawWorkshopBench('aether'));
   addCanvasTex(scene, 'rack_wrench', drawToolRack('wrench'));
   addCanvasTex(scene, 'rack_lantern', drawToolRack('lantern'));
   addCanvasTex(scene, 'safe_vault', drawSafeVault());
@@ -112,7 +117,24 @@ export function generateCutawayTextures(scene) {
   addCanvasTex(scene, 'chest_closed', drawChest(false));
   addCanvasTex(scene, 'chest_open', drawChest(true));
 
-  // 8. Consecrated Silver Florins, Diegetic Coin Slots, Bolts & Soft Glows
+  // 8. Haunted Salvage Caches, Haulable Crates, Refined Conduit Kits & Diegetic Kit Slots
+  addCanvasTex(scene, 'salvage_scrap_intact', drawSalvageCache('scrap', true));
+  addCanvasTex(scene, 'salvage_scrap_depleted', drawSalvageCache('scrap', false));
+  addCanvasTex(scene, 'salvage_ecto_intact', drawSalvageCache('ectoplasm', true));
+  addCanvasTex(scene, 'salvage_ecto_depleted', drawSalvageCache('ectoplasm', false));
+
+  addCanvasTex(scene, 'crate_scrap', drawSalvageCrate('scrap'));
+  addCanvasTex(scene, 'crate_ectoplasm', drawSalvageCrate('ectoplasm'));
+
+  for (const rType of ['scrap', 'ectoplasm', 'pipeKit', 'wireSpool', 'aetherPhial']) {
+    addCanvasTex(scene, `item_${rType}`, drawResourceItem(rType));
+  }
+  for (const kType of ['pipeKit', 'wireSpool', 'aetherPhial']) {
+    addCanvasTex(scene, `kitslot_empty_${kType}`, drawKitSlot(kType, false));
+    addCanvasTex(scene, `kitslot_filled_${kType}`, drawKitSlot(kType, true));
+  }
+
+  // 9. Consecrated Silver Florins, Diegetic Coin Slots, Bolts & Soft Glows
   for (let c = 0; c < 4; c++) {
     addCanvasTex(scene, `coin_${c}`, drawFlorin(c));
   }
@@ -136,6 +158,25 @@ export function paintHudCoinIcon() {
   ctx.clearRect(0, 0, el.width, el.height);
   const src = drawFlorin(0);
   ctx.drawImage(src, 0, 0, el.width, el.height);
+}
+
+export function paintHudResourceIcons() {
+  const mapping = [
+    ['icon-scrap', 'scrap'],
+    ['icon-ecto', 'ectoplasm'],
+    ['icon-pipe', 'pipeKit'],
+    ['icon-spool', 'wireSpool'],
+    ['icon-phial', 'aetherPhial'],
+  ];
+  for (const [id, rType] of mapping) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const ctx = el.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, el.width, el.height);
+    const src = drawResourceItem(rType);
+    ctx.drawImage(src, 0, 0, el.width, el.height);
+  }
 }
 
 /**
@@ -1700,6 +1741,227 @@ function drawRadialGlow(size, rgb, peak) {
         ctx.fillRect(x, y, 2, 2);
       }
     }
+  }
+  return canvas;
+}
+
+/* ============================================================================
+ * SCAVENGE -> HAUL -> REFINE ECONOMY SPRITES (2X PIXEL DENSITY)
+ * ============================================================================ */
+function drawFoyerWorkbench() {
+  // Foyer Artificer's Workbench & Supply Depot (88 x 72 -> 0.5 scale, base at y = 70)
+  const { canvas, ctx } = makeCanvas(88, 72);
+  // Tool pegboard backframe
+  drawBeveledPanel(ctx, 10, 6, 68, 30, '#2b1b12', false);
+  drawBeveledPanel(ctx, 14, 9, 60, 24, '#3d271a', true);
+  // Hanging spanner, calipers & copper coil on pegboard
+  pixelLine(ctx, 22, 13, 22, 27, '#d9a441', 2);
+  strokeCirclePx(ctx, 35, 19, 5, 2, '#cf7136');
+  rect(ctx, 47, 13, 3, 14, '#9fb0bd');
+  rect(ctx, 56, 14, 12, 10, '#18242b');
+  rect(ctx, 58, 16, 8, 6, '#7ef7e3');
+
+  // Heavy butcher-block oak tabletop + cast-iron legs
+  drawBeveledPanel(ctx, 4, 34, 80, 8, '#6e4526', false);
+  rect(ctx, 6, 35, 76, 2, '#99643b');
+  rect(ctx, 8, 42, 7, 28, '#202730');
+  rect(ctx, 73, 42, 7, 28, '#202730');
+  rect(ctx, 15, 58, 58, 4, '#2f3845'); // lower depot shelf
+
+  // Stacked brass-strapped salvage crate & copper ingots on lower depot shelf!
+  drawBeveledPanel(ctx, 18, 44, 24, 14, '#59371e', false);
+  rect(ctx, 22, 44, 3, 14, '#deb04b');
+  rect(ctx, 35, 44, 3, 14, '#deb04b');
+  drawCylinderH(ctx, 46, 51, 22, 7, '#cf6e36', true);
+  drawCylinderH(ctx, 50, 45, 16, 6, '#e0a943', false);
+
+  // Tabletop machinist vise (left), coiled wire spool (center) & glowing alembic flask (right)
+  rect(ctx, 10, 25, 12, 9, '#394654');
+  rect(ctx, 8, 27, 16, 3, '#67788a');
+  drawCylinderV(ctx, 35, 22, 14, 12, '#d99e3b', true);
+  rect(ctx, 33, 22, 18, 3, '#5e3a20');
+  rect(ctx, 33, 31, 18, 3, '#5e3a20');
+  // Glowing verdigris Aether retort on brass burner
+  fillCircle(ctx, 64, 26, 6, '#2b8f85');
+  fillCircle(ctx, 64, 26, 4, '#8cf7e8');
+  px(ctx, 63, 24, '#ffffff');
+  rect(ctx, 62, 17, 4, 5, '#cfe8eb');
+  rect(ctx, 59, 31, 10, 3, '#deb04b');
+
+  selout(canvas, 20, 0.22);
+  return canvas;
+}
+
+function drawWorkshopBench(powerType) {
+  // Specialized Room Production Apparatus (76 x 64 -> 0.5 scale, base at y = 62)
+  const { canvas, ctx } = makeCanvas(76, 64);
+  const live = powerType !== 'off';
+  const brass = live ? '#e3b24c' : '#575d66';
+
+  // Cast-iron machine plinth & riveted table
+  drawBeveledPanel(ctx, 6, 32, 64, 8, live ? '#4a3525' : '#2a2729', false);
+  rect(ctx, 10, 40, 8, 22, '#1f262e');
+  rect(ctx, 58, 40, 8, 22, '#1f262e');
+  drawBeveledPanel(ctx, 18, 42, 40, 16, '#26303a', true);
+  drawRivetRow(ctx, 20, 45, 54, 45, 8, brass);
+
+  if (powerType === 'steam') {
+    // Copper Pipe Press & Steam Condenser Column
+    drawCylinderV(ctx, 14, 10, 18, 22, live ? '#d96e34' : '#52433e', true);
+    drawPressureGauge(ctx, 23, 18, 5, brass, live ? '#fff4d4' : '#4a5259', live ? 0.5 : -1.2);
+    drawCylinderH(ctx, 36, 20, 28, 10, live ? '#cf6e36' : '#4a4340', true);
+    drawGear(ctx, 54, 15, 7, 6, brass, 0.2);
+  } else if (powerType === 'electric') {
+    // Galvanic Wire-Winding Lathe & Leyden Coil
+    drawCylinderV(ctx, 14, 12, 14, 20, live ? '#2c7873' : '#323d42', true);
+    if (live) rect(ctx, 18, 15, 6, 14, '#fff799');
+    drawCylinderH(ctx, 34, 16, 26, 14, live ? '#e0a93f' : '#595346', true);
+    rect(ctx, 32, 14, 4, 18, '#5c3920');
+    rect(ctx, 58, 14, 4, 18, '#5c3920');
+  } else {
+    // Aetheric Alembic Still & Crystal Condenser
+    fillCircle(ctx, 24, 21, 9, live ? '#2f9e93' : '#2f3d40');
+    if (live) {
+      fillCircle(ctx, 24, 21, 6, '#8cf7e8');
+      fillCircle(ctx, 22, 19, 2, '#ffffff');
+    }
+    pixelLine(ctx, 28, 13, 50, 18, brass, 3);
+    drawCylinderV(ctx, 46, 16, 14, 16, live ? '#4adbc8' : '#354547', true);
+  }
+
+  selout(canvas, 20, 0.22);
+  return canvas;
+}
+
+function drawSalvageCache(kind, intact) {
+  // Haunted Salvage Cache in Unpowered Rooms (64 x 48 -> 0.5 scale, base at y = 46)
+  const { canvas, ctx } = makeCanvas(64, 48);
+  if (kind === 'scrap') {
+    // Tangled Victorian brass gears, boiler pipes & splintered crate
+    drawBeveledPanel(ctx, 8, 26, 48, 20, intact ? '#4d311c' : '#2e2016', false);
+    rect(ctx, 12, 26, 4, 20, intact ? '#c9973b' : '#4a4339');
+    rect(ctx, 48, 26, 4, 20, intact ? '#c9973b' : '#4a4339');
+    if (intact) {
+      drawGear(ctx, 24, 20, 10, 8, '#deb04b', 0.3);
+      drawCylinderH(ctx, 28, 15, 26, 9, '#cf6e36', true);
+      pixelLine(ctx, 14, 24, 46, 10, '#9fb0bd', 3);
+      drawCobweb(ctx, 8, 14, 14, 1, 1, 'rgba(195,220,230,0.45)');
+      // Glinting brass highlight
+      rect(ctx, 36, 16, 4, 2, '#fff5c0');
+    } else {
+      // Pried-open empty timber ribs
+      pixelLine(ctx, 10, 26, 22, 18, '#3d2718', 3);
+      pixelLine(ctx, 54, 26, 44, 19, '#3d2718', 3);
+    }
+  } else {
+    // Cracked Silver & Verdigris Ectoplasm Reliquary Cluster
+    drawBeveledPanel(ctx, 12, 30, 40, 16, intact ? '#24333b' : '#1b2226', false);
+    if (intact) {
+      // Glowing ectoplasm crystal spires & weeping silver urn
+      drawCylinderV(ctx, 24, 12, 16, 20, '#6e8796', true);
+      fillEllipse(ctx, 32, 20, 6, 8, '#4adbc8');
+      fillEllipse(ctx, 32, 20, 3, 5, '#ebfffc');
+      pixelLine(ctx, 16, 30, 12, 16, '#5ef2dc', 4);
+      pixelLine(ctx, 48, 30, 52, 17, '#5ef2dc', 4);
+      pixelLine(ctx, 16, 28, 13, 18, '#ffffff', 1);
+    } else {
+      // Drained dull stone plinth & shards
+      rect(ctx, 24, 24, 16, 6, '#39464d');
+      pixelLine(ctx, 16, 30, 14, 25, '#2b4745', 3);
+    }
+  }
+  selout(canvas, 20, 0.22);
+  return canvas;
+}
+
+function drawSalvageCrate(kind) {
+  // Heavy Haulable Salvage Crate / Spirit Containment Case (36 x 32 -> 0.5 scale, base at y = 30)
+  const { canvas, ctx } = makeCanvas(36, 32);
+  if (kind === 'scrap') {
+    drawBeveledPanel(ctx, 3, 10, 30, 20, '#5e3a20', false);
+    rect(ctx, 7, 10, 4, 20, '#e0b048');
+    rect(ctx, 25, 10, 4, 20, '#e0b048');
+    pixelLine(ctx, 6, 27, 30, 13, '#7d4f2d', 2);
+    // Protruding copper pipe & brass gear top!
+    drawGear(ctx, 14, 8, 6, 6, '#f0c456', 0.2);
+    drawCylinderH(ctx, 17, 5, 14, 6, '#d96e34', false);
+  } else {
+    drawBeveledPanel(ctx, 4, 8, 28, 22, '#23343d', false);
+    rect(ctx, 4, 8, 28, 4, '#d9a843');
+    rect(ctx, 4, 26, 28, 4, '#d9a843');
+    // Glowing lead-glass ectoplasm window!
+    rect(ctx, 9, 12, 18, 14, '#298f84');
+    rect(ctx, 11, 14, 14, 10, '#7ef7e3');
+    rect(ctx, 14, 16, 6, 6, '#ffffff');
+  }
+  selout(canvas, 20, 0.24);
+  return canvas;
+}
+
+function drawResourceItem(type) {
+  // Crisp 28x28 Icon for HUD Supply Strip, Loose Drops & Retainer Carried Cargo
+  const { canvas, ctx } = makeCanvas(28, 28);
+  if (type === 'scrap') {
+    // Interlocking Brass Gear + Copper Pipe Elbow
+    drawGear(ctx, 12, 15, 8, 7, '#e3a842', 0.25);
+    fillCircle(ctx, 12, 15, 3, '#1a1410');
+    drawCylinderH(ctx, 11, 6, 13, 7, '#d96b34', false);
+    rect(ctx, 21, 5, 3, 9, '#f0c862');
+  } else if (type === 'ectoplasm') {
+    // Faceted Glowing Verdigris Ectoplasm Cluster
+    fillCircle(ctx, 14, 15, 9, 'rgba(66,214,194,0.35)');
+    pixelLine(ctx, 14, 4, 9, 21, '#3ecfb8', 5);
+    pixelLine(ctx, 14, 4, 19, 21, '#7ef7e3', 5);
+    pixelLine(ctx, 7, 13, 21, 19, '#5ef2dc', 4);
+    rect(ctx, 12, 7, 3, 10, '#ffffff');
+  } else if (type === 'pipeKit') {
+    // Pressurized Flanged Copper Steam Pipe Kit + Mini Bourdon Gauge!
+    drawCylinderH(ctx, 3, 12, 22, 9, '#d96e34', true);
+    rect(ctx, 3, 10, 4, 13, '#ebb849');
+    rect(ctx, 21, 10, 4, 13, '#ebb849');
+    fillCircle(ctx, 14, 9, 5, '#ebb849');
+    fillCircle(ctx, 14, 9, 3, '#fff7dc');
+    px(ctx, 14, 8, '#cf3829');
+  } else if (type === 'wireSpool') {
+    // Wooden-Flanged Braided Copper Galvanic Wire Spool!
+    drawCylinderV(ctx, 7, 6, 14, 16, '#f0be46', false);
+    for (let y = 9; y <= 19; y += 3) {
+      rect(ctx, 7, y, 14, 1, '#b87924');
+    }
+    rect(ctx, 4, 4, 20, 4, '#6e4221');
+    rect(ctx, 4, 20, 20, 4, '#6e4221');
+    rect(ctx, 6, 5, 16, 1, '#9c6236');
+    // Sparking wire lead
+    pixelLine(ctx, 21, 12, 25, 8, '#fff799', 2);
+  } else if (type === 'aetherPhial') {
+    // Brass-Stoppered Luminous Crystal Aether Phial!
+    rect(ctx, 10, 3, 8, 4, '#e6b84c');
+    rect(ctx, 11, 7, 6, 3, '#bcd6de');
+    drawBeveledPanel(ctx, 7, 10, 14, 15, '#2b9c91', false);
+    rect(ctx, 9, 12, 10, 11, '#7ef7e3');
+    rect(ctx, 11, 13, 4, 8, '#ffffff');
+    rect(ctx, 7, 10, 14, 2, '#deb04b');
+    rect(ctx, 7, 23, 14, 2, '#deb04b');
+  }
+  selout(canvas, 20, 0.24);
+  return canvas;
+}
+
+function drawKitSlot(kitType, filled) {
+  // Diegetic 30x30 Conduit Kit Socket displayed above unpowered Room Junctions
+  const { canvas, ctx } = makeCanvas(30, 30);
+  const rimCol =
+    kitType === 'pipeKit' ? '#ffbe66' : kitType === 'wireSpool' ? '#ffe875' : '#7ef7e3';
+  if (!filled) {
+    drawBeveledPanel(ctx, 3, 3, 24, 24, 'rgba(12,16,22,0.84)', false);
+    strokeCirclePx(ctx, 15, 15, 11, 2, rimCol);
+    fillCircle(ctx, 15, 15, 8, 'rgba(10,14,19,0.82)');
+    strokeCirclePx(ctx, 15, 15, 4, 1, 'rgba(255,245,210,0.45)');
+  } else {
+    drawBeveledPanel(ctx, 2, 2, 26, 26, '#2b2116', false);
+    strokeCirclePx(ctx, 15, 15, 12, 2, '#fff2b8');
+    const icon = drawResourceItem(kitType);
+    ctx.drawImage(icon, 1, 1);
   }
   return canvas;
 }
