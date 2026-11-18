@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#070a0f" />
+    <title>Vesper Manor — 19th-Century Paranormal Cutaway Adventure (Phaser)</title>
+    <meta
+      name="description"
+      content="Choose your 1889 paranormal investigator—Mina Vesper or Dr. Julian Vesper—and explore 22 richly decorated cutaway Victorian rooms on foot. Construct Steam Pipes, Electrical Lines, and Aetheric Conduits from the Foyer Dynamo, channel room power into Paranormal Shields, and shatter 4 Spectral Rifts."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IM+Fell+English:ital@0;1&family=Silkscreen:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="./assets/index-BepRHCNV.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BsV7i3WK.css">
+  </head>
+  <body>
+    <main id="game-shell" aria-label="Vesper Manor Side-Scrolling Cutaway Viewport">
+      <div id="canvas-container"></div>
+
+      <!-- Subtle atmospheric vignette -->
+      <div id="vignette-layer" aria-hidden="true"></div>
+
+      <!-- Title Screen Overlay with Female / Male Paranormal Investigator Selection -->
+      <section id="title-overlay" class="overlay-screen active" aria-labelledby="game-title">
+        <div class="title-plaque brass-plate">
+          <div class="rivet tl"></div>
+          <div class="rivet tr"></div>
+          <div class="rivet bl"></div>
+          <div class="rivet br"></div>
+          <p class="estate-date">AUTUMN 1889 &bull; PARANORMAL CUTAWAY EDITION</p>
+          <h1 id="game-title">Vesper Manor</h1>
+          <p class="estate-subtitle">19th-Century Occult Investigation &amp; Mansion Reclamation</p>
+          <div class="brass-divider"></div>
+          <p class="estate-premise">
+            Stride on foot through 22 bespoke rooms of Uncle Alistair&rsquo;s 4-story cutaway estate. Scavenge
+            <strong>Brass Scrap &amp; Ectoplasm</strong> for Porters to haul to the Foyer Depot, refine
+            <strong>Conduit Kits</strong> to run <strong>Steam, Galvanic &amp; Aether Lines</strong>, and channel room
+            power into <strong>Paranormal Shields</strong>!
+          </p>
+
+          <!-- Female / Male 19th-Century Paranormal Investigator Selector -->
+          <div class="investigator-picker" role="radiogroup" aria-label="Choose Your Paranormal Investigator">
+            <button
+              id="card-female"
+              class="investigator-card selected"
+              type="button"
+              role="radio"
+              aria-checked="true"
+              data-gender="female"
+            >
+              <span class="card-badge">ESOTERIC MEDIUM</span>
+              <canvas id="preview-female" width="108" height="114" class="portrait-canvas"></canvas>
+              <span class="card-meta">
+                <strong class="card-name">Mina Vesper</strong>
+                <span class="card-gear">Brass Spirit-Censer &bull; Astral Monocle</span>
+              </span>
+            </button>
+
+            <button
+              id="card-male"
+              class="investigator-card"
+              type="button"
+              role="radio"
+              aria-checked="false"
+              data-gender="male"
+            >
+              <span class="card-badge">PSYCHICAL OCCULTIST</span>
+              <canvas id="preview-male" width="108" height="114" class="portrait-canvas"></canvas>
+              <span class="card-meta">
+                <strong class="card-name">Dr. Julian Vesper</strong>
+                <span class="card-gear">Leyden Spirit-Lantern &bull; Aether Goggles</span>
+              </span>
+            </button>
+          </div>
+
+          <div class="title-controls-preview desktop-hints">
+            <span><kbd>A</kbd>/<kbd>D</kbd> or <kbd>&larr;</kbd>/<kbd>&rarr;</kbd> Stride (<kbd>SHIFT</kbd> Astral Step)</span>
+            <span>Hold <kbd>E</kbd>/<kbd>S</kbd>/<kbd>&darr;</kbd> Scavenge, Refine, Wire &amp; Shield</span>
+            <span><kbd>W</kbd>/<kbd>&uarr;</kbd> &amp; <kbd>S</kbd>/<kbd>&darr;</kbd> Stairs / Cage Lift</span>
+            <span><kbd>SPACE</kbd> S&eacute;ance Exorcism &bull; <kbd>M</kbd> Cutaway Map</span>
+          </div>
+          <div class="title-controls-preview touch-hints">
+            <span><strong>Left Stick</strong> Walk / Sprint</span>
+            <span><strong>Hold ACTION</strong> Scavenge, Refine &amp; Wire</span>
+            <span><strong>EXORCISE</strong> S&eacute;ance Pulse</span>
+            <span><strong>&uarr; / &darr;</strong> Stairs &amp; Lift</span>
+          </div>
+          <button id="btn-enter-manor" class="brass-btn primary-btn" type="button">
+            Enter Vesper Manor as Mina Vesper
+          </button>
+        </div>
+      </section>
+
+      <!-- Minimalist Victorian Brass & Occult HUD -->
+      <header id="hud-root" class="hud-hidden" aria-label="Investigator Occult Instruments">
+        <!-- Top-Left: Consecrated Florin Satchel, Supply Depot Stock, Ward Flames & Manor Staff -->
+        <aside id="hud-pouch-panel" class="brass-panel">
+          <div class="pouch-top-row">
+            <div class="pouch-readout" title="Consecrated Silver Florins for Foyer Gear, Vigils &amp; Dynamo Upgrades">
+              <canvas id="hud-coin-icon" width="16" height="16" class="pixel-icon"></canvas>
+              <strong id="coin-count">12</strong>
+              <span id="coin-cap" class="coin-cap-label">/30</span>
+            </div>
+            <span id="vault-badge" class="vault-chip hidden" title="Banked Silver Florins earning Dawn interest in Foyer Safe">
+              Safe: <strong id="vault-count">0</strong>
+            </span>
+            <span
+              id="ward-flames"
+              class="ward-chip intact"
+              title="Spirit-Lantern Ward Flames — protects your soul when out of Silver Florins"
+            >
+              &#10022; &#10022; &#10022;
+            </span>
+          </div>
+
+          <div class="phase-row">
+            <span id="day-phase-pill" class="phase-pill phase-day">DAY 1 &bull; MORNING</span>
+            <div class="stamina-mini" title="Astral-Step Sprint Aether">
+              <div id="stamina-bar" class="stamina-fill" style="width: 100%"></div>
+            </div>
+          </div>
+
+          <div id="hud-supply-strip" class="supply-strip" aria-label="Raw Salvage and Refined Conduit Kits">
+            <span id="chip-scrap" class="supply-chip raw-chip" title="Brass &amp; Iron Scrap (Raw Salvage)">
+              <canvas id="icon-scrap" width="14" height="14" class="pixel-icon"></canvas>
+              <strong id="res-scrap">3</strong>
+            </span>
+            <span id="chip-ecto" class="supply-chip raw-chip" title="Raw Ectoplasm (Raw Salvage)">
+              <canvas id="icon-ecto" width="14" height="14" class="pixel-icon"></canvas>
+              <strong id="res-ecto">2</strong>
+            </span>
+            <span class="supply-sep" aria-hidden="true"></span>
+            <span id="chip-pipe" class="supply-chip kit-chip" title="Steam Pipe Kits (Powers Steam Wings)">
+              <canvas id="icon-pipe" width="14" height="14" class="pixel-icon"></canvas>
+              <strong id="res-pipe">2</strong>
+            </span>
+            <span id="chip-spool" class="supply-chip kit-chip" title="Galvanic Wire Spools (Powers Electric Wings)">
+              <canvas id="icon-spool" width="14" height="14" class="pixel-icon"></canvas>
+              <strong id="res-spool">2</strong>
+            </span>
+            <span id="chip-phial" class="supply-chip kit-chip" title="Refined Aether Phials (Powers Aether Wings)">
+              <canvas id="icon-phial" width="14" height="14" class="pixel-icon"></canvas>
+              <strong id="res-phial">1</strong>
+            </span>
+          </div>
+
+          <div id="hud-roster" class="roster-strip" aria-label="Manor Retainers and Shield Grid">
+            <span class="roster-chip" title="Artificers (Forge &amp; Deliver Kits, Weld Conduits &amp; Tune Shields)">
+              Wrench <strong id="roster-artificers">1</strong>
+            </span>
+            <span class="roster-chip" title="Lamplighter Warders (Ectoplasm Hunters &amp; Rift Guards)">
+              Warder <strong id="roster-warders">2</strong>
+            </span>
+            <span class="roster-chip" title="Porters &amp; Stewards (Haul Salvage Crates to Foyer Depot)">
+              Staff <strong id="roster-servants">1</strong>
+            </span>
+            <span class="roster-chip shield-grid-chip" title="Active Paranormal Shields / Total Dynamo Grid Capacity">
+              Grid <strong id="roster-shields">2/4</strong>
+            </span>
+          </div>
+        </aside>
+
+        <!-- Top-Center: Active Cutaway Wing Plaque -->
+        <div id="hud-wing-plaque" class="brass-panel">
+          <div class="room-plaque-top">
+            <span id="current-room-name">Grand Entrance Foyer</span>
+            <span id="current-room-status" class="status-tag reclaimed">Dynamo Core</span>
+          </div>
+          <div class="room-plaque-sub">
+            <span id="current-floor-label">Ground Wing (Floor 0)</span>
+            <span id="estate-summary">1/22 Powered &bull; 0/4 Rifts</span>
+          </div>
+        </div>
+
+        <!-- Top-Right: 4-Story Side-Elevation Blueprint & Camera Overview -->
+        <aside id="hud-cutaway-panel" class="brass-panel">
+          <div class="blueprint-header">
+            <span class="plan-label-full">4-STORY CUTAWAY</span>
+            <span class="plan-label-short">CUTAWAY</span>
+            <span id="estate-tier-label">Tier I</span>
+          </div>
+          <canvas
+            id="minimap-canvas"
+            width="156"
+            height="72"
+            title="Tap or press M to toggle Full 4-Story Cutaway Overview"
+          ></canvas>
+          <div class="utility-bar">
+            <button id="btn-overview" class="icon-btn" type="button" title="Toggle 4-Story Cutaway Camera [M]">
+              Overview
+            </button>
+            <button id="btn-audio" class="icon-btn" type="button" title="Toggle Sound [V]">
+              Audio
+            </button>
+            <button id="btn-help" class="icon-btn" type="button" title="Occult Field Ledger [?]">
+              ?
+            </button>
+          </div>
+        </aside>
+      </header>
+
+      <!-- Estate Milestone / Dawn / Room Restored Banner -->
+      <div id="estate-banner" class="reclaimed-banner hidden" role="status" aria-live="polite">
+        <p class="reclaimed-kicker">PSYCHICAL CHRONICLE</p>
+        <h2 id="banner-title">Grand Entrance Foyer</h2>
+        <p id="banner-subtitle">Warm gaslight cascades across the restored floor.</p>
+      </div>
+
+      <!-- Dedicated iPhone / Mobile Multi-Touch Controls -->
+      <section id="mobile-touch-controls" class="hud-hidden" aria-label="Touch Controls">
+        <!-- Left Thumb Brass Gimbal Stick (Left/Right = Stride/Astral-Sprint, Up/Down = Stairs/Lift) -->
+        <div id="touch-joystick-zone">
+          <div id="joystick-base">
+            <div id="joystick-nub"></div>
+          </div>
+        </div>
+
+        <!-- Right Thumb Action Cluster: Stairs Up/Down, Séance Exorcise Pulse, Hold-to-Wire / Switch Shield / Florin -->
+        <div id="touch-action-cluster">
+          <div class="touch-stairs-stack">
+            <button
+              id="touch-btn-up"
+              class="touch-stair-btn"
+              type="button"
+              aria-label="Ascend Stairs or Lift"
+              disabled
+            >
+              &uarr; UP
+            </button>
+            <button
+              id="touch-btn-down"
+              class="touch-stair-btn"
+              type="button"
+              aria-label="Descend Stairs or Lift"
+              disabled
+            >
+              &darr; DN
+            </button>
+          </div>
+
+          <button
+            id="touch-btn-flare"
+            class="touch-round-btn secondary-touch-btn"
+            type="button"
+            aria-label="Unleash Séance Exorcism Pulse"
+          >
+            <span class="touch-btn-main">EXORCISE</span>
+            <span id="touch-flare-sub" class="touch-btn-sub">S&Eacute;ANCE</span>
+          </button>
+
+          <button
+            id="touch-btn-coin"
+            class="touch-round-btn coin-touch-btn"
+            type="button"
+            aria-label="Hold to Scavenge, Refine, Slot Conduit Kits, Switch Shields, or Pay Florins"
+          >
+            <span id="touch-coin-verb" class="touch-btn-main">FLORIN</span>
+            <span id="touch-coin-sub" class="touch-btn-sub">WARD 1</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Bottom Contextual World-Slot & Stair Caption -->
+      <footer id="hud-bottom" class="hud-hidden">
+        <div id="chronicle-toast" class="chronicle-toast hidden" role="status" aria-live="polite"></div>
+
+        <div id="world-prompt" class="interaction-plaque hidden">
+          <div class="interact-info">
+            <strong id="prompt-title">Conduit Junction</strong>
+            <span id="prompt-desc">Slot Refined Conduit Kits &amp; weld power line from adjacent wing</span>
+          </div>
+          <div class="prompt-actions">
+            <button id="btn-prompt-pay" class="brass-btn compact-btn hidden" type="button">
+              Hold <kbd class="desktop-kbd">E</kbd> Wire
+            </button>
+            <button id="btn-prompt-up" class="brass-btn compact-btn hidden" type="button">
+              <kbd class="desktop-kbd">W</kbd> Up
+            </button>
+            <button id="btn-prompt-down" class="brass-btn compact-btn hidden" type="button">
+              <kbd class="desktop-kbd">S</kbd> Down
+            </button>
+          </div>
+        </div>
+      </footer>
+
+      <!-- Investigator's Occult Field Ledger Modal -->
+      <section id="help-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="help-heading">
+        <div class="modal-card brass-plate">
+          <div class="modal-header">
+            <h2 id="help-heading">Investigator&rsquo;s Occult Ledger</h2>
+            <button id="btn-close-help" class="close-btn" type="button" aria-label="Close Guide">&times;</button>
+          </div>
+          <div class="modal-body guide-grid">
+            <div class="guide-item">
+              <h3>1. Scavenge, Haul &amp; Refine</h3>
+              <p>
+                Pry open <strong>Haunted Salvage Caches</strong> in dark rooms (or banish apparitions) for
+                <strong>Brass Scrap</strong> &amp; <strong>Raw Ectoplasm</strong>. Manor <strong>Porters</strong> haul
+                heavy crates across stairs &amp; the Brass Lift to the <strong>Foyer Supply Depot</strong>, where the
+                <strong>Workbench</strong> refines them into Conduit Kits!
+              </p>
+            </div>
+            <div class="guide-item">
+              <h3>2. Conduit Kits &amp; Power Lines</h3>
+              <p>
+                Each room&rsquo;s <strong>Junction Terminal</strong> requires <strong>1&ndash;3 Refined Kits</strong>:
+                <strong>Steam Pipe Kits</strong>, <strong>Galvanic Wire Spools</strong>, or
+                <strong>Refined Aether Phials</strong>. Hold <kbd>E</kbd>/<kbd>S</kbd> to slot Kits &amp; weld the
+                conduit, or queue the Junction so <strong>Artificers</strong> forge &amp; carry Kits from the Foyer!
+              </p>
+            </div>
+            <div class="guide-item">
+              <h3>3. Room-Powered Paranormal Shields</h3>
+              <p>
+                Once a room has live power, hold <kbd>E</kbd>/<kbd>S</kbd> at its doorway
+                <strong>Shield Emitter Relay</strong> (<strong>0 Florins</strong>) to project a
+                <strong>Salt-Steam Ward</strong> (knockback), <strong>Galvanic Arc-Shield</strong> (shock), or
+                <strong>Astral Resonance Shield</strong> (chill slow) blocking enemy entrance!
+              </p>
+            </div>
+            <div class="guide-item">
+              <h3>4. Workshops, Florins &amp; Rifts</h3>
+              <p>
+                Energizing specialized wings like the <strong>Boiler Vault</strong>, <strong>Telegraph Hub</strong>,
+                <strong>Galvanic Lab</strong> &amp; <strong>Wintergarden</strong> unlocks <strong>2&times; Workshop
+                refining</strong> and Dawn supply yields. Spend <strong>Silver Florins</strong> on Staff, Tools, Dynamo
+                Tiers &amp; <strong>Banishment Squads</strong>!
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Grand Victory Modal -->
+      <section id="victory-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="victory-heading">
+        <div class="modal-card brass-plate victory-card">
+          <p class="estate-date">LUMINOUS AETHER ESTATE RESTORED</p>
+          <h2 id="victory-heading">Vesper Manor Sanctified</h2>
+          <div class="brass-divider"></div>
+          <p id="victory-summary">
+            Every spectral rift has collapsed into quiet starlight and warm amber gaslight glows across all four stories
+            of Uncle Alistair&rsquo;s Victorian estate once more.
+          </p>
+          <div class="victory-stats" id="victory-stats"></div>
+          <button id="btn-continue-estate" class="brass-btn primary-btn" type="button">
+            Continue Patrolling the Manor
+          </button>
+        </div>
+      </section>
+    </main>
+
+  </body>
+</html>
