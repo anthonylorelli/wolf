@@ -503,13 +503,76 @@ kbd {
   background: hsl(192, 34%, 56%);
 }
 
+.supply-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.2rem;
+  margin-top: 0.3rem;
+  padding-top: 0.24rem;
+  border-top: 1px solid rgba(212, 168, 87, 0.18);
+  font-family: var(--font-pixel);
+  font-size: 0.54rem;
+}
+
+.supply-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.16rem;
+  padding: 0.06rem 0.2rem;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.supply-chip strong {
+  color: var(--text-cream);
+}
+
+.raw-chip strong {
+  color: hsl(35, 58%, 82%);
+}
+
+#chip-ecto strong,
+#chip-phial strong {
+  color: hsl(168, 78%, 80%);
+}
+
+#chip-pipe strong {
+  color: hsl(28, 88%, 78%);
+}
+
+#chip-spool strong {
+  color: hsl(45, 92%, 78%);
+}
+
+.supply-chip.highlight {
+  background: hsla(40, 58%, 24%, 0.88);
+  border-color: hsla(43, 82%, 66%, 0.72);
+}
+
+.supply-chip.missing {
+  background: hsla(10, 62%, 24%, 0.9);
+  border-color: hsl(12, 76%, 58%);
+}
+
+.supply-chip.missing strong {
+  color: #ffd4c9;
+}
+
+.supply-sep {
+  width: 1px;
+  height: 12px;
+  background: rgba(212, 168, 87, 0.32);
+}
+
 .roster-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.3rem;
-  margin-top: 0.34rem;
-  padding-top: 0.28rem;
+  margin-top: 0.26rem;
+  padding-top: 0.24rem;
   border-top: 1px solid rgba(212, 168, 87, 0.18);
   font-family: var(--font-pixel);
   font-size: 0.52rem;
@@ -1078,7 +1141,7 @@ kbd {
   }
 
   .reclaimed-banner {
-    top: calc(194px + var(--safe-top));
+    top: calc(214px + var(--safe-top));
     padding: 0.52rem 0.78rem;
   }
 
@@ -1214,9 +1277,14 @@ kbd {
     padding: 0.26rem 0.42rem;
   }
 
+  .supply-strip {
+    margin-top: 0.18rem;
+    padding-top: 0.16rem;
+  }
+
   .roster-strip {
-    margin-top: 0.2rem;
-    padding-top: 0.18rem;
+    margin-top: 0.18rem;
+    padding-top: 0.16rem;
   }
 
   #minimap-canvas {

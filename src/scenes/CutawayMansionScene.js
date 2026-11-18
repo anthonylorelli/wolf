@@ -6,16 +6,19 @@ import {
   CENTER_X,
   ROOM_H,
   FLOOR_Y,
+  RESOURCE_TYPES,
   POWER_TYPES,
   ESTATE_TIERS,
   CUTAWAY_ROOMS,
   VERTICAL_LINKS,
   HOUSEFOLK_VIGILS,
   SALVAGE_CHESTS,
+  SALVAGE_CACHES,
   SPECTRAL_RIFTS,
 } from '../data/cutawayMansionData.js';
 
 const DAY_LENGTH_SEC = 78; // ~50s Day/Dusk + ~28s Night wave cycle
+const FOYER_DEPOT_X = 2685; // Foyer Artificer's Workbench & Supply Depot
 
 export class CutawayMansionScene extends Phaser.Scene {
   constructor() {
@@ -34,16 +37,23 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.joy = { x: 0, y: 0 };
     this.touchPayHeld = false;
 
-    // Core Estate & Investigator State
+    // Core Estate, Supply Depot & Investigator State
     this.state = {
       gender: 'female', // 'female' (Mina Vesper) | 'male' (Dr. Julian Vesper)
       day: 1,
       timeOfDay: 0.16,
       phase: 'day', // 'day' | 'dusk' | 'night'
       isBloodStorm: false,
-      coins: 10,
+      coins: 12,
       maxPouch: 30,
       bankCoins: 0,
+      resources: {
+        scrap: 3,
+        ectoplasm: 2,
+        pipeKit: 2,
+        wireSpool: 2,
+        aetherPhial: 1,
+      },
       wardFlames: 3,
       maxWardFlames: 3,
       wardRegenTimer: 0,
@@ -70,6 +80,9 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.strikeBanners = [];
     this.vigils = [];
     this.chests = [];
+    this.salvageNodes = [];
+    this.worldSalvage = [];
+    this.workshops = [];
     this.rifts = [];
     this.retainers = [];
     this.housefolk = [];
@@ -90,6 +103,7 @@ export class CutawayMansionScene extends Phaser.Scene {
     this._buildFoyerStations();
     this._buildShieldsAndRifts();
     this._buildVigilsAndChests();
+    this._buildSalvageCachesAndWorkshops();
     this._createHeir();
     this._spawnStartingRetainers();
     this._setupKeyboard();
@@ -104,6 +118,12 @@ export class CutawayMansionScene extends Phaser.Scene {
     this.slotSprites = [];
     for (let i = 0; i < 10; i++) {
       this.slotSprites.push(this.add.image(0, 0, 'slot_empty').setScale(0.5).setDepth(46).setVisible(false));
+    }
+    this.kitSlotSprites = [];
+    for (let i = 0; i < 4; i++) {
+      this.kitSlotSprites.push(
+        this.add.image(0, 0, 'kitslot_empty_pipeKit').setScale(0.5).setDepth(46).setVisible(false)
+      );
     }
     this.promptLabel = this.add
       .text(0, 0, '', {
@@ -125,8 +145,11 @@ export class CutawayMansionScene extends Phaser.Scene {
 
     // Timers
     this.payTickTimer = 0;
+    this.kitTickTimer = 0;
     this.weldSoundTimer = 0;
     this.switchHoldProgress = 0;
+    this.salvageHoldProgress = 0;
+    this.craftHoldProgress = 0;
     this.activeSlotTarget = null;
     this.slotDecayTimer = 0;
     this.wispSpawnTimer = 2.0;
@@ -265,6 +288,10 @@ export class CutawayMansionScene extends Phaser.Scene {
         topY,
         junctionX,
         junctionSprite,
+        kitType: pInfo.kitType || null,
+        kitCost: powered ? 0 : def.kitCost || 1,
+        kitsPaid: powered ? def.kitCost || 0 : 0,
+        workshop: null,
         isRestored: powered, // kept alias for snapshot compatibility
         isPowered: powered,
         wireQueued: false,
@@ -324,7 +351,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       y: fy,
       cost: 2,
       paidSlots: 0,
-      stock: 1,
+      stock: 0,
       sprite: this.add.image(2465, fy - 22, 'rack_wrench').setScale(0.5).setDepth(15),
     };
 
@@ -336,11 +363,11 @@ export class CutawayMansionScene extends Phaser.Scene {
       y: fy,
       cost: 2,
       paidSlots: 0,
-      stock: 1,
+      stock: 0,
       sprite: this.add.image(2735, fy - 22, 'rack_lantern').setScale(0.5).setDepth(15),
     };
 
-    // 4. Cast-Iron Majordomo Safe & Banker (x = 2518, unlocks at Dynamo Tier II)
+    // 4. Cast-Iron Majordomo Safe & Banker (x = 2516..2540, unlocks at Dynamo Tier II)
     this.safeSprite = this.add.image(2516, fy - 24, 'safe_vault').setScale(0.5).setDepth(14).setAlpha(0.45);
     this.majordomoSprite = this.add
       .image(2540, fy - 19, 'majordomo')
@@ -354,6 +381,26 @@ export class CutawayMansionScene extends Phaser.Scene {
       y: fy,
       cost: 1,
       paidSlots: 0,
+    };
+
+    // 5. Foyer Artificer's Workbench & Supply Depot (x = 2685 — Refines Scrap & Ectoplasm into Conduit Kits!)
+    this.workbenchSprite = this.add
+      .image(FOYER_DEPOT_X, fy - 17, 'foyer_workbench')
+      .setScale(0.5)
+      .setDepth(15);
+    this.add
+      .image(FOYER_DEPOT_X + 6, fy - 22, 'glow_ecto')
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(0.48)
+      .setAlpha(0.32)
+      .setDepth(30.5);
+    this.workbenchStation = {
+      kind: 'workbench',
+      floor: 0,
+      x: FOYER_DEPOT_X,
+      y: fy,
+      paidSlots: 0,
+      artificerCraftTimer: 0,
     };
   }
 
@@ -475,9 +522,75 @@ export class CutawayMansionScene extends Phaser.Scene {
         x: ch.x,
         y: fy,
         coins: ch.coins,
+        bonusKit: ch.bonusKit || null,
+        bonusCount: ch.bonusCount || 0,
         opened: false,
         sprite,
       });
+    }
+  }
+
+  _buildSalvageCachesAndWorkshops() {
+    for (const cDef of SALVAGE_CACHES) {
+      const fy = FLOOR_Y[cDef.floor];
+      const texKey = cDef.kind === 'scrap' ? 'salvage_scrap_intact' : 'salvage_ecto_intact';
+      const sprite = this.add.image(cDef.x, fy - 11, texKey).setScale(0.5).setDepth(14);
+      const glow = this.add
+        .image(cDef.x, fy - 14, cDef.kind === 'scrap' ? 'glow_warm' : 'glow_ecto')
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setScale(0.38)
+        .setAlpha(0.28)
+        .setDepth(30.5);
+      this.salvageNodes.push({
+        id: cDef.id,
+        def: cDef,
+        room: this.rooms.get(cDef.room),
+        floor: cDef.floor,
+        x: cDef.x,
+        y: fy,
+        depleted: false,
+        respawnDays: 0,
+        sprite,
+        glow,
+      });
+    }
+
+    for (const def of CUTAWAY_ROOMS) {
+      if (!def.workshop) continue;
+      const rm = this.rooms.get(def.id);
+      const wsDef = def.workshop;
+      const fy = FLOOR_Y[def.floor];
+      let sprite = null;
+      if (wsDef.mode !== 'passive') {
+        const pStyle =
+          wsDef.output === 'aetherPhial'
+            ? 'aether'
+            : wsDef.output === 'wireSpool'
+              ? 'electric'
+              : 'steam';
+        sprite = this.add
+          .image(wsDef.x, fy - 15, rm.isPowered ? `workshop_bench_${pStyle}` : 'workshop_bench_off')
+          .setScale(0.5)
+          .setDepth(14.5);
+      }
+      const wsObj = {
+        id: wsDef.id,
+        def: wsDef,
+        room: rm,
+        floor: def.floor,
+        x: wsDef.x,
+        y: fy,
+        benchStyle:
+          wsDef.output === 'aetherPhial'
+            ? 'aether'
+            : wsDef.output === 'wireSpool'
+              ? 'electric'
+              : 'steam',
+        timer: wsDef.cycleSec || 20,
+        sprite,
+      };
+      rm.workshop = wsObj;
+      this.workshops.push(wsObj);
     }
   }
 
@@ -522,7 +635,8 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   _spawnStartingRetainers() {
-    this._createRetainer('artificer', 0, CENTER_X - 90);
+    this._createRetainer('artificer', 0, CENTER_X - 85);
+    this._createRetainer('servant', 0, FOYER_DEPOT_X - 20);
     this._createRetainer('warder', 0, CENTER_X - 150);
     this._createRetainer('warder', 0, CENTER_X + 150);
   }
@@ -530,20 +644,31 @@ export class CutawayMansionScene extends Phaser.Scene {
   _createRetainer(role, floor, x) {
     const fy = FLOOR_Y[floor];
     const sprite = this.add.image(x, fy - 19, `${role}_0`).setScale(0.5).setDepth(24);
+    const cargoSprite = this.add
+      .image(x, fy - 23, 'crate_scrap')
+      .setScale(0.5)
+      .setDepth(24.5)
+      .setVisible(false);
     const ret = {
       role,
       floor,
+      homeFloor: floor,
+      homeX: x,
       x,
       y: fy,
       facing: 1,
       anim: Math.random() * 10,
       heldCoins: 0,
+      carrying: null,
+      haulTarget: null,
+      craftTimer: 0,
       fireCooldown: 0,
       buffTimer: 0,
       job: null,
       strikeRift: null,
       patrolSide: this.retainers.filter((r) => r.role === 'warder').length % 2 === 0 ? 'west' : 'east',
       sprite,
+      cargoSprite,
     };
     this.retainers.push(ret);
     return ret;
@@ -726,7 +851,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 3. Condense nearby Ectoplasm Orbs directly into consecrated Silver Florins!
+    // 3. Condense nearby Ectoplasm Orbs into Silver Florins & Raw Ectoplasm!
     let condensed = 0;
     for (let wi = this.wisps.length - 1; wi >= 0; wi--) {
       const w = this.wisps[wi];
@@ -734,6 +859,7 @@ export class CutawayMansionScene extends Phaser.Scene {
         condensed++;
         this.spawnSparks(w.x, w.y - 14, 10, 0x7ef7e3);
         this.spawnWorldCoin(w.floor, w.x, w.y - 14, (pulseX - w.x) * 1.4, -85, false);
+        this.spawnWorldSalvage(w.floor, w.x + 8, w.y - 16, 'ectoplasm', 1, false, (pulseX - w.x) * 1.1, -95);
         w.sprite.destroy();
         this.wisps.splice(wi, 1);
       }
@@ -748,11 +874,17 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 5. Magnetize loose floor Florins toward Investigator
+    // 5. Magnetize loose floor Florins & loose Salvage shards toward Investigator
     for (const c of this.worldCoins) {
       if (c.floor === this.heir.floor && Math.abs(c.x - pulseX) < 230) {
         c.vx = (pulseX - c.x) * 3.6;
         c.age = Math.max(c.age, 0.5);
+      }
+    }
+    for (const s of this.worldSalvage) {
+      if (!s.isCrate && s.floor === this.heir.floor && Math.abs(s.x - pulseX) < 230) {
+        s.vx = (pulseX - s.x) * 3.4;
+        s.age = Math.max(s.age, 0.4);
       }
     }
 
@@ -831,6 +963,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       this._updateHeir(dt, elapsed);
       this._updateInteraction(dt);
       this._updateChests();
+      this._updateSalvageAndWorkshops(dt, elapsed);
       this._updateHousefolkAndWisps(dt, elapsed);
       this._updateRetainers(dt, elapsed);
       this._updateParanormalShields(dt);
@@ -893,24 +1026,51 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // Powered rooms condense Dawn Silver Florins (diverting power to an active Shield halves domestic yield)
+    // Replenish depleted Haunted Salvage Caches in still-unpowered dark wings every 2 Dawns!
+    for (const node of this.salvageNodes) {
+      if (node.depleted && !node.room?.isPowered) {
+        node.respawnDays -= 1;
+        if (node.respawnDays <= 0) {
+          node.depleted = false;
+          node.sprite.setTexture(node.def.kind === 'scrap' ? 'salvage_scrap_intact' : 'salvage_ecto_intact');
+          node.glow.setAlpha(0.28);
+        }
+      }
+    }
+
+    // Powered rooms condense Dawn Silver Florins + Workshop Conduit Supplies!
     let harvestTotal = 0;
+    let kitYieldTotal = 0;
     for (const rm of this.rooms.values()) {
       if (!rm.isPowered) continue;
       const baseCount = rm.def.dawnCoins || 0;
-      if (baseCount <= 0) continue;
-      const divertingToShield = rm.shields.some((s) => s.active) && rm.def.id !== 'grand_foyer';
-      const count = divertingToShield ? Math.max(1, Math.floor(baseCount * 0.5)) : baseCount;
-      harvestTotal += count;
-      for (let i = 0; i < count; i++) {
-        this.spawnWorldCoin(
-          rm.def.floor,
-          rm.cx + (i - count / 2) * 14,
-          rm.fy - 26,
-          (Math.random() - 0.5) * 35,
-          -65 - Math.random() * 30,
-          false
-        );
+      if (baseCount > 0) {
+        const divertingToShield = rm.shields.some((s) => s.active) && rm.def.id !== 'grand_foyer';
+        const count = divertingToShield ? Math.max(1, Math.floor(baseCount * 0.5)) : baseCount;
+        harvestTotal += count;
+        for (let i = 0; i < count; i++) {
+          this.spawnWorldCoin(
+            rm.def.floor,
+            rm.cx + (i - count / 2) * 14,
+            rm.fy - 26,
+            (Math.random() - 0.5) * 35,
+            -65 - Math.random() * 30,
+            false
+          );
+        }
+      }
+
+      if (rm.def.workshop?.dawnYield) {
+        const parts = [];
+        for (const [resKey, qty] of Object.entries(rm.def.workshop.dawnYield)) {
+          this.state.resources[resKey] = (this.state.resources[resKey] || 0) + qty;
+          kitYieldTotal += qty;
+          const rInfo = RESOURCE_TYPES[resKey];
+          parts.push(`+${qty} ${rInfo ? rInfo.short.toUpperCase() : resKey}`);
+        }
+        if (parts.length) {
+          this.spawnFloatText(rm.def.workshop.x, rm.fy - 52, parts.join(' '), '#7ef7e3');
+        }
       }
     }
 
@@ -922,9 +1082,10 @@ export class CutawayMansionScene extends Phaser.Scene {
       this.spawnFloatText(this.bankStation.x, this.bankStation.y - 52, `VAULT +${gain} FLORINS`, '#ffe27a');
     }
 
+    const supplyNote = kitYieldTotal > 0 ? `, +${kitYieldTotal} Workshop Supplies` : '';
     this.onBanner?.(
       `Dawn of Day ${this.state.day}`,
-      `Powered wings condensed ${harvestTotal} Silver Florins & recharged all Paranormal Shields.`
+      `Powered wings yielded ${harvestTotal} Silver Florins${supplyNote} & recharged all Shields.`
     );
   }
 
@@ -1107,29 +1268,93 @@ export class CutawayMansionScene extends Phaser.Scene {
   }
 
   /* ==========================================================================
-   * CONTEXTUAL INTERACTION: CONDUIT CONSTRUCTION, SHIELD SWITCHES & FOYER SLOTS
+   * CONTEXTUAL INTERACTION: KITS & CONDUITS, SALVAGE, WORKBENCHES & FOYER SLOTS
    * ========================================================================== */
+  _pickWorkbenchRecipe() {
+    const res = this.state.resources;
+    const craftable = [];
+    if ((res.scrap || 0) >= 2) {
+      craftable.push('pipeKit', 'wireSpool');
+    }
+    if ((res.ectoplasm || 0) >= 2) {
+      craftable.push('aetherPhial');
+    }
+    if (!craftable.length) return null;
+
+    // Prioritize any kit urgently needed by a reachable unpowered room Junction!
+    for (const rm of this.rooms.values()) {
+      if (rm.isPowered || !rm.kitType || !craftable.includes(rm.kitType)) continue;
+      if (!this.getPoweredUpstreamLink(rm)) continue;
+      const rem = Math.max(0, rm.kitCost - rm.kitsPaid);
+      if (rem > (res[rm.kitType] || 0)) {
+        return rm.kitType;
+      }
+    }
+
+    craftable.sort((a, b) => (res[a] || 0) - (res[b] || 0));
+    return craftable[0];
+  }
+
+  _pickWorkshopRecipe(ws) {
+    if (!ws || !ws.room?.isPowered) return null;
+    const res = this.state.resources;
+    const def = ws.def;
+    if (def.mode === 'refine') {
+      if ((res[def.input] || 0) >= (def.inputCost || 1)) {
+        return { input: def.input, cost: def.inputCost || 1, output: def.output };
+      }
+      return null;
+    }
+    if (def.mode === 'dual_refine') {
+      const canPrimary = (res[def.input] || 0) >= 1;
+      const canAlt = def.altInput && (res[def.altInput] || 0) >= 1;
+      if (canPrimary && canAlt) {
+        return (res[def.output] || 0) <= (res[def.altOutput] || 0)
+          ? { input: def.input, cost: 1, output: def.output }
+          : { input: def.altInput, cost: 1, output: def.altOutput };
+      }
+      if (canPrimary) return { input: def.input, cost: 1, output: def.output };
+      if (canAlt) return { input: def.altInput, cost: 1, output: def.altOutput };
+    }
+    return null;
+  }
+
   _findNearestInteractable() {
     const h = this.heir;
     const candidates = [];
 
-    // 1. Room Conduit Junction Terminals (Construct Steam Pipes / Electrical Lines / Aetheric Conduits — NO COINS!)
+    // 1. Room Conduit Junction Terminals (Requires Refined Conduit Kits + Welding!)
     for (const rm of this.rooms.values()) {
       if (rm.def.floor !== h.floor || rm.isPowered || !rm.junctionSprite) continue;
       const d = Math.abs(h.x - rm.junctionX);
-      if (d < 62) {
+      if (d < 60) {
         const upLink = this.getPoweredUpstreamLink(rm);
         if (upLink) {
+          const kInfo = RESOURCE_TYPES[rm.kitType] || RESOURCE_TYPES.pipeKit;
+          const rawInfo = RESOURCE_TYPES[kInfo.rawInput] || RESOURCE_TYPES.scrap;
+          const remKits = Math.max(0, rm.kitCost - rm.kitsPaid);
+          const haveKits = this.state.resources[rm.kitType] || 0;
+          const label =
+            remKits > 0
+              ? `Install ${kInfo.label} (${rm.kitsPaid}/${rm.kitCost}) → ${rm.powerInfo.label}`
+              : `Weld ${rm.powerInfo.conduitName}`;
+          const sub =
+            remKits > 0 && haveKits <= 0
+              ? `Need ${remKits} ${kInfo.label} • Scavenge ${rawInfo.short} & refine at Foyer Workbench!`
+              : `From ${upLink.parent.def.name} • ${rm.def.perk}`;
           candidates.push({
             dist: d,
             mode: 'wire',
             id: `wire_${rm.def.id}`,
             x: rm.junctionX,
-            y: rm.fy - 74,
-            label: `Construct ${rm.powerInfo.conduitName}`,
-            sub: `From ${upLink.parent.def.name} • ${rm.def.perk}`,
+            y: rm.fy - 76,
+            label,
+            sub,
             room: rm,
             upLink,
+            kitType: rm.kitType,
+            remKits,
+            haveKits,
           });
         } else {
           const firstParent = this.rooms.get(rm.def.connectFrom[0]?.room);
@@ -1144,6 +1369,46 @@ export class CutawayMansionScene extends Phaser.Scene {
             room: rm,
           });
         }
+      }
+    }
+
+    // 1b. Haunted Salvage Caches in Unpowered Rooms (Scavenge Raw Scrap & Ectoplasm + Spawn Haul Crates!)
+    for (const node of this.salvageNodes) {
+      if (node.depleted || node.floor !== h.floor) continue;
+      const d = Math.abs(h.x - node.x);
+      if (d < 46) {
+        const rInfo = RESOURCE_TYPES[node.def.kind];
+        candidates.push({
+          dist: d,
+          mode: 'salvage',
+          id: node.id,
+          x: node.x,
+          y: node.y - 46,
+          label: `Scavenge ${node.def.label}`,
+          sub: `+1 ${rInfo.label} now & ${node.def.crates} Haul Crate${node.def.crates > 1 ? 's' : ''} for Porters!`,
+          node,
+          resType: node.def.kind,
+        });
+      }
+    }
+
+    // 1c. Heavy Haulable Crates on Floor (Porters haul automatically, or Investigator can field-strip!)
+    for (const item of this.worldSalvage) {
+      if (!item.isCrate || item.floor !== h.floor || item.age < 0.35) continue;
+      const d = Math.abs(h.x - item.x);
+      if (d < 34) {
+        const rInfo = RESOURCE_TYPES[item.kind];
+        candidates.push({
+          dist: d + 16,
+          mode: 'crate',
+          id: `crate_${item.id}`,
+          x: item.x,
+          y: item.groundY - 26,
+          label: `Unpack ${rInfo.label} Crate (+${item.amount})`,
+          sub: 'Hold to claim directly, or leave tagged for Manor Porters to haul to Foyer Depot',
+          item,
+          resType: item.kind,
+        });
       }
     }
 
@@ -1208,7 +1473,7 @@ export class CutawayMansionScene extends Phaser.Scene {
     const tierDef = ESTATE_TIERS[this.state.estateTier - 1];
     if (h.floor === 0 && tierDef.upgradeCost > 0) {
       const d = Math.abs(h.x - this.hearthStation.x);
-      if (d < 54) {
+      if (d < 44) {
         candidates.push({
           dist: d,
           mode: 'coin',
@@ -1224,11 +1489,80 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
+    // 3b. Foyer Artificer's Workbench & Supply Depot (Refines 2 Raw -> 1 Conduit Kit, or 2 Florins Emergency Requisition!)
+    if (h.floor === 0) {
+      const d = Math.abs(h.x - this.workbenchStation.x);
+      if (d < 44) {
+        const recipeKit = this._pickWorkbenchRecipe();
+        if (recipeKit) {
+          const kInfo = RESOURCE_TYPES[recipeKit];
+          const rInfo = RESOURCE_TYPES[kInfo.rawInput];
+          candidates.push({
+            dist: d,
+            mode: 'workbench',
+            id: 'foyer_workbench',
+            x: this.workbenchStation.x,
+            y: h.y - 62,
+            label: `Forge ${kInfo.label} (2 ${rInfo.short} → +1)`,
+            sub: 'Foyer Supply Depot • Power Workshop Wings for 2× refining efficiency!',
+            kitType: recipeKit,
+            rawInput: kInfo.rawInput,
+            rawCost: 2,
+          });
+        } else {
+          candidates.push({
+            dist: d,
+            mode: 'coin',
+            id: 'foyer_requisition',
+            x: this.workbenchStation.x,
+            y: h.y - 64,
+            label: 'Requisition Salvage Shipment',
+            sub: 'Delivers +2 Brass Scrap & +2 Raw Ectoplasm to the Foyer Supply Depot',
+            cost: 2,
+            obj: this.workbenchStation,
+            onComplete: () => {
+              this.state.resources.scrap += 2;
+              this.state.resources.ectoplasm += 2;
+              this.spawnSparks(this.workbenchStation.x, h.y - 28, 16, 0x7ef7e3);
+              this.spawnFloatText(this.workbenchStation.x, h.y - 52, '+2 SCRAP  +2 ECTO!', '#ffe680');
+            },
+          });
+        }
+      }
+    }
+
+    // 3c. Powered Room Production Workshops (2x Efficiency: 1 Raw -> 1 Refined Kit!)
+    for (const ws of this.workshops) {
+      if (ws.floor !== h.floor || !ws.room.isPowered) continue;
+      if (ws.def.mode !== 'refine' && ws.def.mode !== 'dual_refine') continue;
+      const d = Math.abs(h.x - ws.x);
+      if (d < 46) {
+        const rec = this._pickWorkshopRecipe(ws);
+        if (rec) {
+          const outInfo = RESOURCE_TYPES[rec.output];
+          const inInfo = RESOURCE_TYPES[rec.input];
+          candidates.push({
+            dist: d,
+            mode: 'workshop',
+            id: ws.id,
+            x: ws.x,
+            y: ws.y - 58,
+            label: `${ws.def.name}: +1 ${outInfo.label}`,
+            sub: `2× Workshop Efficiency: 1 ${inInfo.short} → +1 ${outInfo.short}!`,
+            ws,
+            kitType: rec.output,
+            rawInput: rec.input,
+            rawCost: rec.cost,
+          });
+        }
+      }
+    }
+
     // 4. Wrench & Lantern Tool Racks (Floor 0, Florins)
     for (const rack of [this.wrenchRack, this.lanternRack]) {
       if (h.floor === 0 && rack.stock < 3) {
         const d = Math.abs(h.x - rack.x);
-        if (d < 46) {
+        if (d < 42) {
           const isWrench = rack.kind === 'rack_wrench';
           candidates.push({
             dist: d,
@@ -1238,7 +1572,7 @@ export class CutawayMansionScene extends Phaser.Scene {
             y: h.y - 62,
             label: isWrench ? 'Forge Wrench (Artificer)' : 'Consecrate Lantern (Warder)',
             sub: isWrench
-              ? 'Equips Staff to construct Steam/Electric/Aether lines & tune Shields'
+              ? 'Equips Staff to deliver Kits, construct Conduits & tune Shields'
               : 'Equips Staff to guard Paranormal Shields & banish Rifts',
             cost: rack.cost,
             obj: rack,
@@ -1255,7 +1589,7 @@ export class CutawayMansionScene extends Phaser.Scene {
     // 5. Majordomo Safe Deposit (Floor 0, Tier 2+)
     if (h.floor === 0 && this.state.estateTier >= 2) {
       const d = Math.abs(h.x - this.bankStation.x);
-      if (d < 40) {
+      if (d < 38) {
         candidates.push({
           dist: d,
           mode: 'coin',
@@ -1274,7 +1608,7 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // 6. Shivering Manor Housefolk at Candle Vigils (1 Florin -> Rally Staff!)
+    // 6. Shivering Manor Housefolk at Candle Vigils (1 Florin -> Rally Staff / Porters!)
     for (const v of this.housefolk) {
       if (v.floor !== h.floor) continue;
       const d = Math.abs(h.x - v.x);
@@ -1285,8 +1619,8 @@ export class CutawayMansionScene extends Phaser.Scene {
           id: `hf_${v.x}`,
           x: v.x,
           y: v.y - 48,
-          label: 'Rally Housefolk',
-          sub: 'Joins your Foyer staff ready to claim a Wrench or Lantern',
+          label: 'Rally Housefolk (Porter)',
+          sub: 'Hauls Salvage Crates to Foyer Depot or claims a Wrench / Lantern!',
           cost: 1,
           obj: v,
           onComplete: () => this._recruitHousefolk(v),
@@ -1329,9 +1663,18 @@ export class CutawayMansionScene extends Phaser.Scene {
     if (!cand || cand.mode !== 'shield') {
       this.switchHoldProgress = 0;
     }
+    if (!cand || (cand.mode !== 'salvage' && cand.mode !== 'crate')) {
+      this.salvageHoldProgress = 0;
+    }
+    if (!cand || (cand.mode !== 'workbench' && cand.mode !== 'workshop')) {
+      this.craftHoldProgress = 0;
+    }
 
     const kbHold = this.keys.s.isDown || this.keys.down.isDown || this.keys.e.isDown;
     const isHolding = kbHold || this.touchPayHeld;
+    if (!isHolding) {
+      this.requireReleaseBeforeCoin = false;
+    }
 
     const justDownS =
       Phaser.Input.Keyboard.JustDown(this.keys.s) ||
@@ -1354,15 +1697,60 @@ export class CutawayMansionScene extends Phaser.Scene {
 
     if (!cand) return;
 
-    // MODE A: CONSTRUCTING STEAM PIPES, ELECTRICAL LINES OR AETHERIC CONDUITS (0 COINS!)
+    // MODE A: INSTALLING REFINED CONDUIT KITS & WELDING ROOM CONDUITS!
     if (cand.mode === 'wire') {
       if (isHolding) {
         const rm = cand.room;
         if (!rm.poweredFrom) rm.poweredFrom = cand.upLink;
-        const speedMult = this.state.perks.fast_builders ? 0.78 : 0.58;
+
+        // Step 1: Slot required Refined Conduit Kits (pipeKit / wireSpool / aetherPhial)
+        if (rm.kitsPaid < rm.kitCost) {
+          this.kitTickTimer -= dt;
+          if (this.kitTickTimer <= 0) {
+            const avail = this.state.resources[rm.kitType] || 0;
+            const kInfo = RESOURCE_TYPES[rm.kitType] || RESOURCE_TYPES.pipeKit;
+            if (avail > 0) {
+              this.kitTickTimer = 0.24;
+              this.state.resources[rm.kitType] -= 1;
+              rm.kitsPaid += 1;
+              if (!rm.wireQueued) {
+                rm.wireQueued = true;
+                this.jobs.push({ type: 'conduit', floor: rm.def.floor, x: rm.junctionX, target: rm });
+              }
+              this.soundEngine?.playCoinSlot(rm.kitsPaid - 1, rm.kitCost);
+              this.spawnSparks(rm.junctionX, rm.fy - 52, 8, rm.powerInfo.pulseColor);
+              this.spawnFloatText(
+                rm.junctionX,
+                rm.fy - 78,
+                `${kInfo.short.toUpperCase()} ${rm.kitsPaid}/${rm.kitCost}!`,
+                rm.powerInfo.hex
+              );
+            } else {
+              this.kitTickTimer = 0.65;
+              // Allow queuing if raw materials or kits can be refined by an Artificer!
+              const rawAvail = this.state.resources[kInfo.rawInput] || 0;
+              if (!rm.wireQueued && rawAvail >= 2) {
+                rm.wireQueued = true;
+                this.jobs.push({ type: 'conduit', floor: rm.def.floor, x: rm.junctionX, target: rm });
+                this.onToast?.(
+                  `Queued ${rm.def.name}! An Artificer will refine & carry ${kInfo.label} from the Foyer Workbench.`
+                );
+              } else if (justDownE || justDownS) {
+                this.onToast?.(
+                  `Need ${rm.kitCost - rm.kitsPaid} ${kInfo.label}! Scavenge ${RESOURCE_TYPES[kInfo.rawInput].label} & refine at the Foyer Workbench.`
+                );
+              }
+              this.spawnFloatText(rm.junctionX, rm.fy - 78, `NEED ${kInfo.short.toUpperCase()}!`, '#ff8d7a');
+            }
+          }
+          return;
+        }
+
+        // Step 2: All Kits slotted — weld the Steam Pipe / Electrical Line / Aetheric Conduit!
+        const speedMult = this.state.perks.fast_builders ? 0.82 : 0.62;
         rm.conduitProgress = Math.min(1, rm.conduitProgress + dt * speedMult);
 
-        if (rm.conduitProgress >= 0.12 && !rm.wireQueued) {
+        if (rm.conduitProgress >= 0.08 && !rm.wireQueued) {
           rm.wireQueued = true;
           this.jobs.push({ type: 'conduit', floor: rm.def.floor, x: rm.junctionX, target: rm });
         }
@@ -1377,6 +1765,55 @@ export class CutawayMansionScene extends Phaser.Scene {
         if (rm.conduitProgress >= 1) {
           this._completeRoomPowering(rm);
         }
+      }
+      return;
+    }
+
+    // MODE A2: SCAVENGING HAUNTED SALVAGE CACHES OR UNPACKING HEAVY CRATES
+    if (cand.mode === 'salvage' || cand.mode === 'crate') {
+      if (isHolding) {
+        const needed = cand.mode === 'salvage' ? 0.42 : 0.36;
+        this.salvageHoldProgress += dt / needed;
+        if (this.salvageHoldProgress >= 1) {
+          this.salvageHoldProgress = 0;
+          this.requireReleaseBeforeCoin = true;
+          if (cand.mode === 'salvage') {
+            this._prySalvageCache(cand.node);
+          } else {
+            this._collectWorldSalvage(cand.item, true);
+          }
+        }
+      } else {
+        this.salvageHoldProgress = Math.max(0, this.salvageHoldProgress - dt * 3);
+      }
+      return;
+    }
+
+    // MODE A3: REFINING CONDUIT KITS AT FOYER WORKBENCH OR POWERED ROOM WORKSHOPS
+    if (cand.mode === 'workbench' || cand.mode === 'workshop') {
+      if (isHolding) {
+        const needed = cand.mode === 'workshop' ? 0.36 : 0.44;
+        this.craftHoldProgress += dt / needed;
+        this.weldSoundTimer -= dt;
+        if (this.weldSoundTimer <= 0) {
+          this.weldSoundTimer = 0.16;
+          this.soundEngine?.playHammerTick();
+          this.spawnSparks(cand.x, cand.y + 34, 2, RESOURCE_TYPES[cand.kitType].tint);
+        }
+        if (this.craftHoldProgress >= 1) {
+          this.craftHoldProgress = 0;
+          this.requireReleaseBeforeCoin = true;
+          if ((this.state.resources[cand.rawInput] || 0) >= cand.rawCost) {
+            this.state.resources[cand.rawInput] -= cand.rawCost;
+            this.state.resources[cand.kitType] = (this.state.resources[cand.kitType] || 0) + 1;
+            const kInfo = RESOURCE_TYPES[cand.kitType];
+            this.soundEngine?.playCoinPickup();
+            this.spawnSparks(cand.x, cand.y + 30, 14, kInfo.tint);
+            this.spawnFloatText(cand.x, cand.y - 4, `+1 ${kInfo.short.toUpperCase()}!`, kInfo.hex);
+          }
+        }
+      } else {
+        this.craftHoldProgress = Math.max(0, this.craftHoldProgress - dt * 3);
       }
       return;
     }
@@ -1401,7 +1838,7 @@ export class CutawayMansionScene extends Phaser.Scene {
     // MODE C: COIN SLOTS FOR FOYER GEAR, VIGILS & DYNAMO CORE
     if (cand.mode === 'coin') {
       this.activeSlotTarget = cand;
-      if (isHolding) {
+      if (isHolding && !this.requireReleaseBeforeCoin) {
         this.slotDecayTimer = 1.6;
         this.payTickTimer -= dt;
         if (this.payTickTimer <= 0) {
@@ -1451,11 +1888,15 @@ export class CutawayMansionScene extends Phaser.Scene {
     rm.isPowered = true;
     rm.isRestored = true;
     rm.wireQueued = false;
+    rm.kitsPaid = rm.kitCost;
     rm.conduitProgress = 1;
 
     rm.bg.setTexture(`bg_${rm.def.style}_r`);
     rm.interior.setTexture(`interior_${rm.def.id}_r`);
     rm.nameText.setColor('#f2ca6b');
+    if (rm.workshop?.sprite) {
+      rm.workshop.sprite.setTexture(`workshop_bench_${rm.workshop.benchStyle}`);
+    }
 
     this.tweens.add({ targets: rm.veil, alpha: 0, duration: 650 });
     this.tweens.add({ targets: rm.glow, alpha: 0.56, duration: 650 });
@@ -1646,9 +2087,183 @@ export class CutawayMansionScene extends Phaser.Scene {
         ch.sprite.setTexture('chest_open');
         this.soundEngine?.playRoomRestored();
         this.spawnSparks(ch.x, ch.y - 16, 18, 0x7ef7e3);
-        this.spawnFloatText(ch.x, ch.y - 40, `RELIQUARY COFFER +${ch.coins}!`, '#ffe680');
+        let msg = `RELIQUARY COFFER +${ch.coins}F`;
+        if (ch.bonusKit && ch.bonusCount > 0) {
+          this.state.resources[ch.bonusKit] = (this.state.resources[ch.bonusKit] || 0) + ch.bonusCount;
+          const kInfo = RESOURCE_TYPES[ch.bonusKit];
+          if (kInfo) msg += ` & +${ch.bonusCount} ${kInfo.short.toUpperCase()}!`;
+        } else {
+          msg += '!';
+        }
+        this.spawnFloatText(ch.x, ch.y - 40, msg, '#ffe680');
         for (let i = 0; i < ch.coins; i++) {
           this.spawnWorldCoin(ch.floor, ch.x, ch.y - 20, (i - ch.coins / 2) * 34, -105, false);
+        }
+      }
+    }
+  }
+
+  _prySalvageCache(node) {
+    if (!node || node.depleted) return;
+    node.depleted = true;
+    node.respawnDays = 2;
+    node.sprite.setTexture(
+      node.def.kind === 'scrap' ? 'salvage_scrap_depleted' : 'salvage_ecto_depleted'
+    );
+    node.glow.setAlpha(0.06);
+
+    const kind = node.def.kind;
+    const rInfo = RESOURCE_TYPES[kind] || RESOURCE_TYPES.scrap;
+    this.state.resources[kind] = (this.state.resources[kind] || 0) + 1;
+
+    const crates = node.def.crates || 1;
+    for (let i = 0; i < crates; i++) {
+      const vx = crates === 1 ? -(this.heir.facing || 1) * 34 : i === 0 ? -38 : 38;
+      this.spawnWorldSalvage(
+        node.floor,
+        node.x + (i - (crates - 1) / 2) * 14,
+        node.y - 18,
+        kind,
+        2,
+        true,
+        vx,
+        -95 - i * 16
+      );
+    }
+
+    this.soundEngine?.playHammerTick();
+    this.soundEngine?.playCoinPickup();
+    this.spawnSparks(node.x, node.y - 18, 16, rInfo.tint);
+    this.spawnFloatText(
+      node.x,
+      node.y - 44,
+      `+1 ${rInfo.short.toUpperCase()} (+${crates} CRATE${crates > 1 ? 'S' : ''})!`,
+      rInfo.hex
+    );
+  }
+
+  spawnWorldSalvage(floor, x, y, kind, amount = 1, isCrate = false, vx = 0, vy = -85) {
+    this._nextSalvageId = (this._nextSalvageId || 0) + 1;
+    const tex = isCrate ? `crate_${kind}` : `item_${kind}`;
+    const sprite = this.add.image(x, y, tex).setScale(0.5).setDepth(26.5);
+    const item = {
+      id: this._nextSalvageId,
+      floor,
+      x,
+      y,
+      groundY: FLOOR_Y[floor] - (isCrate ? 8 : 7),
+      vx,
+      vy,
+      kind,
+      amount,
+      isCrate,
+      age: 0,
+      claimedBy: null,
+      sprite,
+    };
+    this.worldSalvage.push(item);
+    return item;
+  }
+
+  _collectWorldSalvage(item, grantDirectly = true) {
+    if (!item) return;
+    const idx = this.worldSalvage.indexOf(item);
+    if (idx >= 0) this.worldSalvage.splice(idx, 1);
+    for (const r of this.retainers) {
+      if (r.haulTarget === item) r.haulTarget = null;
+    }
+    item.claimedBy = null;
+    item.sprite?.destroy();
+
+    if (grantDirectly) {
+      this.state.resources[item.kind] = (this.state.resources[item.kind] || 0) + item.amount;
+      const rInfo = RESOURCE_TYPES[item.kind] || RESOURCE_TYPES.scrap;
+      this.soundEngine?.playCoinPickup();
+      this.spawnSparks(item.x, item.y - 4, 8, rInfo.tint);
+      this.spawnFloatText(item.x, item.y - 22, `+${item.amount} ${rInfo.short.toUpperCase()}`, rInfo.hex);
+    }
+  }
+
+  _updateSalvageAndWorkshops(dt, elapsed) {
+    for (let i = this.worldSalvage.length - 1; i >= 0; i--) {
+      const item = this.worldSalvage[i];
+      item.age += dt;
+      if (item.claimedBy && item.claimedBy.haulTarget !== item) {
+        item.claimedBy = null;
+      }
+
+      if (item.y < item.groundY || item.vy < 0) {
+        item.vy += 380 * dt;
+        item.x += item.vx * dt;
+        item.y += item.vy * dt;
+        const fb = this.floorBounds.get(item.floor);
+        if (fb) item.x = Phaser.Math.Clamp(item.x, fb.minX + 18, fb.maxX - 18);
+        if (item.y >= item.groundY) {
+          item.y = item.groundY;
+          item.vy = 0;
+          item.vx = 0;
+        }
+      }
+
+      const bob = item.isCrate ? 0 : Math.sin(elapsed * 4.6 + item.id) * 1.8;
+      item.sprite.setPosition(Math.round(item.x), Math.round(item.y + bob));
+
+      // Loose salvage shards are swept up automatically when walking past; heavy Crates await Porters or Hold-to-Unpack!
+      if (
+        !item.isCrate &&
+        item.age > 0.28 &&
+        this.heir.floor === item.floor &&
+        Math.abs(this.heir.x - item.x) < 28
+      ) {
+        this._collectWorldSalvage(item, true);
+        continue;
+      }
+
+      const maxLife = item.isCrate ? 160 : 65;
+      if (!item.claimedBy && item.age > maxLife) {
+        item.sprite.destroy();
+        this.worldSalvage.splice(i, 1);
+      }
+    }
+
+    // Tick powered Room Production Workshops (Collector Hoppers & 2x Efficiency Refineries)
+    for (const ws of this.workshops) {
+      if (!ws.room?.isPowered || ws.def.mode === 'passive') continue;
+      ws.timer -= dt;
+      if (ws.timer > 0) continue;
+      ws.timer = ws.def.cycleSec || 20;
+
+      if (ws.def.mode === 'harvest') {
+        const nearbyCrates = this.worldSalvage.filter(
+          (s) => s.isCrate && s.floor === ws.floor && Math.abs(s.x - ws.x) < 180
+        ).length;
+        if (nearbyCrates < 2) {
+          const outInfo = RESOURCE_TYPES[ws.def.output] || RESOURCE_TYPES.scrap;
+          this.spawnWorldSalvage(
+            ws.floor,
+            ws.x + (Math.random() - 0.5) * 26,
+            ws.y - 18,
+            ws.def.output,
+            2,
+            true,
+            (Math.random() - 0.5) * 34,
+            -82
+          );
+          this.spawnSparks(ws.x, ws.y - 22, 10, outInfo.tint);
+          this.spawnFloatText(ws.x, ws.y - 42, `${outInfo.short.toUpperCase()} CRATE!`, outInfo.hex);
+        }
+      } else if (ws.def.mode === 'refine' || ws.def.mode === 'dual_refine') {
+        const rec = this._pickWorkshopRecipe(ws);
+        if (
+          rec &&
+          (this.state.resources[rec.input] || 0) >= 2 &&
+          (this.state.resources[rec.output] || 0) < 6
+        ) {
+          this.state.resources[rec.input] -= rec.cost;
+          this.state.resources[rec.output] = (this.state.resources[rec.output] || 0) + 1;
+          const outInfo = RESOURCE_TYPES[rec.output];
+          this.spawnSparks(ws.x, ws.y - 24, 12, outInfo.tint);
+          this.spawnFloatText(ws.x, ws.y - 44, `+1 ${outInfo.short.toUpperCase()}`, outInfo.hex);
         }
       }
     }
@@ -1726,6 +2341,73 @@ export class CutawayMansionScene extends Phaser.Scene {
       : live.reduce((a, b) => (a.x > b.x ? a : b));
   }
 
+  _isPointSafeForHaul(floor, x) {
+    if (this.enemies.some((en) => en.floor === floor && Math.abs(en.x - x) < 155)) {
+      return false;
+    }
+    if (this.state.phase === 'night') {
+      const westSh = this._getOutermostShield(floor, 'west');
+      const eastSh = this._getOutermostShield(floor, 'east');
+      if (westSh && x < westSh.x + 12) return false;
+      if (eastSh && x > eastSh.x - 12) return false;
+    }
+    return true;
+  }
+
+  _claimNearestSalvage(r, restrictFloor = null) {
+    let best = null;
+    let bestCost = Infinity;
+    for (const s of this.worldSalvage) {
+      if (s.age < 0.35) continue;
+      if (s.claimedBy && s.claimedBy !== r) continue;
+      if (restrictFloor !== null && s.floor !== restrictFloor) continue;
+      if (!this._isPointSafeForHaul(s.floor, s.x)) continue;
+      const distCost =
+        Math.abs(s.x - r.x) + Math.abs(s.floor - r.floor) * 420 - (s.isCrate ? 120 : 0);
+      if (distCost < bestCost) {
+        bestCost = distCost;
+        best = s;
+      }
+    }
+    if (best) {
+      best.claimedBy = r;
+      r.haulTarget = best;
+    }
+    return best;
+  }
+
+  _tryStepHaulSalvage(r, speed, dt) {
+    if (
+      r.haulTarget &&
+      (!this.worldSalvage.includes(r.haulTarget) ||
+        !this._isPointSafeForHaul(r.haulTarget.floor, r.haulTarget.x))
+    ) {
+      if (r.haulTarget.claimedBy === r) r.haulTarget.claimedBy = null;
+      r.haulTarget = null;
+    }
+    if (!r.haulTarget) {
+      this._claimNearestSalvage(r, r.role === 'steward' ? r.homeFloor : null);
+    }
+    if (!r.haulTarget) return false;
+
+    const item = r.haulTarget;
+    if (r.floor === item.floor && Math.abs(r.x - item.x) < 18) {
+      r.haulTarget = null;
+      r.carrying = {
+        type: item.kind,
+        amount: item.amount,
+        isCrate: item.isCrate,
+        isKit: false,
+      };
+      const rInfo = RESOURCE_TYPES[item.kind] || RESOURCE_TYPES.scrap;
+      this._collectWorldSalvage(item, false);
+      this.spawnFloatText(r.x, r.y - 40, `HAULING ${rInfo.short.toUpperCase()}!`, rInfo.hex);
+    } else {
+      this._stepUnitToward(r, item.floor, item.x, speed, dt);
+    }
+    return true;
+  }
+
   _updateRetainers(dt, elapsed = 0) {
     const isSafeTime = this.state.phase === 'day';
     if (this.majordomoSprite?.visible) {
@@ -1748,8 +2430,30 @@ export class CutawayMansionScene extends Phaser.Scene {
         }
       }
 
-      if (r.role === 'servant') {
+      // Any retainer carrying scavenged raw Salvage/Crates hauls directly back to the Foyer Supply Depot!
+      if (r.carrying && !r.carrying.isKit) {
+        if (r.floor === 0 && Math.abs(r.x - FOYER_DEPOT_X) < 18) {
+          const { type, amount } = r.carrying;
+          r.carrying = null;
+          this.state.resources[type] = (this.state.resources[type] || 0) + amount;
+          const rInfo = RESOURCE_TYPES[type] || RESOURCE_TYPES.scrap;
+          this.soundEngine?.playCoinPickup();
+          this.spawnSparks(FOYER_DEPOT_X, FLOOR_Y[0] - 26, 10, rInfo.tint);
+          this.spawnFloatText(
+            FOYER_DEPOT_X,
+            FLOOR_Y[0] - 46,
+            `DEPOT +${amount} ${rInfo.short.toUpperCase()}!`,
+            rInfo.hex
+          );
+        } else {
+          this._stepUnitToward(r, 0, FOYER_DEPOT_X, 88 * speedMult, dt);
+        }
+      } else if (r.role === 'servant') {
         if (this.wrenchRack.stock > 0 || this.lanternRack.stock > 0) {
+          if (r.haulTarget) {
+            if (r.haulTarget.claimedBy === r) r.haulTarget.claimedBy = null;
+            r.haulTarget = null;
+          }
           const targetRack =
             this.wrenchRack.stock > 0 && this.lanternRack.stock > 0
               ? this.jobs.length > 0
@@ -1766,38 +2470,114 @@ export class CutawayMansionScene extends Phaser.Scene {
             this.spawnSparks(r.x, r.y - 20, 12, 0xffe27a);
             this.spawnFloatText(r.x, r.y - 42, r.role === 'artificer' ? 'ARTIFICER!' : 'WARDER!', '#ffe680');
           } else {
-            this._stepUnitToward(r, 0, targetRack.x, 92 * speedMult, dt);
+            this._stepUnitToward(r, 0, targetRack.x, 94 * speedMult, dt);
           }
-        } else {
-          this._stepUnitToward(r, 0, CENTER_X + Math.sin(r.anim) * 70, 62, dt);
+        } else if (!this._tryStepHaulSalvage(r, 98 * speedMult, dt)) {
+          this._stepUnitToward(r, 0, FOYER_DEPOT_X - 35 + Math.sin(r.anim * 0.45) * 48, 62, dt);
         }
       } else if (r.role === 'artificer') {
-        // Pick up queued conduit construction jobs, OR autonomously construct reachable nearby unpowered junctions during Day!
         if (!r.job && this.jobs.length > 0) {
           r.job = this.jobs.shift();
+          r.craftTimer = 0;
         }
 
         if (r.job) {
+          if (r.haulTarget) {
+            if (r.haulTarget.claimedBy === r) r.haulTarget.claimedBy = null;
+            r.haulTarget = null;
+          }
           const rm = r.job.target;
           if (rm.isPowered) {
-            r.job = null;
-          } else if (r.floor === rm.def.floor && Math.abs(r.x - rm.junctionX) < 22) {
-            r.anim += dt * 10;
-            if (!rm.poweredFrom) rm.poweredFrom = this.getPoweredUpstreamLink(rm);
-            rm.conduitProgress += dt * 0.45 * speedMult;
-            if (Math.random() < 0.2) {
-              this.soundEngine?.playHammerTick();
-              this.spawnSparks(rm.junctionX, rm.fy - 44, 3, rm.powerInfo.pulseColor);
+            if (r.carrying?.isKit) {
+              this.state.resources[r.carrying.type] =
+                (this.state.resources[r.carrying.type] || 0) + r.carrying.amount;
+              r.carrying = null;
             }
-            if (rm.conduitProgress >= 1.0) {
-              this._completeRoomPowering(rm);
+            r.job = null;
+            r.craftTimer = 0;
+          } else if (rm.kitsPaid < rm.kitCost) {
+            const kInfo = RESOURCE_TYPES[rm.kitType] || RESOURCE_TYPES.pipeKit;
+            if (r.carrying?.isKit && r.carrying.type !== rm.kitType) {
+              this.state.resources[r.carrying.type] =
+                (this.state.resources[r.carrying.type] || 0) + r.carrying.amount;
+              r.carrying = null;
+            }
+
+            if (r.carrying?.isKit && r.carrying.type === rm.kitType) {
+              // Carry Refined Conduit Kit to the target Room Junction and slot it in!
+              if (r.floor === rm.def.floor && Math.abs(r.x - rm.junctionX) < 22) {
+                r.carrying = null;
+                rm.kitsPaid += 1;
+                this.soundEngine?.playCoinSlot(rm.kitsPaid - 1, rm.kitCost);
+                this.spawnSparks(rm.junctionX, rm.fy - 52, 8, rm.powerInfo.pulseColor);
+                this.spawnFloatText(
+                  rm.junctionX,
+                  rm.fy - 76,
+                  `${kInfo.short.toUpperCase()} ${rm.kitsPaid}/${rm.kitCost}!`,
+                  rm.powerInfo.hex
+                );
+              } else {
+                this._stepUnitToward(r, rm.def.floor, rm.junctionX, 108 * speedMult, dt);
+              }
+            } else if ((this.state.resources[rm.kitType] || 0) > 0) {
+              // Fetch a ready-made Conduit Kit from the Foyer Supply Depot!
+              if (r.floor === 0 && Math.abs(r.x - FOYER_DEPOT_X) < 20) {
+                this.state.resources[rm.kitType] -= 1;
+                r.carrying = { type: rm.kitType, amount: 1, isKit: true, isCrate: false };
+                this.spawnFloatText(r.x, r.y - 40, `CARRY ${kInfo.short.toUpperCase()}`, kInfo.hex);
+              } else {
+                this._stepUnitToward(r, 0, FOYER_DEPOT_X, 110 * speedMult, dt);
+              }
+            } else if ((this.state.resources[kInfo.rawInput] || 0) >= 2) {
+              // Forge the needed Conduit Kit right at the Foyer Artificer's Workbench!
+              if (r.floor === 0 && Math.abs(r.x - FOYER_DEPOT_X) < 20) {
+                r.anim += dt * 9;
+                r.craftTimer += dt * speedMult;
+                if (Math.random() < 0.18) {
+                  this.soundEngine?.playHammerTick();
+                  this.spawnSparks(FOYER_DEPOT_X, FLOOR_Y[0] - 28, 3, kInfo.tint);
+                }
+                if (r.craftTimer >= 1.05 && (this.state.resources[kInfo.rawInput] || 0) >= 2) {
+                  r.craftTimer = 0;
+                  this.state.resources[kInfo.rawInput] -= 2;
+                  r.carrying = { type: rm.kitType, amount: 1, isKit: true, isCrate: false };
+                  this.spawnSparks(FOYER_DEPOT_X, FLOOR_Y[0] - 30, 12, kInfo.tint);
+                  this.spawnFloatText(r.x, r.y - 42, `FORGED ${kInfo.short.toUpperCase()}!`, kInfo.hex);
+                }
+              } else {
+                this._stepUnitToward(r, 0, FOYER_DEPOT_X, 108 * speedMult, dt);
+              }
+            } else {
+              // Out of both Kits & Raw Salvage — release job so Artificer can haul crates or tune Shields
+              rm.wireQueued = false;
               r.job = null;
+              r.craftTimer = 0;
             }
           } else {
-            this._stepUnitToward(r, rm.def.floor, rm.junctionX, 110 * speedMult, dt);
+            // All Conduit Kits slotted — weld the Steam Pipe / Galvanic Line / Aether Conduit!
+            if (r.carrying?.isKit) {
+              this.state.resources[r.carrying.type] =
+                (this.state.resources[r.carrying.type] || 0) + r.carrying.amount;
+              r.carrying = null;
+            }
+            if (r.floor === rm.def.floor && Math.abs(r.x - rm.junctionX) < 22) {
+              r.anim += dt * 10;
+              if (!rm.poweredFrom) rm.poweredFrom = this.getPoweredUpstreamLink(rm);
+              rm.conduitProgress += dt * 0.48 * speedMult;
+              if (Math.random() < 0.2) {
+                this.soundEngine?.playHammerTick();
+                this.spawnSparks(rm.junctionX, rm.fy - 44, 3, rm.powerInfo.pulseColor);
+              }
+              if (rm.conduitProgress >= 1.0) {
+                this._completeRoomPowering(rm);
+                r.job = null;
+              }
+            } else {
+              this._stepUnitToward(r, rm.def.floor, rm.junctionX, 110 * speedMult, dt);
+            }
           }
         } else {
-          // Idle Artificer: reset overloaded or drained Paranormal Shields!
+          // Idle Artificer: 1) Reset/tune Shields, 2) Haul crates, 3) Auto-refine surplus raw stock, 4) Patrol
           const needySh = this.shields.find(
             (s) => s.active && (s.overloaded || s.charge < s.maxCharge * 0.85)
           );
@@ -1816,20 +2596,52 @@ export class CutawayMansionScene extends Phaser.Scene {
             } else {
               this._stepUnitToward(r, needySh.floor, needySh.x, 98 * speedMult, dt);
             }
+          } else if (isSafeTime && this._tryStepHaulSalvage(r, 98 * speedMult, dt)) {
+            // Actively hauling salvage crate back to Foyer Supply Depot
           } else {
-            const safeX = CENTER_X + (r.patrolSide === 'west' ? -85 : 85);
-            this._stepUnitToward(r, 0, safeX, 78, dt);
+            const autoKit =
+              (this.state.resources.scrap || 0) >= 4 && (this.state.resources.pipeKit || 0) < 3
+                ? 'pipeKit'
+                : (this.state.resources.scrap || 0) >= 4 && (this.state.resources.wireSpool || 0) < 3
+                  ? 'wireSpool'
+                  : (this.state.resources.ectoplasm || 0) >= 4 &&
+                      (this.state.resources.aetherPhial || 0) < 3
+                    ? 'aetherPhial'
+                    : null;
+            if (autoKit) {
+              const kInfo = RESOURCE_TYPES[autoKit];
+              if (r.floor === 0 && Math.abs(r.x - FOYER_DEPOT_X) < 20) {
+                r.anim += dt * 8;
+                r.craftTimer += dt * speedMult;
+                if (r.craftTimer >= 1.35 && (this.state.resources[kInfo.rawInput] || 0) >= 2) {
+                  r.craftTimer = 0;
+                  this.state.resources[kInfo.rawInput] -= 2;
+                  this.state.resources[autoKit] = (this.state.resources[autoKit] || 0) + 1;
+                  this.spawnSparks(FOYER_DEPOT_X, FLOOR_Y[0] - 28, 10, kInfo.tint);
+                  this.spawnFloatText(FOYER_DEPOT_X, FLOOR_Y[0] - 46, `+1 ${kInfo.short.toUpperCase()}`, kInfo.hex);
+                }
+              } else {
+                this._stepUnitToward(r, 0, FOYER_DEPOT_X, 92 * speedMult, dt);
+              }
+            } else {
+              const safeX = CENTER_X + (r.patrolSide === 'west' ? -85 : 85);
+              this._stepUnitToward(r, 0, safeX, 78, dt);
+            }
           }
         }
       } else if (r.role === 'warder') {
         this._updateWarderAI(r, dt, speedMult, isSafeTime);
       } else if (r.role === 'steward') {
-        const farmRoom = Array.from(this.rooms.values()).find(
-          (rm) => rm.def.floor === r.floor && rm.isPowered && rm.def.isFarm
-        );
-        if (farmRoom) {
-          const tx = farmRoom.cx + Math.sin(r.anim * 0.25) * 48;
-          this._stepUnitToward(r, farmRoom.def.floor, tx, 45, dt);
+        if (!this._tryStepHaulSalvage(r, 86 * speedMult, dt)) {
+          const farmRoom = Array.from(this.rooms.values()).find(
+            (rm) => rm.def.floor === r.homeFloor && rm.isPowered && rm.def.isFarm
+          );
+          if (farmRoom) {
+            const tx = farmRoom.cx + Math.sin(r.anim * 0.25) * 48;
+            this._stepUnitToward(r, farmRoom.def.floor, tx, 58, dt);
+          } else {
+            this._stepUnitToward(r, r.homeFloor, r.homeX, 58, dt);
+          }
         }
       }
 
@@ -1838,6 +2650,22 @@ export class CutawayMansionScene extends Phaser.Scene {
         .setTexture(`${r.role}_${fr}`)
         .setPosition(Math.round(r.x), r.y - 19)
         .setFlipX(r.facing < 0);
+
+      if (r.carrying) {
+        const cargoTex = r.carrying.isCrate
+          ? `crate_${r.carrying.type}`
+          : `item_${r.carrying.type}`;
+        const bob = Math.sin(r.anim * 1.5) * 1.2;
+        r.cargoSprite
+          .setTexture(cargoTex)
+          .setPosition(
+            Math.round(r.x + r.facing * 7),
+            Math.round(r.y - (r.carrying.isCrate ? 22 : 24) + bob)
+          )
+          .setVisible(true);
+      } else {
+        r.cargoSprite.setVisible(false);
+      }
     }
   }
 
@@ -1946,6 +2774,14 @@ export class CutawayMansionScene extends Phaser.Scene {
       unit.floor = nextFloor;
       unit.x = bestLink.x;
       unit.y = FLOOR_Y[nextFloor];
+      if (bestLink.kind === 'lift' && Math.abs(this.heir.x - bestLink.x) > 40) {
+        this.tweens.add({
+          targets: this.liftCar,
+          y: unit.y - 27,
+          duration: 320,
+          ease: 'Cubic.easeOut',
+        });
+      }
     } else {
       const dir = Math.sign(bestLink.x - unit.x) || 1;
       unit.facing = dir;
@@ -2212,15 +3048,45 @@ export class CutawayMansionScene extends Phaser.Scene {
 
       if (!en.fleeing && en.kind === 'specter') {
         const hitRet = this.retainers.find(
-          (r) => r.role !== 'servant' && r.floor === en.floor && Math.abs(r.x - en.x) < 18
+          (r) =>
+            (r.role !== 'servant' || r.carrying) &&
+            r.floor === en.floor &&
+            Math.abs(r.x - en.x) < 18
         );
         if (hitRet) {
-          hitRet.role = 'servant';
-          hitRet.job = null;
-          hitRet.strikeRift = null;
+          if (hitRet.carrying) {
+            if (hitRet.carrying.isKit) {
+              this.state.resources[hitRet.carrying.type] =
+                (this.state.resources[hitRet.carrying.type] || 0) + hitRet.carrying.amount;
+            } else {
+              this.spawnWorldSalvage(
+                hitRet.floor,
+                hitRet.x,
+                hitRet.y - 20,
+                hitRet.carrying.type,
+                hitRet.carrying.amount,
+                hitRet.carrying.isCrate,
+                -(en.marchDir || 1) * 40,
+                -85
+              );
+            }
+            hitRet.carrying = null;
+            hitRet.cargoSprite?.setVisible(false);
+          }
+          if (hitRet.haulTarget) {
+            if (hitRet.haulTarget.claimedBy === hitRet) hitRet.haulTarget.claimedBy = null;
+            hitRet.haulTarget = null;
+          }
+          if (hitRet.role !== 'servant' && hitRet.role !== 'steward') {
+            hitRet.role = 'servant';
+            hitRet.job = null;
+            hitRet.strikeRift = null;
+            this.spawnFloatText(hitRet.x, hitRet.y - 38, 'TOOL DROPPED!', '#ff8d7a');
+          } else {
+            this.spawnFloatText(hitRet.x, hitRet.y - 38, 'CARGO DROPPED!', '#ffbe66');
+          }
           en.fleeing = true;
           this.soundEngine?.playCoinScatter();
-          this.spawnFloatText(hitRet.x, hitRet.y - 38, 'TOOL DROPPED!', '#ff8d7a');
         }
       }
 
@@ -2303,6 +3169,21 @@ export class CutawayMansionScene extends Phaser.Scene {
       for (let k = 0; k < drops; k++) {
         this.spawnWorldCoin(en.floor, en.x, en.y - 18, (k - drops / 2) * 28, -85, false);
       }
+      if (en.kind === 'brute') {
+        this.spawnWorldSalvage(en.floor, en.x - 10, en.y - 20, 'scrap', 2, true, -34, -98);
+        this.spawnWorldSalvage(en.floor, en.x + 12, en.y - 18, 'scrap', 1, false, 30, -86);
+      } else if (en.kind === 'phantom' || Math.random() < 0.65) {
+        this.spawnWorldSalvage(
+          en.floor,
+          en.x + (Math.random() - 0.5) * 14,
+          en.y - 18,
+          'ectoplasm',
+          1,
+          false,
+          (Math.random() - 0.5) * 42,
+          -88
+        );
+      }
     }
     en.sprite.destroy();
     this.enemies.splice(idx, 1);
@@ -2362,7 +3243,10 @@ export class CutawayMansionScene extends Phaser.Scene {
           if (wi >= 0) {
             const w = this.wisps[wi];
             this.spawnSparks(w.x, w.y - 12, 8, 0x7ef7e3);
-            this.spawnWorldCoin(0, w.x, w.y - 14, 0, -75, false);
+            this.spawnWorldCoin(0, w.x, w.y - 14, -14, -75, false);
+            if (Math.random() < 0.65) {
+              this.spawnWorldSalvage(0, w.x + 8, w.y - 14, 'ectoplasm', 1, false, 20, -82);
+            }
             w.sprite.destroy();
             this.wisps.splice(wi, 1);
             hit = true;
@@ -2415,6 +3299,29 @@ export class CutawayMansionScene extends Phaser.Scene {
         (i - rift.def.rewardCoins / 2) * 26,
         -120 - Math.random() * 40,
         false
+      );
+    }
+
+    for (let c = 0; c < 2; c++) {
+      this.spawnWorldSalvage(
+        rift.floor,
+        rift.x - 16 + c * 32,
+        rift.y - 32,
+        'scrap',
+        2,
+        true,
+        (c === 0 ? -1 : 1) * 48,
+        -112
+      );
+      this.spawnWorldSalvage(
+        rift.floor,
+        rift.x - 10 + c * 20,
+        rift.y - 36,
+        'ectoplasm',
+        2,
+        true,
+        (c === 0 ? -1 : 1) * 32,
+        -128
       );
     }
 
@@ -3078,9 +3985,19 @@ export class CutawayMansionScene extends Phaser.Scene {
       }
     }
 
-    // Contextual World Prompt (Conduit Gauge, Shield Switch, or Foyer Coin Slots)
+    // Subtle pulsing Haul Beacons above scavenged Crates awaiting Manor Porters
+    for (const s of this.worldSalvage) {
+      if (!s.isCrate) continue;
+      const col = s.kind === 'scrap' ? 0xe09652 : 0x7ef7e3;
+      const by = s.y - 15 + Math.sin(elapsed * 4.2 + s.id) * 2;
+      this.worldUiGfx.fillStyle(col, s.claimedBy ? 0.92 : 0.68);
+      this.worldUiGfx.fillCircle(s.x, by, 2.4);
+    }
+
+    // Contextual World Prompt (Conduit Kit Slots, Salvage Cache, Workbench, Shield Switch, or Foyer Coin Slots)
     const cand = this.gameStarted ? this._findNearestInteractable() : null;
     for (const sp of this.slotSprites) sp.setVisible(false);
+    for (const kp of this.kitSlotSprites) kp.setVisible(false);
 
     if (cand) {
       const bobY = cand.y + Math.sin(elapsed * 5) * 2.5;
@@ -3101,10 +4018,57 @@ export class CutawayMansionScene extends Phaser.Scene {
           .setPosition(Math.round(cand.x), Math.round(bobY - 11))
           .setVisible(true);
       } else if (cand.mode === 'wire') {
-        const pct = Math.round(cand.room.conduitProgress * 100);
-        const tag = pct > 0 ? `WIRING ${pct}%` : `WIRE: ${cand.room.powerInfo.label.toUpperCase()}`;
+        const rm = cand.room;
+        if (rm.kitsPaid < rm.kitCost) {
+          const count = Math.min(this.kitSlotSprites.length, rm.kitCost);
+          const spacing = 18;
+          const startX = cand.x - ((count - 1) * spacing) / 2;
+          for (let i = 0; i < count; i++) {
+            const kTex =
+              i < rm.kitsPaid
+                ? `kitslot_filled_${rm.kitType}`
+                : `kitslot_empty_${rm.kitType}`;
+            this.kitSlotSprites[i]
+              .setTexture(kTex)
+              .setPosition(Math.round(startX + i * spacing), Math.round(bobY + 1))
+              .setVisible(true);
+          }
+          const kInfo = RESOURCE_TYPES[rm.kitType] || RESOURCE_TYPES.pipeKit;
+          this.promptLabel
+            .setText(`SLOT ${kInfo.short.toUpperCase()} (${rm.kitsPaid}/${rm.kitCost})`)
+            .setPosition(Math.round(cand.x), Math.round(bobY - 11))
+            .setVisible(true);
+        } else {
+          const pct = Math.round(rm.conduitProgress * 100);
+          const tag = pct > 0 ? `WIRING ${pct}%` : `WELD: ${rm.powerInfo.label.toUpperCase()}`;
+          this.promptLabel
+            .setText(tag)
+            .setPosition(Math.round(cand.x), Math.round(bobY - 4))
+            .setVisible(true);
+        }
+      } else if (cand.mode === 'salvage' || cand.mode === 'crate') {
+        if (this.salvageHoldProgress > 0.02) {
+          const col = RESOURCE_TYPES[cand.resType]?.tint || 0xffe27a;
+          this._drawProgressBar(cand.x, bobY + 4, 38, this.salvageHoldProgress, col);
+        }
+        const rShort = RESOURCE_TYPES[cand.resType]?.short.toUpperCase() || 'SALVAGE';
+        const tag =
+          cand.mode === 'salvage'
+            ? `SCAVENGE ${rShort}`
+            : `UNPACK +${cand.item.amount} ${rShort}`;
         this.promptLabel
           .setText(tag)
+          .setPosition(Math.round(cand.x), Math.round(bobY - 4))
+          .setVisible(true);
+      } else if (cand.mode === 'workbench' || cand.mode === 'workshop') {
+        if (this.craftHoldProgress > 0.02) {
+          const col = RESOURCE_TYPES[cand.kitType]?.tint || 0xffe27a;
+          this._drawProgressBar(cand.x, bobY + 4, 42, this.craftHoldProgress, col);
+        }
+        const kShort = RESOURCE_TYPES[cand.kitType]?.short.toUpperCase() || 'KIT';
+        const rShort = RESOURCE_TYPES[cand.rawInput]?.short.toUpperCase() || 'RAW';
+        this.promptLabel
+          .setText(`${cand.rawCost} ${rShort} → +1 ${kShort}`)
           .setPosition(Math.round(cand.x), Math.round(bobY - 4))
           .setVisible(true);
       } else if (cand.mode === 'shield') {

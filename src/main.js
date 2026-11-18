@@ -1,12 +1,13 @@
 import './style.css';
 import Phaser from 'phaser';
-import { paintHudCoinIcon } from './art/cutawaySprites.js';
+import { paintHudCoinIcon, paintHudResourceIcons } from './art/cutawaySprites.js';
 import { SoundEngine } from './audio/soundEngine.js';
 import { INVESTIGATORS } from './data/cutawayMansionData.js';
 import { CutawayMansionScene } from './scenes/CutawayMansionScene.js';
 import { EstateHud } from './ui/estateHud.js';
 
 paintHudCoinIcon();
+paintHudResourceIcons();
 
 const sound = new SoundEngine();
 const mansionScene = new CutawayMansionScene();
@@ -21,7 +22,7 @@ const hud = new EstateHud({
     mansionScene.startGame();
     const inv = INVESTIGATORS[gender] || INVESTIGATORS.female;
     hud.showToast(
-      `${inv.name}: Hold E/S at adjacent Junctions to run Galvanic Lines (West), Steam Pipes (East) & Aether Conduits (Upstairs), and channel power into Paranormal Shields!`
+      `${inv.name}: Slot Refined Conduit Kits at Room Junctions to wire Power Lines! Pry Haunted Salvage Caches in dark wings & refine Kits at the Foyer Workbench.`
     );
   },
   onJoy(jx, jy) {

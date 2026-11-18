@@ -33,6 +33,65 @@ export const INVESTIGATORS = {
 };
 
 /**
+ * Raw Haunted Salvage & Refined Steampunk-Occult Conduit Kits
+ * Scavenged in dark wings -> Hauled by Porters to Foyer Depot -> Refined into Conduit Kits -> Spent at Room Junctions!
+ */
+export const RESOURCE_TYPES = {
+  scrap: {
+    id: 'scrap',
+    label: 'Brass & Iron Scrap',
+    short: 'Scrap',
+    category: 'raw',
+    hex: '#e09652',
+    tint: 0xe09652,
+  },
+  ectoplasm: {
+    id: 'ectoplasm',
+    label: 'Raw Ectoplasm',
+    short: 'Ecto',
+    category: 'raw',
+    hex: '#7ef7e3',
+    tint: 0x7ef7e3,
+  },
+  pipeKit: {
+    id: 'pipeKit',
+    label: 'Steam Pipe Kit',
+    short: 'Pipe',
+    category: 'kit',
+    powerType: 'steam',
+    rawInput: 'scrap',
+    foyerCost: 2,
+    workshopCost: 1,
+    hex: '#ffbe66',
+    tint: 0xffbe66,
+  },
+  wireSpool: {
+    id: 'wireSpool',
+    label: 'Galvanic Wire Spool',
+    short: 'Spool',
+    category: 'kit',
+    powerType: 'electric',
+    rawInput: 'scrap',
+    foyerCost: 2,
+    workshopCost: 1,
+    hex: '#ffe875',
+    tint: 0xffe875,
+  },
+  aetherPhial: {
+    id: 'aetherPhial',
+    label: 'Refined Aether Phial',
+    short: 'Phial',
+    category: 'kit',
+    powerType: 'aether',
+    rawInput: 'ectoplasm',
+    foyerCost: 2,
+    workshopCost: 1,
+    hex: '#7ef7e3',
+    tint: 0x7ef7e3,
+  },
+};
+
+/**
  * The 3 Steampunk-Occult Utility Networks radiating from the Central Foyer Dynamo Hearth
  */
 export const POWER_TYPES = {
@@ -53,6 +112,8 @@ export const POWER_TYPES = {
     label: 'Steam Pipe',
     conduitName: 'Pressurized Copper Steam Pipe',
     shieldName: 'Salt-Steam Ward Shield',
+    kitType: 'pipeKit',
+    kitLabel: 'Steam Pipe Kit',
     pipeColor: 0xc96b36,
     pulseColor: 0xffd78a,
     shieldColor: 0xffb347,
@@ -65,6 +126,8 @@ export const POWER_TYPES = {
     label: 'Electrical Line',
     conduitName: 'Galvanic Electrical Line',
     shieldName: 'Galvanic Arc-Shield',
+    kitType: 'wireSpool',
+    kitLabel: 'Galvanic Wire Spool',
     pipeColor: 0xcfa03c,
     pulseColor: 0xfff799,
     shieldColor: 0xffe46b,
@@ -77,6 +140,8 @@ export const POWER_TYPES = {
     label: 'Aetheric Conduit',
     conduitName: 'Crystal Aetheric Conduit',
     shieldName: 'Astral Resonance Shield',
+    kitType: 'aetherPhial',
+    kitLabel: 'Refined Aether Phial',
     pipeColor: 0x3ba89e,
     pulseColor: 0x8cf7e6,
     shieldColor: 0x5ef2dc,
@@ -115,8 +180,8 @@ export const ESTATE_TIERS = [
 
 /**
  * 22 Asymmetric Cutaway Rooms & Outdoor Approaches across 4 Levels.
- * Rooms require NO coins to restore: instead, Steam Pipes, Electrical Lines, or Aetheric Conduits
- * must be constructed outward room-by-room from the central Grand Entrance Foyer!
+ * Restoring power to each room requires Refined Conduit Kits (Steam Pipe Kits, Galvanic Wire Spools,
+ * or Refined Aether Phials) forged from Haunted Salvage at the Foyer Workbench or specialized Room Workshops!
  * Once powered, a room's power can be applied to its doorway Paranormal Shield(s) to block apparitions.
  */
 export const CUTAWAY_ROOMS = [
@@ -129,6 +194,7 @@ export const CUTAWAY_ROOMS = [
     w: 420,
     style: 'brick',
     powerType: 'electric',
+    kitCost: 2,
     connectFrom: [{ room: 'ballroom', riserX: 2510 }],
     junctionSide: 'east',
     bonusShieldCap: 1,
@@ -146,6 +212,7 @@ export const CUTAWAY_ROOMS = [
     style: 'glass',
     outdoorRoof: true,
     powerType: 'electric',
+    kitCost: 2,
     connectFrom: [{ room: 'clocktower' }, { room: 'ballroom', riserX: 2825 }],
     junctionSide: 'west',
     perk: 'High-voltage storm arresters energize the Spire threshold (+1 Dawn Florin).',
@@ -160,11 +227,19 @@ export const CUTAWAY_ROOMS = [
     w: 680,
     style: 'lab',
     powerType: 'aether',
+    kitCost: 3,
     connectFrom: [{ room: 'skybridge' }],
     junctionSide: 'west',
     bonusShieldCap: 2,
-    perk: 'Kelvin Aether-Refractor online: +2 Shield Capacity & +3 Dawn Florins!',
+    perk: 'Kelvin Aether-Refractor online: +2 Shield Capacity, +2 Dawn Aether Phials & +3 Florins!',
     dawnCoins: 3,
+    workshop: {
+      id: 'ws_observatory',
+      name: 'Celestial Aether Lens',
+      x: 3530,
+      mode: 'passive',
+      dawnYield: { aetherPhial: 2 },
+    },
     shields: [],
   },
 
@@ -178,6 +253,7 @@ export const CUTAWAY_ROOMS = [
     style: 'outdoor',
     outdoor: true,
     powerType: 'aether',
+    kitCost: 1,
     connectFrom: [{ room: 'library' }],
     junctionSide: 'east',
     perk: 'Gargoyle aether-brazier watches over the western moorland (+2 Dawn Florins).',
@@ -192,10 +268,18 @@ export const CUTAWAY_ROOMS = [
     w: 540,
     style: 'library',
     powerType: 'aether',
+    kitCost: 2,
     connectFrom: [{ room: 'portrait_gallery' }],
     junctionSide: 'east',
-    perk: 'Illuminated occult grimoires grant +3 Silver Florins every Dawn!',
+    perk: 'Esoteric Scriptorium distills +1 Aether Phial & +3 Silver Florins every Dawn!',
     dawnCoins: 3,
+    workshop: {
+      id: 'ws_library',
+      name: 'Esoteric Scriptorium Condenser',
+      x: 1740,
+      mode: 'passive',
+      dawnYield: { aetherPhial: 1 },
+    },
     shields: [{ id: 'sh_lib_w', side: 'west', x: 1528 }],
   },
   {
@@ -206,6 +290,7 @@ export const CUTAWAY_ROOMS = [
     w: 360,
     style: 'damask',
     powerType: 'aether',
+    kitCost: 1,
     connectFrom: [{ room: 'grand_foyer', riserX: 2375 }, { room: 'ballroom' }],
     junctionSide: 'east',
     perk: 'Aetheric picture-lamps soothe the weeping portraits (+2 Dawn Florins).',
@@ -220,6 +305,7 @@ export const CUTAWAY_ROOMS = [
     w: 620,
     style: 'damask',
     powerType: 'electric',
+    kitCost: 2,
     connectFrom: [{ room: 'grand_foyer', riserX: 2825 }, { room: 'portrait_gallery' }],
     junctionSide: 'west',
     perk: 'Electro-pneumatic cathedral organ resonates across the manor (+2 Dawn Florins)!',
@@ -234,11 +320,23 @@ export const CUTAWAY_ROOMS = [
     w: 440,
     style: 'lab',
     powerType: 'electric',
+    kitCost: 2,
     connectFrom: [{ room: 'ballroom' }, { room: 'billiard_lounge', riserX: 3425 }],
     junctionSide: 'west',
-    perk: 'Energized dispatch switchboard boosts Majordomo safe interest!',
+    perk: 'Unlocks Galvanic Wire Bench (1 Scrap → 1 Spool), +1 Dawn Spool & boosts Safe interest!',
     perkId: 'high_interest',
     dawnCoins: 2,
+    workshop: {
+      id: 'ws_telegraph',
+      name: 'Galvanic Wire-Winding Bench',
+      x: 3250,
+      mode: 'refine',
+      input: 'scrap',
+      inputCost: 1,
+      output: 'wireSpool',
+      cycleSec: 20,
+      dawnYield: { wireSpool: 1 },
+    },
     shields: [{ id: 'sh_tele_e', side: 'east', x: 3472 }],
   },
   {
@@ -249,12 +347,26 @@ export const CUTAWAY_ROOMS = [
     w: 640,
     style: 'lab',
     powerType: 'electric',
+    kitCost: 3,
     connectFrom: [{ room: 'telegraph_room' }],
     junctionSide: 'west',
     bonusShieldCap: 2,
-    perk: 'Tesla Coils online: +2 Shield Capacity & +40% Warder / Exorcism power!',
+    perk: 'Synthesizer (1 Raw → Spool/Phial), +2 Shield Cap & +40% Warder / Exorcism power!',
     perkId: 'galvanic_bolts',
     dawnCoins: 2,
+    workshop: {
+      id: 'ws_alchemy_lab',
+      name: 'Galvanic & Ectoplasm Synthesizer',
+      x: 3825,
+      mode: 'dual_refine',
+      input: 'ectoplasm',
+      inputCost: 1,
+      output: 'aetherPhial',
+      altInput: 'scrap',
+      altOutput: 'wireSpool',
+      cycleSec: 18,
+      dawnYield: { wireSpool: 1, aetherPhial: 1 },
+    },
     shields: [{ id: 'sh_lab_e', side: 'east', x: 4112 }],
   },
 
@@ -268,6 +380,7 @@ export const CUTAWAY_ROOMS = [
     style: 'outdoor',
     outdoor: true,
     powerType: 'electric',
+    kitCost: 1,
     connectFrom: [{ room: 'carriage_portico' }],
     junctionSide: 'east',
     perk: 'Galvanic gatehouse arc-lamps hold back the moorland fog (+1 Dawn Florin).',
@@ -282,6 +395,7 @@ export const CUTAWAY_ROOMS = [
     w: 440,
     style: 'brick',
     powerType: 'aether',
+    kitCost: 2,
     connectFrom: [{ room: 'scullery' }],
     junctionSide: 'east',
     perk: 'Aether-charged Quicksilver Boots: +30% Investigator sprint speed!',
@@ -297,11 +411,23 @@ export const CUTAWAY_ROOMS = [
     w: 520,
     style: 'brick',
     powerType: 'steam',
+    kitCost: 2,
     connectFrom: [{ room: 'banquet_hall' }],
     junctionSide: 'east',
-    perk: 'Pressurized steam stills & cast-iron range distill +4 Silver Florins at Dawn!',
+    perk: 'Unlocks Alembic Still (1 Ectoplasm → 1 Aether Phial), +1 Dawn Phial & +4 Florins!',
     dawnCoins: 4,
     isFarm: true,
+    workshop: {
+      id: 'ws_scullery',
+      name: 'Alembic Aether Still',
+      x: 1515,
+      mode: 'refine',
+      input: 'ectoplasm',
+      inputCost: 1,
+      output: 'aetherPhial',
+      cycleSec: 20,
+      dawnYield: { aetherPhial: 1 },
+    },
     shields: [{ id: 'sh_scull_w', side: 'west', x: 1308 }],
   },
   {
@@ -312,6 +438,7 @@ export const CUTAWAY_ROOMS = [
     w: 500,
     style: 'damask',
     powerType: 'electric',
+    kitCost: 1,
     connectFrom: [{ room: 'grand_foyer' }],
     junctionSide: 'east',
     perk: 'Twin crystal electro-chandeliers illuminate the séance table (+2 Dawn Florins).',
@@ -326,9 +453,10 @@ export const CUTAWAY_ROOMS = [
     w: 560,
     style: 'marble',
     powerType: 'hub',
+    kitCost: 0,
     startRestored: true,
     connectFrom: [],
-    perk: 'Central Tri-Manifold Power Source: routes Steam, Electricity & Aether across Vesper Manor.',
+    perk: 'Central Tri-Manifold Power Source & Artificer Supply Depot.',
     dawnCoins: 2,
     shields: [
       { id: 'sh_foyer_w', side: 'west', x: 2328, startActive: true, shieldType: 'electric' },
@@ -343,6 +471,7 @@ export const CUTAWAY_ROOMS = [
     w: 480,
     style: 'emerald',
     powerType: 'steam',
+    kitCost: 1,
     connectFrom: [{ room: 'grand_foyer' }],
     junctionSide: 'west',
     perk: 'Warm steam radiators shelter more trapped Housefolk each day (+2 Dawn Florins).',
@@ -358,6 +487,7 @@ export const CUTAWAY_ROOMS = [
     w: 460,
     style: 'emerald',
     powerType: 'electric',
+    kitCost: 2,
     connectFrom: [{ room: 'emerald_parlor' }],
     junctionSide: 'west',
     perk: 'Arc-lit spirit-lenses extend Occult Warder firing range (+2 Dawn Florins).',
@@ -373,11 +503,21 @@ export const CUTAWAY_ROOMS = [
     w: 540,
     style: 'glass',
     powerType: 'steam',
+    kitCost: 2,
     connectFrom: [{ room: 'billiard_lounge' }],
     junctionSide: 'west',
-    perk: 'Steam-misted Wardian nightshade flora condense +5 Silver Florins at Dawn!',
+    perk: 'Nightshade Spore Condenser spawns haulable Ectoplasm crates + Dawn Phial & +5 Florins!',
     dawnCoins: 5,
     isFarm: true,
+    workshop: {
+      id: 'ws_wintergarden',
+      name: 'Nightshade Spore Condenser',
+      x: 4090,
+      mode: 'harvest',
+      output: 'ectoplasm',
+      cycleSec: 19,
+      dawnYield: { ectoplasm: 2, aetherPhial: 1 },
+    },
     shields: [{ id: 'sh_winter_e', side: 'east', x: 4352 }],
   },
   {
@@ -389,6 +529,7 @@ export const CUTAWAY_ROOMS = [
     style: 'outdoor',
     outdoor: true,
     powerType: 'aether',
+    kitCost: 1,
     connectFrom: [{ room: 'wintergarden' }],
     junctionSide: 'west',
     perk: 'Aetheric mausoleum pylons sanctify the eastern churchyard (+1 Dawn Florin).',
@@ -405,12 +546,24 @@ export const CUTAWAY_ROOMS = [
     w: 680,
     style: 'iron',
     powerType: 'steam',
+    kitCost: 3,
     connectFrom: [{ room: 'coal_bunker' }],
     junctionSide: 'east',
     bonusShieldCap: 2,
-    perk: '+2 Shield Capacity & every active Paranormal Shield fires automated Limelight bolts!',
+    perk: 'Copper Pipe Press (1 Scrap → 1 Pipe Kit), +2 Shield Cap & automated Shield Turrets!',
     perkId: 'shield_turrets',
     dawnCoins: 3,
+    workshop: {
+      id: 'ws_boiler_vault',
+      name: 'Copper Pipe Press',
+      x: 1360,
+      mode: 'refine',
+      input: 'scrap',
+      inputCost: 1,
+      output: 'pipeKit',
+      cycleSec: 18,
+      dawnYield: { pipeKit: 2 },
+    },
     shields: [],
   },
   {
@@ -421,11 +574,21 @@ export const CUTAWAY_ROOMS = [
     w: 580,
     style: 'iron',
     powerType: 'steam',
+    kitCost: 2,
     connectFrom: [{ room: 'scullery', riserX: 1735 }, { room: 'wine_vault' }],
     junctionSide: 'east',
-    perk: 'Steam-driven rock-salt hoppers yield +3 Silver Florins every Dawn!',
+    perk: 'Scrap Hopper spawns haulable Brass & Iron crates + Dawn Pipe Kit & +3 Florins!',
     dawnCoins: 3,
     isFarm: true,
+    workshop: {
+      id: 'ws_coal_bunker',
+      name: 'Sub-Cellar Scrap Hopper',
+      x: 1920,
+      mode: 'harvest',
+      output: 'scrap',
+      cycleSec: 19,
+      dawnYield: { scrap: 2, pipeKit: 1 },
+    },
     shields: [{ id: 'sh_coal_w', side: 'west', x: 1668 }],
   },
   {
@@ -436,6 +599,7 @@ export const CUTAWAY_ROOMS = [
     w: 640,
     style: 'brick',
     powerType: 'steam',
+    kitCost: 1,
     connectFrom: [{ room: 'grand_foyer', riserX: 2825 }, { room: 'coal_bunker' }],
     junctionSide: 'east',
     perk: 'Heated silver reliquaries condense +3 Silver Florins every Dawn.',
@@ -450,6 +614,7 @@ export const CUTAWAY_ROOMS = [
     w: 440,
     style: 'iron',
     powerType: 'steam',
+    kitCost: 2,
     connectFrom: [{ room: 'wine_vault' }],
     junctionSide: 'west',
     perk: 'Cistern steam bilge-pump boosts all Paranormal Shield capacity & recharge by +35%!',
@@ -496,14 +661,60 @@ export const HOUSEFOLK_VIGILS = [
 ];
 
 /**
- * Hidden Reliquary & Silver Coffers (Walk over to unseal 5–7 Consecrated Florins!)
+ * Hidden Reliquary & Silver Coffers (Walk over to unseal 5–7 Consecrated Florins + 2 Refined Conduit Kits!)
  */
 export const SALVAGE_CHESTS = [
-  { id: 'chest_portico', floor: 0, x: 1020, coins: 5 },
-  { id: 'chest_woods', floor: 0, x: 4620, coins: 6 },
-  { id: 'chest_terrace', floor: 1, x: 1240, coins: 6 },
-  { id: 'chest_cistern', floor: -1, x: 3180, coins: 7 },
-  { id: 'chest_clocktower', floor: 2, x: 2440, coins: 6 },
+  { id: 'chest_portico', floor: 0, x: 1020, coins: 5, bonusKit: 'aetherPhial', bonusCount: 2 },
+  { id: 'chest_woods', floor: 0, x: 4620, coins: 6, bonusKit: 'aetherPhial', bonusCount: 2 },
+  { id: 'chest_terrace', floor: 1, x: 1240, coins: 6, bonusKit: 'aetherPhial', bonusCount: 2 },
+  { id: 'chest_cistern', floor: -1, x: 3180, coins: 7, bonusKit: 'pipeKit', bonusCount: 2 },
+  { id: 'chest_clocktower', floor: 2, x: 2440, coins: 6, bonusKit: 'wireSpool', bonusCount: 2 },
+];
+
+/**
+ * Haunted Salvage Caches scattered across all 21 unpowered rooms!
+ * Hold E/S to pry open (+1 immediate Raw Salvage + 1–2 Heavy Crates tagged for Porter/Steward hauling to the Foyer Depot).
+ */
+export const SALVAGE_CACHES = [
+  // Floor 2: Apex Spire
+  { id: 'cache_clock_1', room: 'clocktower', floor: 2, x: 2625, kind: 'scrap', crates: 2, label: 'Fallen Clockwork Gear Heap' },
+  { id: 'cache_sky_1', room: 'skybridge', floor: 2, x: 3010, kind: 'scrap', crates: 1, label: 'Shattered Storm-Arrester Rig' },
+  { id: 'cache_obs_1', room: 'observatory', floor: 2, x: 3390, kind: 'ectoplasm', crates: 2, label: 'Crystallized Star-Aether Vessel' },
+  { id: 'cache_obs_2', room: 'observatory', floor: 2, x: 3635, kind: 'ectoplasm', crates: 2, label: 'Weeping Celestial Reliquary' },
+
+  // Floor 1: Upper Grand Gallery
+  { id: 'cache_terr_1', room: 'west_terrace', floor: 1, x: 1355, kind: 'ectoplasm', crates: 2, label: 'Gargoyle Ectoplasm Basin' },
+  { id: 'cache_lib_1', room: 'library', floor: 1, x: 1635, kind: 'ectoplasm', crates: 2, label: 'Spirit-Soaked Astrolabe Case' },
+  { id: 'cache_lib_2', room: 'library', floor: 1, x: 1915, kind: 'ectoplasm', crates: 1, label: 'Sealed Occult Phial Rack' },
+  { id: 'cache_port_1', room: 'portrait_gallery', floor: 1, x: 2210, kind: 'ectoplasm', crates: 2, label: 'Weeping Ancestor Urn' },
+  { id: 'cache_ball_1', room: 'ballroom', floor: 1, x: 2655, kind: 'scrap', crates: 2, label: 'Collapsed Brass Organ Pipes' },
+  { id: 'cache_ball_2', room: 'ballroom', floor: 1, x: 2935, kind: 'ectoplasm', crates: 1, label: 'Haunted Chandelier Crystal Pile' },
+  { id: 'cache_tele_1', room: 'telegraph_room', floor: 1, x: 3340, kind: 'scrap', crates: 2, label: 'Tangled Copper Telegraph Reels' },
+  { id: 'cache_lab_1', room: 'alchemy_lab', floor: 1, x: 3695, kind: 'scrap', crates: 2, label: 'Dynamo Coil & Brass Fittings' },
+  { id: 'cache_lab_2', room: 'alchemy_lab', floor: 1, x: 3970, kind: 'ectoplasm', crates: 2, label: 'Pressurized Ectoplasm Vat' },
+
+  // Floor 0: Ground Wing & Approaches
+  { id: 'cache_moor_1', room: 'west_moor', floor: 0, x: 580, kind: 'scrap', crates: 2, label: 'Wrecked Gatehouse Carriage Axle' },
+  { id: 'cache_portico_1', room: 'carriage_portico', floor: 0, x: 1135, kind: 'ectoplasm', crates: 2, label: 'Séance Spirit-Bell Trunk' },
+  { id: 'cache_scull_1', room: 'scullery', floor: 0, x: 1410, kind: 'scrap', crates: 2, label: 'Cast-Iron Kettle & Copper Tubing' },
+  { id: 'cache_scull_2', room: 'scullery', floor: 0, x: 1630, kind: 'ectoplasm', crates: 1, label: 'Fermented Alembic Residue' },
+  { id: 'cache_banq_1', room: 'banquet_hall', floor: 0, x: 1935, kind: 'scrap', crates: 2, label: 'Fallen Brass Candelabra & Plate' },
+  { id: 'cache_banq_2', room: 'banquet_hall', floor: 0, x: 2155, kind: 'ectoplasm', crates: 1, label: 'Ectoplasm-Frosted Tureen' },
+  { id: 'cache_parlor_1', room: 'emerald_parlor', floor: 0, x: 3025, kind: 'scrap', crates: 2, label: 'Burst Steam Radiator Valves' },
+  { id: 'cache_parlor_2', room: 'emerald_parlor', floor: 0, x: 3240, kind: 'ectoplasm', crates: 1, label: 'Spirit-Glass Bell Jar' },
+  { id: 'cache_bill_1', room: 'billiard_lounge', floor: 0, x: 3615, kind: 'scrap', crates: 2, label: 'Dismantled Arc-Lamp Brasswork' },
+  { id: 'cache_winter_1', room: 'wintergarden', floor: 0, x: 3975, kind: 'ectoplasm', crates: 2, label: 'Luminous Nightshade Spore Pod' },
+  { id: 'cache_winter_2', room: 'wintergarden', floor: 0, x: 4235, kind: 'scrap', crates: 1, label: 'Corroded Misting Pipework' },
+  { id: 'cache_woods_1', room: 'east_woods', floor: 0, x: 4680, kind: 'ectoplasm', crates: 2, label: 'Crypt Mausoleum Reliquary' },
+
+  // Floor -1: Subterranean Vaults
+  { id: 'cache_boiler_1', room: 'boiler_vault', floor: -1, x: 1215, kind: 'scrap', crates: 2, label: 'Riveted Copper Boiler Plates' },
+  { id: 'cache_boiler_2', room: 'boiler_vault', floor: -1, x: 1495, kind: 'scrap', crates: 2, label: 'Heavy Steam Manifold Flanges' },
+  { id: 'cache_coal_1', room: 'coal_bunker', floor: -1, x: 1825, kind: 'scrap', crates: 2, label: 'Derelict Iron Ore Cart' },
+  { id: 'cache_coal_2', room: 'coal_bunker', floor: -1, x: 2065, kind: 'scrap', crates: 2, label: 'Stacked Brass & Pig-Iron Crate' },
+  { id: 'cache_wine_1', room: 'wine_vault', floor: -1, x: 2365, kind: 'scrap', crates: 2, label: 'Copper Brandy-Still Coils' },
+  { id: 'cache_wine_2', room: 'wine_vault', floor: -1, x: 2665, kind: 'ectoplasm', crates: 1, label: 'Spectral Cask Sediment' },
+  { id: 'cache_cist_1', room: 'catacomb_cistern', floor: -1, x: 3060, kind: 'scrap', crates: 2, label: 'Salvaged Bilge-Pump Valves' },
 ];
 
 /**

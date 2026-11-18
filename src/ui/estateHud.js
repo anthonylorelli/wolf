@@ -1,5 +1,10 @@
 import { paintCharacterPreviews } from '../art/cutawaySprites.js';
-import { WORLD_W, CUTAWAY_ROOMS, INVESTIGATORS } from '../data/cutawayMansionData.js';
+import {
+  WORLD_W,
+  CUTAWAY_ROOMS,
+  INVESTIGATORS,
+  RESOURCE_TYPES,
+} from '../data/cutawayMansionData.js';
 
 const FLOOR_NAMES = {
   2: 'Apex Spire (Floor 2)',
@@ -48,6 +53,17 @@ export class EstateHud {
 
       dayPhasePill: document.getElementById('day-phase-pill'),
       staminaBar: document.getElementById('stamina-bar'),
+
+      resScrap: document.getElementById('res-scrap'),
+      resEcto: document.getElementById('res-ecto'),
+      resPipe: document.getElementById('res-pipe'),
+      resSpool: document.getElementById('res-spool'),
+      resPhial: document.getElementById('res-phial'),
+      chipScrap: document.getElementById('chip-scrap'),
+      chipEcto: document.getElementById('chip-ecto'),
+      chipPipe: document.getElementById('chip-pipe'),
+      chipSpool: document.getElementById('chip-spool'),
+      chipPhial: document.getElementById('chip-phial'),
 
       rosterArtificers: document.getElementById('roster-artificers'),
       rosterWarders: document.getElementById('roster-warders'),
@@ -381,6 +397,40 @@ export class EstateHud {
     this.els.staminaBar.style.width = `${Math.round(heir.stamina)}%`;
     this.els.staminaBar.classList.toggle('venting', heir.exhaustedTimer > 0);
 
+    // 2b. Foyer Supply Depot Stock (Raw Salvage & Refined Conduit Kits)
+    const res = state.resources || {};
+    if (this.els.resScrap) this.els.resScrap.textContent = String(res.scrap || 0);
+    if (this.els.resEcto) this.els.resEcto.textContent = String(res.ectoplasm || 0);
+    if (this.els.resPipe) this.els.resPipe.textContent = String(res.pipeKit || 0);
+    if (this.els.resSpool) this.els.resSpool.textContent = String(res.wireSpool || 0);
+    if (this.els.resPhial) this.els.resPhial.textContent = String(res.aetherPhial || 0);
+
+    const chipByRes = {
+      scrap: this.els.chipScrap,
+      ectoplasm: this.els.chipEcto,
+      pipeKit: this.els.chipPipe,
+      wireSpool: this.els.chipSpool,
+      aetherPhial: this.els.chipPhial,
+    };
+    for (const chip of Object.values(chipByRes)) {
+      chip?.classList.remove('highlight', 'missing');
+    }
+    if (nearbyInteractable?.mode === 'wire' && nearbyInteractable.remKits > 0) {
+      const kChip = chipByRes[nearbyInteractable.kitType];
+      kChip?.classList.add((res[nearbyInteractable.kitType] || 0) > 0 ? 'highlight' : 'missing');
+    } else if (
+      nearbyInteractable?.mode === 'salvage' ||
+      nearbyInteractable?.mode === 'crate'
+    ) {
+      chipByRes[nearbyInteractable.resType]?.classList.add('highlight');
+    } else if (
+      nearbyInteractable?.mode === 'workbench' ||
+      nearbyInteractable?.mode === 'workshop'
+    ) {
+      chipByRes[nearbyInteractable.rawInput]?.classList.add('highlight');
+      chipByRes[nearbyInteractable.kitType]?.classList.add('highlight');
+    }
+
     // 3. Retainer Roster & Paranormal Shield Grid Readout
     this.els.rosterArtificers.textContent = String(roster.artificers);
     this.els.rosterWarders.textContent = String(roster.warders);
@@ -420,7 +470,10 @@ export class EstateHud {
       } else {
         const canWire = activeRoom.def.connectFrom?.some((c) => rooms.get(c.room)?.isPowered);
         if (canWire) {
-          this.els.currentRoomStatus.textContent = 'Ready to Wire';
+          this.els.currentRoomStatus.textContent =
+            activeRoom.kitsPaid < activeRoom.kitCost
+              ? `Kits ${activeRoom.kitsPaid}/${activeRoom.kitCost}`
+              : 'Ready to Weld';
           this.els.currentRoomStatus.className = 'status-tag working';
         } else {
           this.els.currentRoomStatus.textContent = 'Unpowered';
@@ -439,7 +492,7 @@ export class EstateHud {
     this.els.estateTierLabel.textContent = `Tier ${['I', 'II', 'III'][state.estateTier - 1] || 'I'}`;
     this.els.btnOverview.classList.toggle('active-toggle', Boolean(isOverview));
 
-    // 5. Contextual Touch Buttons & World Conduit / Shield / Slot Caption
+    // 5. Contextual Touch Buttons & World Conduit / Salvage / Workbench / Shield / Slot Caption
     const hasUp = nearbyLinks.some((l) => l.toFloor > l.fromFloor);
     const hasDown = nearbyLinks.some((l) => l.toFloor < l.fromFloor);
     this.els.touchBtnUp.disabled = !hasUp;
@@ -456,9 +509,30 @@ export class EstateHud {
     }
 
     if (nearbyInteractable?.mode === 'wire') {
-      const pct = Math.round((nearbyInteractable.room.conduitProgress || 0) * 100);
+      if (nearbyInteractable.remKits > 0) {
+        this.els.touchCoinVerb.textContent = nearbyInteractable.haveKits > 0 ? 'HOLD' : 'QUEUE';
+        this.els.touchCoinSub.textContent = `KIT ${nearbyInteractable.room.kitsPaid}/${nearbyInteractable.room.kitCost}`;
+      } else {
+        const pct = Math.round((nearbyInteractable.room.conduitProgress || 0) * 100);
+        this.els.touchCoinVerb.textContent = 'HOLD';
+        this.els.touchCoinSub.textContent = pct > 0 ? `${pct}% WIRE` : 'WELD LINE';
+      }
+      this.els.touchBtnCoin.classList.add('slot-ready');
+    } else if (nearbyInteractable?.mode === 'salvage') {
       this.els.touchCoinVerb.textContent = 'HOLD';
-      this.els.touchCoinSub.textContent = pct > 0 ? `${pct}% WIRE` : 'WIRE LINE';
+      this.els.touchCoinSub.textContent = 'SCAVENGE';
+      this.els.touchBtnCoin.classList.add('slot-ready');
+    } else if (nearbyInteractable?.mode === 'crate') {
+      this.els.touchCoinVerb.textContent = 'HOLD';
+      this.els.touchCoinSub.textContent = 'UNPACK';
+      this.els.touchBtnCoin.classList.add('slot-ready');
+    } else if (nearbyInteractable?.mode === 'workbench') {
+      this.els.touchCoinVerb.textContent = 'HOLD';
+      this.els.touchCoinSub.textContent = 'REFINE';
+      this.els.touchBtnCoin.classList.add('slot-ready');
+    } else if (nearbyInteractable?.mode === 'workshop') {
+      this.els.touchCoinVerb.textContent = 'HOLD';
+      this.els.touchCoinSub.textContent = 'CRAFT 2X';
       this.els.touchBtnCoin.classList.add('slot-ready');
     } else if (nearbyInteractable?.mode === 'shield') {
       const sh = nearbyInteractable.shield;
@@ -485,9 +559,30 @@ export class EstateHud {
       this.els.promptTitle.textContent = nearbyInteractable.label;
 
       if (nearbyInteractable.mode === 'wire') {
-        const pName = nearbyInteractable.room.powerInfo.label;
-        this.els.promptDesc.textContent = `No Coin Cost (${pName}) • ${nearbyInteractable.sub}`;
-        this.els.btnPromptPay.innerHTML = 'Hold <kbd class="desktop-kbd">E</kbd> Wire';
+        const rm = nearbyInteractable.room;
+        const kInfo = RESOURCE_TYPES[rm.kitType] || RESOURCE_TYPES.pipeKit;
+        if (nearbyInteractable.remKits > 0) {
+          this.els.promptDesc.textContent = `Cost: ${rm.kitCost} ${kInfo.label} (Depot: ${nearbyInteractable.haveKits}) • ${nearbyInteractable.sub}`;
+          this.els.btnPromptPay.innerHTML =
+            nearbyInteractable.haveKits > 0
+              ? 'Hold <kbd class="desktop-kbd">E</kbd> Slot Kit'
+              : 'Hold <kbd class="desktop-kbd">E</kbd> Queue';
+        } else {
+          this.els.promptDesc.textContent = `Kits Installed (${rm.kitCost}/${rm.kitCost}) • ${nearbyInteractable.sub}`;
+          this.els.btnPromptPay.innerHTML = 'Hold <kbd class="desktop-kbd">E</kbd> Weld';
+        }
+        this.els.btnPromptPay.classList.remove('hidden');
+      } else if (nearbyInteractable.mode === 'salvage') {
+        this.els.promptDesc.textContent = nearbyInteractable.sub;
+        this.els.btnPromptPay.innerHTML = 'Hold <kbd class="desktop-kbd">E</kbd> Pry';
+        this.els.btnPromptPay.classList.remove('hidden');
+      } else if (nearbyInteractable.mode === 'crate') {
+        this.els.promptDesc.textContent = nearbyInteractable.sub;
+        this.els.btnPromptPay.innerHTML = 'Hold <kbd class="desktop-kbd">E</kbd> Unpack';
+        this.els.btnPromptPay.classList.remove('hidden');
+      } else if (nearbyInteractable.mode === 'workbench' || nearbyInteractable.mode === 'workshop') {
+        this.els.promptDesc.textContent = nearbyInteractable.sub;
+        this.els.btnPromptPay.innerHTML = 'Hold <kbd class="desktop-kbd">E</kbd> Refine';
         this.els.btnPromptPay.classList.remove('hidden');
       } else if (nearbyInteractable.mode === 'shield') {
         const sh = nearbyInteractable.shield;
